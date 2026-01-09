@@ -1,5 +1,10 @@
 # This file is used to configure the line ending behavior of certain file types in Git.
 
+# .git* files
+.gitattributes text eol=crlf
+.gitignore text eol=crlf
+.gitmodules text eol=crlf
+
 # Python files
 *.py text eol=crlf
 

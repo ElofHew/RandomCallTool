@@ -1,0 +1,1 @@
+pyinstaller -F -w .\src\main.py

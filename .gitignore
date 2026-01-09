@@ -1,11 +1,12 @@
 # This file is used to specify files and directories to be ignored by Git.
 # For more information, see https://git-scm.com/docs/gitignore
 
-# Class Project Resources Folder
+# Class Project Files
 ClassProjectRes/
 
 # Project Specific Files
 src/data/
+src/sample.txt
 
 # PyCharm IDE Files
 .idea/
