@@ -1,0 +1,42 @@
+# This file is used to configure the line ending behavior of certain file types in Git.
+
+# Python files
+*.py text eol=crlf
+
+# Text files
+*.txt text eol=crlf
+
+# Markdown files
+*.md text eol=crlf
+
+# YAML files
+*.yaml text eol=crlf
+*.yml text eol=crlf
+
+# JSON files
+*.json text eol=crlf
+
+# XML files
+*.xml text eol=crlf
+
+# CSV files
+*.csv text eol=crlf
+
+# INI files
+*.ini text eol=crlf
+
+# Front-end files
+*.html text eol=crlf
+*.htm text eol=crlf
+*.css text eol=crlf
+*.js text eol=crlf
+*.ts text eol=crlf
+*.php text eol=crlf
+
+# Scripts files
+*.sh text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# log files
+*.log text eol=crlf
