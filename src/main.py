@@ -1,8 +1,8 @@
 """
 @Name: 随机抽取工具
 @Author: Dan_Evan
-@Date: 2026-01-09
-@Version: 2.0_beta
+@Date: 2026-01-10
+@Version: 2.0 Alpha 1
 @Website: www.danevan.top
 @Description: 随机抽取工具
 """
@@ -14,19 +14,19 @@ import tkinter.font as tkFont
 # 导入基本库
 import os
 import json
-from random import randint, sample, shuffle
-from time import strftime, localtime
+from random import sample
+from time import strftime
 from sys import exit as sys_exit
 from platform import system as pfs
-from base64 import b64encode, b64decode
+from base64 import b64decode
 # 导入日志库
 import logging
 from logging.handlers import RotatingFileHandler
 
 """定义程序元数据"""
-__version__ = "2.0_beta"
+__version__ = "2.0 Alpha 1"
 __author__ = "Dan_Evan"
-__date__ = "2026-01-09"
+__date__ = "2026-01-10"
 __website__ = "www.danevan.top"
 __description__ = "随机抽取工具"
 
@@ -36,7 +36,7 @@ work_path = os.path.dirname(__file__)  # 获取程序目录路径
 prog_data_path = os.path.join(user_path, "data")  # 程序数据目录路径
 log_path = os.path.join(prog_data_path, "log")  # 日志文件路径
 result_path = os.path.join(prog_data_path, "result")  # 结果文件路径
-desktop_result_path = os.path.join(os.path.expanduser("~"), "Desktop", "随机抽取结果")
+desktop_result_path = os.path.join(os.path.expanduser("~"), "Desktop", "随机抽取结果")  # 桌面结果文件路径
 
 config_path = os.path.join(prog_data_path, "config.json")  # 配置文件路径
 
@@ -359,11 +359,11 @@ class RandomPersonTab:
     def _auto_load_sample(self):
         """自动加载样本文件"""
         config = ConfigManager()
-        auto_file = "sample.rcp"
-        if config.get("auto_load_sample", True) and os.path.exists(auto_file):
-            self.names = self.load_names_from_file(auto_file)
+        self.auto_file = os.path.join(prog_data_path, "default_sample.rcp")
+        if config.get("auto_load_sample", True) and os.path.exists(self.auto_file):
+            self.names = self.load_names_from_file(self.auto_file)
             if self.names:
-                logger.info(f"[随机抽人] 自动加载 {auto_file}, 共 {len(self.names)} 个名字")
+                logger.info(f"[随机抽人] 自动加载 {self.auto_file}, 共 {len(self.names)} 个名字")
         
     def create_widgets(self):
         """创建随机抽人界面组件"""
@@ -510,7 +510,8 @@ class RandomPersonTab:
                 content = file.read()
             
             # Base64解码
-            content = self.decode_list(content)
+            if file_path.endswith('.rcp'):
+                content = self.decode_list(content)
             
             # 支持多种分隔符
             names = []
@@ -547,9 +548,12 @@ class RandomPersonTab:
                 return []
             
             # 更新显示
+            update_name = os.path.basename(file_path)
+            if file_path == self.auto_file:
+                update_name = "默认样本"
             self.file_path_label.config(
-                text=os.path.basename(file_path),
-                fg="black"
+                text=update_name,
+                fg="purple"
             )
             self.sample_count_label.config(
                 text=f"样本数量: {len(names)}",
@@ -780,7 +784,7 @@ class SaveResult:
             {result_text}
         </div>
         <div class="footer">
-            生成于 随机抽取工具 v2.0 | <a href="https://home.danevan.top" target="_blank">home.danevan.top</a> | UTC+8 {curren_time}
+            生成于 随机抽取工具 v2.0 Alpha 1 | <a href="https://home.danevan.top" target="_blank">home.danevan.top</a> | UTC+8 {curren_time}
         </div>
     </div>
 </body>
@@ -1061,7 +1065,7 @@ class MainApplication:
 3. 点击"抽取"按钮
 
 随机抽人：
-1. 点击"选择文件"加载样本列表（txt文件）
+1. 点击"选择文件"加载样本列表
 2. 输入要抽取的人数
 3. 点击"抽取"按钮
 
@@ -1072,9 +1076,9 @@ class MainApplication:
 - 查看日志记录
 
 支持的文件格式：
+- 名单文件 (.rcp)
 - 纯文本文件 (.txt)
-- 每行一个名字
-- 支持中文编码"""
+- 制表符分隔文件 (.csv)"""
         
         messagebox.showinfo("使用说明", help_text)
         logger.info("显示使用说明")
@@ -1095,7 +1099,7 @@ class Main:
         self.config = ConfigManager()
         
         self.root = tk.Tk()
-        self.root.title("随机抽取工具 v2.0")
+        self.root.title("随机抽取工具 v2.0 Alpha 1")
         self.root.geometry("350x550+50+50")
         self.root.minsize(300, 500)
         self.root.maxsize(1280, 1280)
@@ -1140,7 +1144,7 @@ def main():
     """主函数"""
     try:
         logger.info("=" * 50)
-        logger.info("随机抽取工具 v2.0 启动")
+        logger.info("随机抽取工具 v2.0 Alpha 1 启动")
         logger.info(f"工作目录: {user_path}")
         logger.info(f"数据目录: {prog_data_path}")
         logger.info(f"日志目录: {log_path}")
