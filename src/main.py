@@ -291,12 +291,19 @@ class HomeTab:
 
     def open_result_directory(self):
         """打开结果目录"""
-        logger.info("打开结果目录")
-        os.makedirs(desktop_result_path, exist_ok=True)
-        if ConfigManager().get("result_path", 0) == 0:
-            os.startfile(result_path)
-        else:
-            os.startfile(desktop_result_path)
+        try:
+            position = ConfigManager().get("result_path", 0)
+            if position == 1:
+                open_dir = desktop_result_path
+            else:
+                open_dir = result_path
+            if not os.path.exists(open_dir):
+                os.makedirs(open_dir)
+            os.startfile(open_dir)
+            logger.info("打开结果目录")
+        except Exception as e:
+            logger.error(f"打开结果目录失败: {e}")
+            messagebox.showerror("错误", f"无法打开结果目录: {e}")
 
     def open_log_file(self):
         """打开日志文件"""
@@ -1291,8 +1298,7 @@ class MainApplication:
             else:
                 open_dir = result_path
             if not os.path.exists(open_dir):
-                messagebox.showwarning("提示", "结果目录不存在")
-                return
+                os.makedirs(open_dir)
             os.startfile(open_dir)
             logger.info("打开结果目录")
         except Exception as e:
