@@ -23,9 +23,8 @@ __date__ = "2026-01-10"
 __description__ = "一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。"
 
 # 定义全局变量
-user_path = os.getcwd()  # 获取用户目录路径
-work_path = os.path.dirname(__file__)  # 获取程序目录路径
-prog_data_path = os.path.join(user_path, "data", "EncodeTool")  # 程序数据目录路径
+work_path = os.getcwd()  # 获取当前工作目录路径
+prog_data_path = os.path.join(work_path, "data", "EncodeTool")  # 程序数据目录路径
 log_path = os.path.join(prog_data_path, "log")  # 日志文件路径
 output_path = os.path.join(prog_data_path, "encoded_files")  # 编码文件输出路径
 desktop_output_path = os.path.join(os.path.expanduser("~"), "Desktop", "编码名单")  # 桌面输出路径
@@ -914,7 +913,7 @@ def main():
     try:
         logger.info("=" * 50)
         logger.info("随机抽人名单编码工具 V1.0 启动")
-        logger.info(f"工作目录: {user_path}")
+        logger.info(f"工作目录: {work_path}")
         logger.info(f"数据目录: {prog_data_path}")
         logger.info(f"输出目录: {output_path}")
         logger.info("=" * 50)

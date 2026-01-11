@@ -33,9 +33,8 @@ __gitee__ = "https://gitee.com/ElofHew/RandomCallTool"
 __description__ = "一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。"
 
 """定义全局变量"""
-user_path = os.getcwd()  # 获取用户目录路径
-work_path = os.path.dirname(__file__)  # 获取程序目录路径
-prog_data_path = os.path.join(user_path, "data")  # 程序数据目录路径
+work_path = os.getcwd()  # 获取当前工作目录路径
+prog_data_path = os.path.join(work_path, "data")  # 程序数据目录路径
 log_path = os.path.join(prog_data_path, "log")  # 日志文件路径
 result_path = os.path.join(prog_data_path, "result")  # 结果文件路径
 
@@ -193,7 +192,7 @@ class HomeTab:
             self.frame,
             text=f"当前版本：{__version__}",
             font=("Helvetica", 12),
-            fg="gray"
+            fg="purple"
         )
         version_label.pack(pady=5)
 
@@ -216,9 +215,64 @@ class HomeTab:
             self.frame,
             text="请点击上方选项卡进行操作",
             font=("Helvetica", 12),
-            fg="gray"
+            fg="green"
         )
-        hint_label.pack(pady=5)
+        hint_label.pack(pady=5, ipady=10)
+
+        # 打开配置窗口按钮
+        button_config = tk.Button(
+            self.frame,
+            text="打开配置窗口",
+            command=self.open_config_window,
+            font=("Helvetica", 10),
+            width=15,
+            height=2
+        )
+        button_config.pack(pady=5)
+
+        # 打开结果目录按钮
+        button_result = tk.Button(
+            self.frame,
+            text="打开结果目录",
+            command=self.open_result_directory,
+            font=("Helvetica", 10),
+            width=15,
+            height=2
+        )
+        button_result.pack(pady=5)
+
+        # 打开日志文件按钮
+        button_log = tk.Button(
+            self.frame,
+            text="打开今日日志",
+            command=self.open_log_file,
+            font=("Helvetica", 10),
+            width=15,
+            height=2
+        )
+        button_log.pack(pady=5)
+
+        # 关于按钮
+        button_about = tk.Button(
+            self.frame,
+            text="打开关于窗口",
+            command=self.about,
+            font=("Helvetica", 10),
+            width=15,
+            height=2
+        )
+        button_about.pack(pady=5)
+
+        # 退出按钮
+        button_quit = tk.Button(
+            self.frame,
+            text="退出程序",
+            command=self.quit,
+            font=("Helvetica", 10),
+            width=15,
+            height=2
+        )
+        button_quit.pack(pady=5)
 
         # 显示启动时间
         start_time = strftime("%Y-%m-%d %H:%M:%S")
@@ -229,6 +283,35 @@ class HomeTab:
             fg="gray"
         )
         start_label.pack(side=tk.BOTTOM, anchor=tk.CENTER, pady=5)
+
+    def open_config_window(self):
+        """打开配置窗口"""
+        logger.info("打开配置窗口")
+        ConfigWindow(self.frame)
+
+    def open_result_directory(self):
+        """打开结果目录"""
+        logger.info("打开结果目录")
+        os.makedirs(desktop_result_path, exist_ok=True)
+        if ConfigManager().get("result_path", 0) == 0:
+            os.startfile(result_path)
+        else:
+            os.startfile(desktop_result_path)
+
+    def open_log_file(self):
+        """打开日志文件"""
+        logger.info("打开日志文件")
+        os.startfile(os.path.join(log_path, f"{strftime('%Y-%m-%d')}.log"))
+
+    def about(self):
+        """关于"""
+        logger.info("打开关于窗口")
+        More(self.frame).about()
+
+    def quit(self):
+        """退出程序"""
+        logger.info("程序正常退出")
+        sys_exit()
 
 class RandomGroupTab:
     def __init__(self, parent):
@@ -253,12 +336,34 @@ class RandomGroupTab:
         rcg_choice_default = ConfigManager().get("rcg_choice_default", 3)
         rcg_choice_default = rcg_choice_default if rcg_choice_default > 0 and rcg_choice_default <= rcg_total_default else 3
 
+        # 选择分组方式
+        self.group_order_var = tk.StringVar(value="123")
+        group_order_frame = tk.Frame(self.frame)
+        group_order_frame.pack(pady=5)
+        group_order_label = tk.Label(group_order_frame, text="分组方式：")
+        group_order_label.pack(side="left")
+        group_order_radio1 = tk.Radiobutton(
+            group_order_frame,
+            text="123(数字)",
+            variable=self.group_order_var,
+            value="123"
+        )
+        group_order_radio1.pack(side="left", padx=5)
+        group_order_radio2 = tk.Radiobutton(
+            group_order_frame,
+            text="ABC(字母)",
+            variable=self.group_order_var,
+            value="ABC"
+        )
+        group_order_radio2.pack(side="left", padx=5)
+        self.group_order_var.set("123")
+
         # 创建标签和选择框
         label_total = tk.Label(self.frame, text="一共有几个组（样本总数）")
         label_total.pack(pady=5)
         self.total_entry = ttk.Combobox(
             self.frame, 
-            values=list(range(1, 11)),  # 可选择1-10组
+            values=list(range(1, 27)),  # 可选择1-26组(为了兼容字母分组方式)
             width=5,
             state="readonly"
         )
@@ -312,7 +417,7 @@ class RandomGroupTab:
         # 历史记录列表框
         self.history_listbox = tk.Listbox(
             history_frame,
-            height=5,
+            height=9,
             selectmode=tk.SINGLE
         )
         scrollbar = tk.Scrollbar(history_frame)
@@ -406,12 +511,18 @@ class RandomGroupTab:
         
         try:
             # 生成所有组号并随机选择
-            all_groups = list(range(1, total_num + 1))
-            selected_groups = sample(all_groups, choice_num)
+            if self.group_order_var.get() == "ABC":
+                all_groups = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+                selected_groups = sample(all_groups[:total_num], choice_num)
+            else:
+                all_groups = list(range(1, total_num + 1))
+                selected_groups = sample(all_groups, choice_num)
+            
+            # 排序
             selected_groups.sort()
             
             # 显示结果
-            result_text = "\n".join([f"第{group}组" for group in selected_groups])
+            result_text = "\n".join([f"{group}组" for group in selected_groups])
             self.result_label.config(text=result_text)
             
             # 添加到历史记录
@@ -432,7 +543,7 @@ class RandomGroupTab:
             
             # 保存结果
             if ConfigManager().get("save_result", True):
-                result_list = [f"第{group}组" for group in selected_groups]
+                result_list = [f"{group}组" for group in selected_groups]
                 file_path = SaveResult().rg_save_result(result_list)
                 if file_path:
                     logger.info(f"[随机抽组] 结果已保存到: {file_path}")
@@ -1032,7 +1143,7 @@ class ConfigWindow:
         auto_frame = tk.Frame(config_frame)
         auto_frame.pack(fill="x", pady=8)
         tk.Label(auto_frame, text="默认样本位置：", width=15, anchor="w").pack(side="left")
-        self.sample_var = tk.Entry(auto_frame, width=15)
+        self.sample_var = tk.Entry(auto_frame, width=20)
         self.sample_var.pack(side="left")
         self.sample_var.config(state="normal")  # 允许编辑
         self.sample_var.insert(0, self.config.get("rcp_default_sample", ""))
@@ -1049,7 +1160,7 @@ class ConfigWindow:
                 self.sample_var.delete(0, tk.END)  # 清空当前内容
                 self.sample_var.insert(0, file_path)  # 插入新的文件路径
                 self.sample_var.config(state="readonly")  # 设置为只读
-        select_button = tk.Button(auto_frame, text="选择文件", command=select_file)
+        select_button = tk.Button(auto_frame, text="选择", command=select_file)
         select_button.pack(side="left", padx=5)
 
         # 按钮框架
@@ -1257,7 +1368,7 @@ class MainApplication:
     
     def create_rcp_file(self):
         """打开RCP生成工具"""
-        rcp_tool_path = os.path.join(work_path, "RCPCreator.exe")
+        rcp_tool_path = os.path.join(work_path, "encode.exe")
         if os.path.exists(rcp_tool_path):
             Popen(rcp_tool_path)
             logger.info("打开RCP生成工具")
@@ -1319,7 +1430,7 @@ def main():
     try:
         logger.info("=" * 50)
         logger.info("随机抽取工具 v2.0 启动")
-        logger.info(f"工作目录: {user_path}")
+        logger.info(f"工作目录: {work_path}")
         logger.info(f"数据目录: {prog_data_path}")
         logger.info(f"日志目录: {log_path}")
         logger.info(f"结果目录: {result_path}")
