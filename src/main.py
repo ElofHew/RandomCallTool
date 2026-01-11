@@ -3,8 +3,7 @@
 @Author: Dan_Evan
 @Date: 2026-01-10
 @Version: 2.0
-@Website: www.danevan.top
-@Description: 随机抽取工具
+@Description: 一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。
 """
 
 # 导入tkinter(GUI)库
@@ -17,6 +16,7 @@ import json
 from random import sample
 from time import strftime
 from sys import exit as sys_exit
+from subprocess import Popen
 # from sys import argv as sargv
 from platform import system as pfs
 from base64 import b64decode
@@ -28,8 +28,9 @@ from logging.handlers import RotatingFileHandler
 __version__ = "2.0"
 __author__ = "Dan_Evan"
 __date__ = "2026-01-10"
-__website__ = "www.danevan.top"
-__description__ = "随机抽取工具"
+__github__ = "https://github.com/ElofHew/RandomCallTool"
+__gitee__ = "https://gitee.com/ElofHew/RandomCallTool"
+__description__ = "一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。"
 
 """定义全局变量"""
 user_path = os.getcwd()  # 获取用户目录路径
@@ -57,7 +58,6 @@ available_files_types = [
 os.makedirs(prog_data_path, exist_ok=True)
 os.makedirs(result_path, exist_ok=True)
 os.makedirs(log_path, exist_ok=True)
-os.makedirs(desktop_result_path, exist_ok=True)
 
 """初始化日志功能"""
 def setup_logging():
@@ -161,11 +161,74 @@ class More:
 
     def about(self):
         """关于"""
+        about_text = f"""随机抽取工具
+{__description__}
+版本：{__version__}
+作者：{__author__}
+日期：{__date__}
+Github：{__github__}
+Gitee：{__gitee__}"""
+
+        messagebox.showinfo("关于", about_text)
         logger.info("打开关于窗口")
-        messagebox.showinfo(
-            "关于", 
-            f"随机抽取工具\n版本：{__version__}\n作者：{__author__}\n日期：{__date__}\n网站：{__website__}"
+
+class HomeTab:
+    def __init__(self, parent):
+        self.frame = ttk.Frame(parent)
+        self.create_widgets()
+
+    def create_widgets(self):
+        """创建主界面组件"""
+        # 创建标题标签
+        title_label = tk.Label(
+            self.frame,
+            text="随机抽取工具",
+            font=("Helvetica", 20, "bold"),
+            fg="blue"
         )
+        title_label.pack(pady=10, ipady=15)
+
+        # 显示当前版本
+        version_label = tk.Label(
+            self.frame,
+            text=f"当前版本：{__version__}",
+            font=("Helvetica", 12),
+            fg="gray"
+        )
+        version_label.pack(pady=5)
+
+        # 设置按钮样式
+        style = ttk.Style()
+        style.configure(
+            'TButton', 
+            font=('Helvetica', 14), 
+            background='lightblue', 
+            foreground='black', 
+            padding=5
+        )
+        style.map(
+            'TButton', 
+            background=[('active', 'darkblue')]
+        )
+
+        # 提示点击上方选项卡
+        hint_label = tk.Label(
+            self.frame,
+            text="请点击上方选项卡进行操作",
+            font=("Helvetica", 12),
+            fg="gray"
+        )
+        hint_label.pack(pady=5)
+
+        # 显示启动时间
+        start_time = strftime("%Y-%m-%d %H:%M:%S")
+        start_label = tk.Label(
+            self.frame,
+            text=f"启动时间：{start_time}",
+            font=("Helvetica", 12),
+            fg="gray"
+        )
+        start_label.pack(side=tk.BOTTOM, anchor=tk.CENTER, pady=5)
 
 class RandomGroupTab:
     def __init__(self, parent):
@@ -292,13 +355,7 @@ class RandomGroupTab:
             messagebox.showwarning("错误", "结果为空，无法保存")
             return
         
-        file_path = SaveResult().rg_save_result(result_text.split("\n"))
-        if file_path:
-            logger.info(f"[随机抽组] 结果已保存到: {file_path}")
-            messagebox.showinfo("提示", f"结果已保存到: {file_path}")
-        else:
-            logger.warning("[随机抽组] 保存结果失败")
-            messagebox.showwarning("错误", "保存结果失败")
+        SaveResult().rg_save_result(result_text.split("\n"))
 
     def validate_input(self, total_num, choice_num):
         """校验输入值"""
@@ -686,13 +743,7 @@ class RandomPersonTab:
             messagebox.showwarning("错误", "结果为空，无法保存")
             return
         
-        file_path = SaveResult().rp_save_result(result_text.split("\n"))
-        if file_path:
-            logger.info(f"[随机抽组] 结果已保存到: {file_path}")
-            messagebox.showinfo("提示", f"结果已保存到: {file_path}")
-        else:
-            logger.warning("[随机抽组] 保存结果失败")
-            messagebox.showwarning("错误", "保存结果失败")
+        SaveResult().rp_save_result(result_text.split("\n"))
 
     def select_persons(self):
         """随机抽取人员"""
@@ -772,7 +823,8 @@ class SaveResult:
         if self.config.get("result_path", 0) == 1:
             desktop_save_dir = os.path.join(os.path.expanduser("~"), "Desktop")
             save_dir = os.path.join(desktop_save_dir, "随机抽取结果")
-            os.makedirs(save_dir, exist_ok=True)
+        
+        os.makedirs(save_dir, exist_ok=True)
         
         return save_dir
     
@@ -852,7 +904,7 @@ class SaveResult:
             {result_text}
         </div>
         <div class="footer">
-            生成于 随机抽取工具 v2.0 | <a href="https://home.danevan.top" target="_blank">home.danevan.top</a> | UTC+8 {curren_time}
+            生成于 随机抽取工具 v2.0 | <a href="{__github__}" target="_blank">GitHub</a> | <a href="{__gitee__}" target="_blank">Gitee</a> | UTC+8 {curren_time}
         </div>
     </div>
 </body>
@@ -1078,6 +1130,14 @@ class MainApplication:
         edit_menu.add_command(label="配置", command=self.open_config_window)
         edit_menu.add_command(label="清除所有历史", command=self.clear_all_history)
         
+        # 工具菜单
+        tool_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="工具", menu=tool_menu)
+        tool_menu.add_command(label="随机抽组", command=lambda: self.notebook.select(self.group_tab.frame))
+        tool_menu.add_command(label="随机抽人", command=lambda: self.notebook.select(self.person_tab.frame))
+        tool_menu.add_separator()
+        tool_menu.add_command(label="生成RCP文件", command=self.create_rcp_file)
+
         # 帮助菜单
         help_menu = tk.Menu(menu_bar, tearoff=0)
         menu_bar.add_cascade(label="帮助", menu=help_menu)
@@ -1097,10 +1157,12 @@ class MainApplication:
         self.notebook.pack(fill="both", expand=True, padx=5, pady=5)
         
         # 创建选项卡
+        self.home_tab = HomeTab(self.notebook)
         self.group_tab = RandomGroupTab(self.notebook)
         self.person_tab = RandomPersonTab(self.notebook)
         
         # 添加选项卡到Notebook
+        self.notebook.add(self.home_tab.frame, text="主页")
         self.notebook.add(self.group_tab.frame, text="随机抽组")
         self.notebook.add(self.person_tab.frame, text="随机抽人")
     
@@ -1193,6 +1255,16 @@ class MainApplication:
         messagebox.showinfo("使用说明", help_text)
         logger.info("显示使用说明")
     
+    def create_rcp_file(self):
+        """打开RCP生成工具"""
+        rcp_tool_path = os.path.join(work_path, "RCPCreator.exe")
+        if os.path.exists(rcp_tool_path):
+            Popen(rcp_tool_path)
+            logger.info("打开RCP生成工具")
+        else:
+            messagebox.showerror("错误", "RCP生成工具不存在")
+            logger.error("RCP生成工具不存在")
+
     def show_about(self):
         """显示关于信息"""
         More(self.root).about()

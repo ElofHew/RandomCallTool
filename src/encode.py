@@ -3,8 +3,7 @@
 @Author: Dan_Evan
 @Date: 2026-01-10
 @Version: 1.0
-@Website: www.danevan.top
-@Description: 将明文名单转换为编码后的rcp文件
+@Description: 一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。
 """
 
 import tkinter as tk
@@ -12,7 +11,7 @@ from tkinter import ttk, messagebox, filedialog, scrolledtext
 import tkinter.font as tkFont
 import os
 import json
-import base64
+from base64 import b64encode, b64decode
 from time import strftime
 import logging
 from logging.handlers import RotatingFileHandler
@@ -21,8 +20,7 @@ from logging.handlers import RotatingFileHandler
 __version__ = "1.0"
 __author__ = "Dan_Evan"
 __date__ = "2026-01-10"
-__website__ = "www.danevan.top"
-__description__ = "随机抽人名单编码工具"
+__description__ = "一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。"
 
 # 定义全局变量
 user_path = os.getcwd()  # 获取用户目录路径
@@ -38,7 +36,6 @@ config_path = os.path.join(prog_data_path, "config_encode.json")  # 配置文件
 os.makedirs(prog_data_path, exist_ok=True)
 os.makedirs(output_path, exist_ok=True)
 os.makedirs(log_path, exist_ok=True)
-os.makedirs(desktop_output_path, exist_ok=True)
 
 # 初始化日志功能
 def setup_logging():
@@ -146,7 +143,7 @@ class ListEncoder:
             text = text.replace('\r\n', '\n').replace('\r', '\n').strip() + "\n"
             
             # Base64编码
-            encoded_bytes = base64.b64encode(text.encode('utf-8'))
+            encoded_bytes = b64encode(text.encode('utf-8'))
             encoded_text = encoded_bytes.decode('utf-8')
             
             logger.info(f"成功编码名单，原始长度: {len(text)}，编码后长度: {len(encoded_text)}")
@@ -164,7 +161,7 @@ class ListEncoder:
                 return ""
             
             # Base64解码
-            decoded_bytes = base64.b64decode(encoded_text)
+            decoded_bytes = b64decode(encoded_text)
             decoded_text = decoded_bytes.decode('utf-8')
             
             return decoded_text.strip()
@@ -729,7 +726,7 @@ class MainApplication:
    - 点击"处理文本"自动去除重复项和空格
 
 3. 编码名单
-   - 点击"快速编码"仅生成Base64编码
+   - 点击"快速编码"仅生成编码后的文本
    - 点击"编码并保存"生成并保存.rcp文件
 
 4. 输出文件
@@ -751,10 +748,10 @@ class MainApplication:
     def show_about(self):
         """显示关于信息"""
         about_text = f"""随机抽人名单编码工具
+{__description__}
 版本：{__version__}
 作者：{__author__}
 日期：{__date__}
-网站：{__website__}
 
 功能：将明文名单转换为编码后的rcp文件
 用于随机抽取工具的样本列表"""
@@ -924,7 +921,7 @@ def main():
         
         # 创建主窗口
         root = tk.Tk()
-        root.title("随机抽人名单编码工具 V1.0")
+        root.title("随机抽人名单编码工具")
         root.geometry("600x600+50+50")
         root.minsize(500, 500)
         
