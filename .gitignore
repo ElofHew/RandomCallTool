@@ -5,6 +5,7 @@
 ClassProjectRes/
 
 # Project Specific Files
+data/
 src/data/
 src/sample.txt
 

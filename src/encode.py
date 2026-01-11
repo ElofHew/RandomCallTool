@@ -2,7 +2,7 @@
 @Name: 随机抽人名单编码工具
 @Author: Dan_Evan
 @Date: 2026-01-10
-@Version: 1.0 Alpha 1
+@Version: 1.0
 @Website: www.danevan.top
 @Description: 将明文名单转换为编码后的rcp文件
 """
@@ -18,7 +18,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 # 定义程序元数据
-__version__ = "1.0 Alpha 1"
+__version__ = "1.0"
 __author__ = "Dan_Evan"
 __date__ = "2026-01-10"
 __website__ = "www.danevan.top"
@@ -916,7 +916,7 @@ def main():
     """主函数"""
     try:
         logger.info("=" * 50)
-        logger.info("随机抽人名单编码工具 V1.0 Alpha 1 启动")
+        logger.info("随机抽人名单编码工具 V1.0 启动")
         logger.info(f"工作目录: {user_path}")
         logger.info(f"数据目录: {prog_data_path}")
         logger.info(f"输出目录: {output_path}")
@@ -924,7 +924,7 @@ def main():
         
         # 创建主窗口
         root = tk.Tk()
-        root.title("随机抽人名单编码工具 V1.0 Alpha 1")
+        root.title("随机抽人名单编码工具 V1.0")
         root.geometry("600x600+50+50")
         root.minsize(500, 500)
         

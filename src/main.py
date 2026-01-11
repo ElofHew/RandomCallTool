@@ -2,7 +2,7 @@
 @Name: 随机抽取工具
 @Author: Dan_Evan
 @Date: 2026-01-10
-@Version: 2.0 Alpha 1
+@Version: 2.0
 @Website: www.danevan.top
 @Description: 随机抽取工具
 """
@@ -17,6 +17,7 @@ import json
 from random import sample
 from time import strftime
 from sys import exit as sys_exit
+# from sys import argv as sargv
 from platform import system as pfs
 from base64 import b64decode
 # 导入日志库
@@ -24,7 +25,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 """定义程序元数据"""
-__version__ = "2.0 Alpha 1"
+__version__ = "2.0"
 __author__ = "Dan_Evan"
 __date__ = "2026-01-10"
 __website__ = "www.danevan.top"
@@ -36,9 +37,21 @@ work_path = os.path.dirname(__file__)  # 获取程序目录路径
 prog_data_path = os.path.join(user_path, "data")  # 程序数据目录路径
 log_path = os.path.join(prog_data_path, "log")  # 日志文件路径
 result_path = os.path.join(prog_data_path, "result")  # 结果文件路径
-desktop_result_path = os.path.join(os.path.expanduser("~"), "Desktop", "随机抽取结果")  # 桌面结果文件路径
+
+user_home_path = os.path.expanduser("~")  # 用户主目录
+desktop_path = os.path.join(user_home_path, "Desktop")  # 用户桌面路径
+document_path = os.path.join(user_home_path, "Documents")  # 用户文档路径
+desktop_result_path = os.path.join(desktop_path, "随机抽取结果")  # 桌面结果文件路径
 
 config_path = os.path.join(prog_data_path, "config.json")  # 配置文件路径
+
+available_files_types = [
+    ("可用文件", "*.rcp;*.txt;*.csv"),
+    ("名单文件", "*.rcp"),
+    ("文本文件", "*.txt"),
+    ("CSV文件", "*.csv"),
+    ("所有文件", "*.*")
+]  # 可用的样本文件
 
 # 创建程序数据目录
 os.makedirs(prog_data_path, exist_ok=True)
@@ -94,12 +107,13 @@ class ConfigManager:
         """加载配置文件"""
         default_config = {
             "result_path": 0,  # 0: 数据目录, 1: 桌面
-            "save_result": True,  # 是否保存结果
+            "save_result": True,  # 是否自动保存结果
             "auto_load_sample": True,  # 是否自动加载样本
             "max_history_items": 10,  # 历史记录最大数量
             "rcg_total_default": 9,  # 随机抽组默认总数
             "rcg_choice_default": 3,  # 随机抽组默认选择数
-            "rcp_choice_default": 1  # 随机抽人默认选择数
+            "rcp_choice_default": 1,  # 随机抽人默认选择数
+            "rcp_default_sample": ".\\data\\default.rcp"
         }
         
         if os.path.exists(config_path):
@@ -124,7 +138,6 @@ class ConfigManager:
         try:
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(self._config, f, ensure_ascii=False, indent=4)
-            logger.info("配置已保存")
         except Exception as e:
             logger.error(f"保存配置文件失败: {e}")
     
@@ -136,7 +149,6 @@ class ConfigManager:
         """设置配置项"""
         self._config[key] = value
         self._save_config()
-        logger.info(f"配置已更新: {key} = {value}")
 
 class More:
     def __init__(self, root):
@@ -222,6 +234,14 @@ class RandomGroupTab:
         )
         button_clear.pack(side="left", padx=5)
         
+        button_save = tk.Button(
+            button_frame,
+            text="保存",
+            command=self.save_result,
+            width=10
+        )
+        button_save.pack(side="left", padx=5)
+
         # 创建历史记录框架
         history_frame = tk.LabelFrame(self.frame, text="历史记录")
         history_frame.pack(pady=10, padx=10, fill="both", expand=True)
@@ -264,6 +284,22 @@ class RandomGroupTab:
         self.result_label.config(text="")
         logger.info("[随机抽组] 清空结果")
     
+    def save_result(self):
+        """保存结果"""
+        result_text = self.result_label.cget("text")
+        if not result_text:
+            logger.warning("[随机抽组] 结果为空，无法保存")
+            messagebox.showwarning("错误", "结果为空，无法保存")
+            return
+        
+        file_path = SaveResult().rg_save_result(result_text.split("\n"))
+        if file_path:
+            logger.info(f"[随机抽组] 结果已保存到: {file_path}")
+            messagebox.showinfo("提示", f"结果已保存到: {file_path}")
+        else:
+            logger.warning("[随机抽组] 保存结果失败")
+            messagebox.showwarning("错误", "保存结果失败")
+
     def validate_input(self, total_num, choice_num):
         """校验输入值"""
         try:
@@ -353,15 +389,16 @@ class RandomPersonTab:
         self.frame = ttk.Frame(parent)
         self.names = []
         self.history = []  # 历史记录
+        self.current_file = None  # 当前文件路径
+        self.auto_file = ConfigManager().get("rcp_default_sample", os.path.join(prog_data_path, "default.rcp"))  # 自动加载的默认文件路径
         self.create_widgets()
         self._auto_load_sample()
         
     def _auto_load_sample(self):
         """自动加载样本文件"""
         config = ConfigManager()
-        self.auto_file = os.path.join(prog_data_path, "default_sample.rcp")
         if config.get("auto_load_sample", True) and os.path.exists(self.auto_file):
-            self.names = self.load_names_from_file(self.auto_file)
+            self.names, additional_messages = self.load_names_from_file(self.auto_file)
             if self.names:
                 logger.info(f"[随机抽人] 自动加载 {self.auto_file}, 共 {len(self.names)} 个名字")
         
@@ -397,7 +434,7 @@ class RandomPersonTab:
             button_frame, 
             text="选择文件", 
             command=self.load_names,
-            width=12
+            width=9
         )
         button_load.pack(side="left", padx=2)
         
@@ -405,10 +442,18 @@ class RandomPersonTab:
             button_frame,
             text="重新加载",
             command=self.reload_current_file,
-            width=12
+            width=9
         )
         button_reload.pack(side="left", padx=2)
         
+        button_autoload = tk.Button(
+            button_frame,
+            text="自动加载",
+            command=self.auto_load_file,
+            width=9
+        )
+        button_autoload.pack(side="left", padx=2)
+
         # 样本信息
         info_frame = tk.Frame(self.frame)
         info_frame.pack(pady=5)
@@ -460,6 +505,14 @@ class RandomPersonTab:
         )
         button_clear.pack(side="left", padx=5)
         
+        button_save = tk.Button(
+            action_frame,
+            text="保存",
+            command=self.save_result,
+            width=10
+        )
+        button_save.pack(side="left", padx=5)
+
         # 历史记录框架
         history_frame = tk.LabelFrame(self.frame, text="历史记录")
         history_frame.pack(pady=10, padx=10, fill="both", expand=True)
@@ -491,20 +544,18 @@ class RandomPersonTab:
         """从文件加载名字"""
         if not file_path:
             file_path = filedialog.askopenfilename(
-                filetypes=[
-                    ("名单文件", "*.rcp"),
-                    ("文本文件", "*.txt"),
-                    ("CSV文件", "*.csv"),
-                    ("所有文件", "*.*")
-                ],
+                filetypes=available_files_types,
+                initialdir=document_path,
                 title="选择样本文件"
             )
             logger.info(f"[随机抽人] 选择文件: {file_path if file_path else '(取消选择)'}")
         
         if not file_path:
             logger.warning("[随机抽人] 未选择文件")
-            return []
+            return [], []
         
+        additional_messages = []
+
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
@@ -530,29 +581,20 @@ class RandomPersonTab:
             
             # 判断并去除重复的名字
             if len(names) != len(set(names)):
-                logger.warning(f"[随机抽人] 文件 {file_path} 中存在重复的名字")
-                messagebox.showwarning("警告", "文件中存在重复的名字，已自动去除")
-                # 去除重复的名字
                 names = list(set(names))
-            
-            # 去除空白行
-            if '' in names:
-                logger.warning(f"[随机抽人] 文件 {file_path} 中存在空白行")
-                messagebox.showwarning("警告", "文件中存在空白行，已自动去除")
-                names.remove('')
+                logger.warning(f"[随机抽人] 文件 {file_path} 中存在重复的名字")
+                additional_messages.append("注意，文件中存在重复的名字，已自动去除")
 
             # 无效数据过滤
             if not names:
                 logger.warning(f"[随机抽人] 文件 {file_path} 中没有有效数据")
                 messagebox.showwarning("警告", "文件中没有有效的数据")
-                return []
+                return [], additional_messages
             
             # 更新显示
             update_name = os.path.basename(file_path)
-            if file_path == self.auto_file:
-                update_name = "默认样本"
             self.file_path_label.config(
-                text=update_name,
+                text=update_name if not file_path == self.auto_file else "默认样本",
                 fg="purple"
             )
             self.sample_count_label.config(
@@ -564,8 +606,10 @@ class RandomPersonTab:
             max_choice = len(names)
             self.choice_entry['values'] = list(range(1, max_choice + 1))
             
+            self.current_file = file_path
+
             logger.info(f"[随机抽人] 成功加载 {len(names)} 个名字")
-            return names
+            return names, additional_messages
             
         except UnicodeDecodeError:
             # 尝试其他编码
@@ -575,29 +619,37 @@ class RandomPersonTab:
                 if names:
                     self.file_path_label.config(text=os.path.basename(file_path))
                     self.sample_count_label.config(text=f"样本数量: {len(names)}")
-                    return names
+                    return names, additional_messages
             except Exception as e:
                 logger.error(f"[随机抽人] 读取文件失败: {e}")
                 messagebox.showerror("错误", f"读取文件失败: {e}")
-                return []
+                return [], additional_messages
         except Exception as e:
             logger.error(f"[随机抽人] 读取文件失败: {e}")
             messagebox.showerror("错误", f"读取文件失败: {e}")
-            return []
+            return [], additional_messages
     
     def reload_current_file(self):
         """重新加载当前文件"""
-        current_file = self.file_path_label.cget("text")
-        if current_file != "未选择文件":
-            file_path = filedialog.askopenfilename(
-                initialfile=current_file,
-                filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")]
-            )
+        current_display = self.file_path_label.cget("text")
+        file_path = self.current_file
+        if current_display != "未选择文件":
             if file_path:
-                self.names = self.load_names_from_file(file_path)
+                self.names, additional_messages = self.load_names_from_file(file_path)
                 if self.names:
-                    messagebox.showinfo("成功", f"重新加载成功\n共加载 {len(self.names)} 个名字")
+                    messagebox.showinfo("成功", f"重新加载成功\n共加载 {len(self.names)} 个名字\n{'\n'.join(additional_messages) if additional_messages else ''}")
     
+    def auto_load_file(self):
+        """自动加载样本文件"""
+        if self.auto_file and os.path.exists(self.auto_file):
+            self.names, additional_messages = self.load_names_from_file(self.auto_file)
+            if self.names:
+                logger.info(f"[随机抽人] 自动加载 {self.auto_file}, 共 {len(self.names)} 个名字")
+                messagebox.showinfo("成功", f"自动加载成功\n共加载 {len(self.names)} 个名字\n{'\n'.join(additional_messages) if additional_messages else ''}")
+        else:
+            logger.warning(f"[随机抽人] 自动加载失败，文件 {self.auto_file} 不存在")
+            messagebox.showwarning("警告", f"自动加载失败，文件 {self.auto_file} 不存在")
+
     def decode_list(self, data=None):
         """解码列表"""
         if not data:
@@ -616,9 +668,9 @@ class RandomPersonTab:
 
     def load_names(self):
         """加载名字并更新显示"""
-        self.names = self.load_names_from_file()
+        self.names, additional_messages = self.load_names_from_file()
         if self.names:
-            messagebox.showinfo("成功", f"样本列表已加载\n共加载 {len(self.names)} 个名字")
+            messagebox.showinfo("成功", f"样本列表已加载\n共加载 {len(self.names)} 个名字\n{'\n'.join(additional_messages) if additional_messages else ''}")
             logger.info(f"[随机抽人] 手动加载样本列表，共 {len(self.names)} 个名字")
     
     def clear_result(self):
@@ -626,6 +678,22 @@ class RandomPersonTab:
         self.result_label.config(text="")
         logger.info("[随机抽人] 清空结果")
     
+    def save_result(self):
+        """保存结果"""
+        result_text = self.result_label.cget("text")
+        if not result_text:
+            logger.warning("[随机抽组] 结果为空，无法保存")
+            messagebox.showwarning("错误", "结果为空，无法保存")
+            return
+        
+        file_path = SaveResult().rp_save_result(result_text.split("\n"))
+        if file_path:
+            logger.info(f"[随机抽组] 结果已保存到: {file_path}")
+            messagebox.showinfo("提示", f"结果已保存到: {file_path}")
+        else:
+            logger.warning("[随机抽组] 保存结果失败")
+            messagebox.showwarning("错误", "保存结果失败")
+
     def select_persons(self):
         """随机抽取人员"""
         if not self.names:
@@ -784,7 +852,7 @@ class SaveResult:
             {result_text}
         </div>
         <div class="footer">
-            生成于 随机抽取工具 v2.0 Alpha 1 | <a href="https://home.danevan.top" target="_blank">home.danevan.top</a> | UTC+8 {curren_time}
+            生成于 随机抽取工具 v2.0 | <a href="https://home.danevan.top" target="_blank">home.danevan.top</a> | UTC+8 {curren_time}
         </div>
     </div>
 </body>
@@ -844,7 +912,7 @@ class ConfigWindow:
         
         self.window = tk.Toplevel(parent)
         self.window.title("配置")
-        self.window.geometry("350x350+50+50")
+        self.window.geometry("350x400+50+50")
         self.window.resizable(False, False)
         
         # 设置窗口图标和模态
@@ -871,7 +939,7 @@ class ConfigWindow:
         # 1. 是否保存结果
         save_frame = tk.Frame(config_frame)
         save_frame.pack(fill="x", pady=8)
-        tk.Label(save_frame, text="是否保存结果：", width=15, anchor="w").pack(side="left")
+        tk.Label(save_frame, text="自动保存结果：", width=15, anchor="w").pack(side="left")
         self.save_var = tk.StringVar(value="开" if self.config.get("save_result", True) else "关")
         tk.Radiobutton(save_frame, text="开", variable=self.save_var, value="开").pack(side="left")
         tk.Radiobutton(save_frame, text="关", variable=self.save_var, value="关").pack(side="left")
@@ -908,6 +976,30 @@ class ConfigWindow:
         )
         history_spinbox.pack(side="left")
         
+         # 5. 随机抽人默认样本位置
+        auto_frame = tk.Frame(config_frame)
+        auto_frame.pack(fill="x", pady=8)
+        tk.Label(auto_frame, text="默认样本位置：", width=15, anchor="w").pack(side="left")
+        self.sample_var = tk.Entry(auto_frame, width=15)
+        self.sample_var.pack(side="left")
+        self.sample_var.config(state="normal")  # 允许编辑
+        self.sample_var.insert(0, self.config.get("rcp_default_sample", ""))
+        self.sample_var.config(state="readonly")  # 设置为只读
+        # 添加选择按钮
+        def select_file():
+            file_path = filedialog.askopenfilename(
+                title="选择文件",
+                initialdir=document_path,
+                filetypes=available_files_types
+            )
+            if file_path:
+                self.sample_var.config(state="normal")  # 允许编辑
+                self.sample_var.delete(0, tk.END)  # 清空当前内容
+                self.sample_var.insert(0, file_path)  # 插入新的文件路径
+                self.sample_var.config(state="readonly")  # 设置为只读
+        select_button = tk.Button(auto_frame, text="选择文件", command=select_file)
+        select_button.pack(side="left", padx=5)
+
         # 按钮框架
         button_frame = tk.Frame(self.window)
         button_frame.pack(pady=20)
@@ -917,7 +1009,7 @@ class ConfigWindow:
             button_frame,
             text="保存",
             command=self.save_config,
-            width=15,
+            width=10,
             height=2
         )
         save_button.pack(side="left", padx=10)
@@ -927,26 +1019,40 @@ class ConfigWindow:
             button_frame,
             text="关闭",
             command=self.window.destroy,
-            width=15,
+            width=10,
             height=2
         )
         close_button.pack(side="left", padx=10)
     
     def save_config(self):
-        """保存"""
+        """保存配置"""
         try:
-            self.config.set("save_result", self.save_var.get() == "开")
-            self.config.set("result_path", 1 if self.path_var.get() == "桌面" else 0)
-            self.config.set("auto_load_sample", self.auto_var.get() == "开")
-            self.config.set("max_history_items", int(self.history_var.get()))
-            
+            # 使用字典一次性设置多个配置项
+            config_updates = {
+                "save_result": self.save_var.get() == "开",
+                "result_path": 1 if self.path_var.get() == "桌面" else 0,
+                "auto_load_sample": self.auto_var.get() == "开",
+                "max_history_items": int(self.history_var.get()),
+                "rcp_default_sample": self.sample_var.get()
+            }
+
+            for key, value in config_updates.items():
+                self.config.set(key, value)
+
             logger.info("配置已保存")
             messagebox.showinfo("成功", "配置已保存")
             self.window.destroy()
-            
+
         except Exception as e:
             logger.error(f"保存配置失败: {e}")
             messagebox.showerror("错误", f"保存配置失败: {e}")
+
+# class ArgvProcessor:
+    # """附加参数处理"""
+    # def __init__(self):
+        # self.args = sargv[1:]
+    
+    # 暂时预留，后续更新
 
 class MainApplication:
     def __init__(self, root):
@@ -1006,7 +1112,11 @@ class MainApplication:
     def open_result_dir(self):
         """打开结果目录"""
         try:
-            open_dir = result_path
+            position = ConfigManager().get("result_path", 0)
+            if position == 1:
+                open_dir = desktop_result_path
+            else:
+                open_dir = result_path
             if not os.path.exists(open_dir):
                 messagebox.showwarning("提示", "结果目录不存在")
                 return
@@ -1098,8 +1208,9 @@ class Main:
         # 初始化配置管理器
         self.config = ConfigManager()
         
+        # 设置主窗口
         self.root = tk.Tk()
-        self.root.title("随机抽取工具 v2.0 Alpha 1")
+        self.root.title("随机抽取工具")
         self.root.geometry("350x550+50+50")
         self.root.minsize(300, 500)
         self.root.maxsize(1280, 1280)
@@ -1114,6 +1225,9 @@ class Main:
         # 绑定窗口关闭事件
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
+        # 读取并处理启动参数(预留功能)
+        # self.argv_processor = ArgvProcessor()
+
         # 启动主循环
         self.root.mainloop()
     
@@ -1144,7 +1258,7 @@ def main():
     """主函数"""
     try:
         logger.info("=" * 50)
-        logger.info("随机抽取工具 v2.0 Alpha 1 启动")
+        logger.info("随机抽取工具 v2.0 启动")
         logger.info(f"工作目录: {user_path}")
         logger.info(f"数据目录: {prog_data_path}")
         logger.info(f"日志目录: {log_path}")
