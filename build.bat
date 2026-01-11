@@ -1,2 +1,2 @@
-pyinstaller -F -w .\src\main.py
-pyinstaller -F -w .\src\encode.py
+pyinstaller --icon=./icon/app.ico -F -w .\src\main.py
+pyinstaller --icon=./icon/list.ico -F -w .\src\encode.py

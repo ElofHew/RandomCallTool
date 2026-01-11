@@ -1288,9 +1288,6 @@ class Main:
         self.root.maxsize(1280, 1280)
         self.root.resizable(True, True)
         
-        # 设置应用程序图标
-        self.set_app_icon()
-        
         # 创建主应用程序
         self.app = MainApplication(self.root)
         
@@ -1302,15 +1299,6 @@ class Main:
 
         # 启动主循环
         self.root.mainloop()
-    
-    def set_app_icon(self):
-        """设置应用程序图标"""
-        icon_path = os.path.join(work_path, "icon.ico")
-        if os.path.exists(icon_path):
-            try:
-                self.root.iconbitmap(default=icon_path)
-            except:
-                pass
     
     def on_closing(self):
         """窗口关闭事件处理"""
