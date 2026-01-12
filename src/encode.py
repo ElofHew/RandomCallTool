@@ -374,6 +374,8 @@ class MainApplication:
         """打开输入文件"""
         file_path = filedialog.askopenfilename(
             filetypes=[
+                ("可用文件", "*.txt;*.csv"),
+                ("CSV文件", "*.csv"),
                 ("文本文件", "*.txt"),
                 ("所有文件", "*.*")
             ],
@@ -458,7 +460,8 @@ class MainApplication:
             else:
                 save_dir = output_path
             
-            os.makedirs(save_dir, exist_ok=True)
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir, exist_ok=True)
             
             # 获取文件名
             filename = self.filename_var.get().strip()
