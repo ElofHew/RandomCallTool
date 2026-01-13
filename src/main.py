@@ -951,7 +951,8 @@ class SaveResult:
         </div>
 {"<!--" if not save_message else ""}
         <div class="tips">
-            <p><strong>提示说明：</strong>{save_message}</p>
+            <p><strong>提示/说明</strong></p>
+            <p style="font-size: 20px;">{save_message}</p>
         </div>
 {"-->" if not save_message else ""}
         <div class="result">
