@@ -761,16 +761,18 @@ class RandomPersonTab(BaseTab):
         file_path = self.current_file
         if current_display != "未选择文件" and file_path:
             self.names, additional_messages = self.load_names_from_file(file_path)
+            additional_messages = "\n".join(additional_messages) if additional_messages else ""
             if self.names:
-                messagebox.showinfo("成功", f"重新加载成功\n共加载 {len(self.names)} 个名字\n{'\n'.join(additional_messages) if additional_messages else ''}")
+                messagebox.showinfo("成功", f"重新加载成功\n共加载 {len(self.names)} 个名字\n{additional_messages}")
     
     def auto_load_file(self):
         """自动加载样本文件"""
         if self.auto_file and os.path.exists(self.auto_file):
             self.names, additional_messages = self.load_names_from_file(self.auto_file)
+            additional_messages = "\n".join(additional_messages) if additional_messages else ""
             if self.names:
                 logger.info(f"[随机抽人] 自动加载 {self.auto_file}, 共 {len(self.names)} 个名字")
-                messagebox.showinfo("成功", f"自动加载成功\n共加载 {len(self.names)} 个名字\n{'\n'.join(additional_messages) if additional_messages else ''}")
+                messagebox.showinfo("成功", f"自动加载成功\n共加载 {len(self.names)} 个名字\n{additional_messages}")
         else:
             logger.warning(f"[随机抽人] 自动加载失败，文件 {self.auto_file} 不存在")
             messagebox.showwarning("警告", f"自动加载失败，文件 {self.auto_file} 不存在")
@@ -792,8 +794,9 @@ class RandomPersonTab(BaseTab):
     def load_names(self):
         """加载名字并更新显示"""
         self.names, additional_messages = self.load_names_from_file()
+        additional_messages = "\n".join(additional_messages) if additional_messages else ""
         if self.names:
-            messagebox.showinfo("成功", f"样本列表已加载\n共加载 {len(self.names)} 个名字\n{'\n'.join(additional_messages) if additional_messages else ''}")
+            messagebox.showinfo("成功", f"样本列表已加载\n共加载 {len(self.names)} 个名字\n{additional_messages}")
             logger.info(f"[随机抽人] 手动加载样本列表，共 {len(self.names)} 个名字")
     
     def select_persons(self):
