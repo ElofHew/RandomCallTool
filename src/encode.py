@@ -15,6 +15,8 @@ from base64 import b64encode, b64decode
 from time import strftime
 import logging
 from logging.handlers import RotatingFileHandler
+from platform import system as pfs
+from sys import exit as sys_exit
 
 # 定义程序元数据
 __version__ = "1.0"
@@ -911,6 +913,13 @@ class ConfigWindow:
         self.app.set_status("配置已应用")
         self.window.destroy()
 
+def check_os():
+    """检查操作系统"""
+    if pfs() != 'Windows':
+        logger.error("不支持的操作系统：%s" % pfs())
+        messagebox.showerror("错误", "本程序仅支持Windows系统")
+        sys_exit(1)
+
 def main():
     """主函数"""
     try:
@@ -949,4 +958,5 @@ def main():
         messagebox.showerror("错误", f"程序启动失败:\n{e}")
 
 if __name__ == '__main__':
+    check_os()
     main()

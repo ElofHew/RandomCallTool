@@ -13,7 +13,8 @@ import tkinter.font as tkFont
 # 导入基本库
 import os
 import json
-from random import sample
+# from random import sample (使用numpy库的choice函数替换random库的sample函数)
+from numpy.random import choice as np_choice
 from time import strftime
 from sys import exit as sys_exit
 from subprocess import Popen
@@ -515,11 +516,12 @@ class RandomGroupTab(BaseTab):
             # 生成所有组号并随机选择
             if self.group_order_var.get() == "ABC":
                 all_groups = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-                selected_groups = sample(all_groups[:total_num], choice_num)
             else:
                 all_groups = list(range(1, total_num + 1))
-                selected_groups = sample(all_groups, choice_num)
-            
+
+            # 使用numpy的random.choice进行不重复随机抽取
+            selected_groups = np_choice(all_groups, size=choice_num, replace=False).tolist()
+
             selected_groups.sort()
             
             # 显示结果
@@ -830,8 +832,8 @@ class RandomPersonTab(BaseTab):
                 if not messagebox.askyesno("提示", "抽取数量与总数量相同，确定要抽取所有人吗？"):
                     return
             
-            # 随机抽取
-            selected_persons = sample(self.names, choice_num)
+            # 使用numpy的random.choice进行不重复随机抽取
+            selected_persons = np_choice(self.names, size=choice_num, replace=False).tolist()
             
             # 显示结果
             self.result_label.config(text="\n".join(selected_persons))

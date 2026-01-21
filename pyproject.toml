@@ -1,0 +1,7 @@
+[tool.poetry]
+name = "RandomCallTool"
+version = "0.1.0"
+authors = ["<ElofHew> <2352235176@qq.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.6"
