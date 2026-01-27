@@ -2,7 +2,7 @@
 @Name: 随机抽取工具
 @Author: Dan_Evan
 @Date: 2026-01-10
-@Version: 2.0
+@Version: 2.1
 @Description: 一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。
 """
 
@@ -13,19 +13,18 @@ import tkinter.font as tkFont
 # 导入基本库
 import os
 import json
-# from random import sample (使用numpy库的choice函数替换random库的sample函数)
-from numpy.random import choice as np_choice
+from random import sample, shuffle, choices
 from time import strftime
 from sys import exit as sys_exit
-from subprocess import Popen
-from platform import system as pfs
 from base64 import b64decode
+from collections import defaultdict
+
 # 导入日志库
 import logging
 from logging.handlers import RotatingFileHandler
 
 """定义程序元数据"""
-__version__ = "2.0"
+__version__ = "2.1"
 __author__ = "Dan_Evan"
 __date__ = "2026-01-10"
 __github__ = "https://github.com/ElofHew/RandomCallTool"
@@ -103,15 +102,17 @@ class ConfigManager:
     def _load_config(self):
         """加载配置文件"""
         default_config = {
-            "result_path": 0,
-            "save_result": True,
-            "auto_load_sample": True,
-            "max_history_items": 10,
-            "rcg_total_default": 9,
-            "rcg_choice_default": 3,
-            "rcp_choice_default": 1,
-            "rcp_merge_names": True,
-            "rcp_default_sample": ".\\data\\default.rcp"
+            "result_path": 0,  # 结果保存路径(0:数据目录, 1:桌面)
+            "save_result": True,  # 是否自动保存结果
+            "auto_load_sample": True,  # 自动加载默认名单文件
+            "max_history_items": 10,  # 最大历史记录条目数
+            "rcg_total_default": 9,  # 随机抽组默认总组数
+            "rcg_choice_default": 3,  # 随机抽组默认选择数
+            "rcp_choice_default": 1,  # 随机抽人默认选择数
+            "rcp_merge_names": True,  # 是否合并重复名字
+            "rcp_default_sample": ".\\data\\default.rcp",  # 默认名单文件路径
+            "shuffle_before_sample": True,  # 抽取前是否打乱
+            "use_weighted_sampling": False,  # 是否使用加权抽样
         }
         
         if os.path.exists(config_path):
@@ -216,6 +217,115 @@ Gitee：{__gitee__}"""
 
         messagebox.showinfo("关于", about_text)
         logger.info("打开关于窗口")
+
+class SmartSampler:
+    """智能抽样器"""
+    
+    def __init__(self, use_weighted=False, shuffle_before=True):
+        """
+        初始化抽样器
+        
+        Args:
+            use_weighted: 是否使用加权抽样
+            shuffle_before: 是否在抽样前打乱
+        """
+        self.use_weighted = use_weighted
+        self.shuffle_before = shuffle_before
+        self.selection_history = defaultdict(int)  # 记录选中次数
+        self.total_selections = 0  # 总抽取次数
+        
+    def smart_sample(self, population, k):
+        """
+        智能抽样
+        
+        Args:
+            population: 总体列表
+            k: 抽取数量
+            
+        Returns:
+            抽取结果列表
+        """
+        if not population:
+            return []
+        
+        # 如果k大于或等于总体数量，直接返回整个总体（打乱后）
+        if k >= len(population):
+            result = population.copy()
+            shuffle(result)
+            return result[:k] if k > len(population) else result
+        
+        if self.use_weighted:
+            return self._weighted_sample(population, k)
+        else:
+            return self._simple_sample(population, k)
+    
+    def _simple_sample(self, population, k):
+        """简单随机抽样（可先打乱）"""
+        working_population = population.copy()
+        
+        if self.shuffle_before:
+            shuffle(working_population)
+        
+        # 使用sample进行无放回抽样
+        result = sample(working_population, k)
+        
+        # 更新历史记录
+        self._update_history(result)
+        
+        return result
+    
+    def _weighted_sample(self, population, k):
+        """加权随机抽样"""
+        # 计算每个元素的权重：选中次数越少，权重越高
+        weights = []
+        for item in population:
+            # 基础权重为1，每被选中一次减少0.1权重
+            weight = 1.0 - (self.selection_history.get(item, 0) * 0.1)
+            weight = max(0.1, weight)  # 最小权重为0.1
+            weights.append(weight)
+        
+        # 使用加权抽样（无放回）
+        result = []
+        temp_population = population.copy()
+        temp_weights = weights.copy()
+        
+        for _ in range(k):
+            if not temp_population:
+                break
+                
+            # 根据权重随机选择一个
+            selected = choices(temp_population, weights=temp_weights, k=1)[0]
+            result.append(selected)
+            
+            # 从临时列表中移除已选中的
+            idx = temp_population.index(selected)
+            temp_population.pop(idx)
+            temp_weights.pop(idx)
+        
+        # 更新历史记录
+        self._update_history(result)
+        
+        return result
+    
+    def _update_history(self, selected_items):
+        """更新选中历史"""
+        for item in selected_items:
+            self.selection_history[item] += 1
+        self.total_selections += 1
+    
+    def get_selection_stats(self):
+        """获取选中统计"""
+        return {
+            'total_selections': self.total_selections,
+            'selection_counts': dict(self.selection_history),
+            'most_selected': max(self.selection_history.items(), key=lambda x: x[1]) if self.selection_history else None,
+            'least_selected': min(self.selection_history.items(), key=lambda x: x[1]) if self.selection_history else None,
+        }
+    
+    def reset_history(self):
+        """重置历史记录"""
+        self.selection_history.clear()
+        self.total_selections = 0
 
 class BaseTab:
     """选项卡基类"""
@@ -343,7 +453,7 @@ class HomeTab(BaseTab):
             button.pack(pady=5)
 
         # 显示启动时间
-        start_time = strftime("%Y-%m-%d %H:%M:%S")
+        start_time = strftime("%Y-%m-d %H:%M:%S")
         start_label = tk.Label(
             self.frame,
             text=f"启动时间：{start_time}",
@@ -374,6 +484,12 @@ class HomeTab(BaseTab):
 class RandomGroupTab(BaseTab):
     def __init__(self, parent):
         super().__init__(parent, "随机抽组")
+        # 初始化抽样器（在构造函数中创建，而不是每次抽取都创建）
+        config = ConfigManager()
+        self.sampler = SmartSampler(
+            use_weighted=config.get("use_weighted_sampling", False),
+            shuffle_before=config.get("shuffle_before_sample", True)
+        )
         self.create_widgets()
         
     def create_widgets(self):
@@ -439,11 +555,12 @@ class RandomGroupTab(BaseTab):
         button_configs = [
             ("抽取", self.select_groups),
             ("清空", self.clear_result),
-            ("保存", lambda: self.save_result("group"))
+            ("保存", lambda: self.save_result("group")),
+            ("重置历史", self.reset_sampler_history)  # 新增按钮
         ]
         
         for text, command in button_configs:
-            button = self.create_button(button_frame, text, command, width=10, height=1)
+            button = self.create_button(button_frame, text, command, width=8, height=1)
             button.pack(side="left", padx=5)
         
         # 创建保存提示信息
@@ -513,15 +630,14 @@ class RandomGroupTab(BaseTab):
             return
         
         try:
-            # 生成所有组号并随机选择
+            # 生成所有组号
             if self.group_order_var.get() == "ABC":
-                all_groups = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+                all_groups = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")[:total_num]
             else:
                 all_groups = list(range(1, total_num + 1))
-
-            # 使用numpy的random.choice进行不重复随机抽取
-            selected_groups = np_choice(all_groups, size=choice_num, replace=False).tolist()
-
+            
+            # 使用智能抽样器抽取
+            selected_groups = self.sampler.smart_sample(all_groups, choice_num)
             selected_groups.sort()
             
             # 显示结果
@@ -548,6 +664,13 @@ class RandomGroupTab(BaseTab):
             logger.error(f"[随机抽组] 抽取过程中发生错误: {e}")
             messagebox.showerror("错误", f"抽取过程中发生错误: {e}")
     
+    def reset_sampler_history(self):
+        """重置抽样器历史记录"""
+        if messagebox.askyesno("确认", "确定要重置抽样历史记录吗？这将影响加权抽样的公平性计算。"):
+            self.sampler.reset_history()
+            logger.info("[随机抽组] 抽样历史记录已重置")
+            messagebox.showinfo("成功", "抽样历史记录已重置")
+    
     def save_result(self, result_type):
         """保存结果"""
         result_text = self.result_label.cget("text")
@@ -565,6 +688,12 @@ class RandomPersonTab(BaseTab):
         self.names = []
         self.current_file = None
         self.auto_file = ConfigManager().get("rcp_default_sample", os.path.join(prog_data_path, "default.rcp"))
+        # 初始化抽样器
+        config = ConfigManager()
+        self.sampler = SmartSampler(
+            use_weighted=config.get("use_weighted_sampling", False),
+            shuffle_before=config.get("shuffle_before_sample", True)
+        )
         self.create_widgets()
         self._auto_load_sample()
         
@@ -647,11 +776,12 @@ class RandomPersonTab(BaseTab):
         button_configs = [
             ("抽取", self.select_persons),
             ("清空", self.clear_result),
-            ("保存", lambda: self.save_result("person"))
+            ("保存", lambda: self.save_result("person")),
+            ("重置历史", self.reset_sampler_history)  # 新增按钮
         ]
         
         for text, command in button_configs:
-            button = self.create_button(action_frame, text, command, width=10, height=1)
+            button = self.create_button(action_frame, text, command, width=8, height=1)
             button.pack(side="left", padx=5)
         
         # 创建保存提示信息
@@ -832,8 +962,8 @@ class RandomPersonTab(BaseTab):
                 if not messagebox.askyesno("提示", "抽取数量与总数量相同，确定要抽取所有人吗？"):
                     return
             
-            # 使用numpy的random.choice进行不重复随机抽取
-            selected_persons = np_choice(self.names, size=choice_num, replace=False).tolist()
+            # 使用智能抽样器抽取
+            selected_persons = self.sampler.smart_sample(self.names, choice_num)
             
             # 显示结果
             self.result_label.config(text="\n".join(selected_persons))
@@ -860,6 +990,13 @@ class RandomPersonTab(BaseTab):
         except Exception as e:
             logger.error(f"[随机抽人] 抽取过程中发生错误: {e}")
             messagebox.showerror("错误", f"抽取过程中发生错误: {e}")
+    
+    def reset_sampler_history(self):
+        """重置抽样器历史记录"""
+        if messagebox.askyesno("确认", "确定要重置抽样历史记录吗？这将影响加权抽样的公平性计算。"):
+            self.sampler.reset_history()
+            logger.info("[随机抽人] 抽样历史记录已重置")
+            messagebox.showinfo("成功", "抽样历史记录已重置")
     
     def save_result(self, result_type):
         """保存结果"""
@@ -964,7 +1101,7 @@ class SaveResult:
             {result_text}
         </div>
         <div class="footer">
-            生成于 随机抽取工具 v2.0 | <a href="{__github__}" target="_blank">GitHub</a> | <a href="{__gitee__}" target="_blank">Gitee</a> | UTC+8 {curren_time}
+            生成于 随机抽取工具 v2.1 | <a href="{__github__}" target="_blank">GitHub</a> | <a href="{__gitee__}" target="_blank">Gitee</a> | UTC+8 {curren_time}
         </div>
     </div>
 </body>
@@ -1001,7 +1138,7 @@ class ConfigWindow:
         
         self.window = tk.Toplevel(parent)
         self.window.title("配置")
-        self.window.geometry("350x400+50+50")
+        self.window.geometry("350x480+50+50")  # 增加高度以适应新配置项
         self.window.resizable(False, False)
         
         self.window.transient(parent)
@@ -1033,13 +1170,17 @@ class ConfigWindow:
             ("自动加载样本：", "auto_load_sample", ["开", "关"],
              "开" if self.config.get("auto_load_sample", True) else "关"),
             ("合并重复名字：", "rcp_merge_names", ["开", "关"],
-             "开" if self.config.get("rcp_merge_names", True) else "关")
+             "开" if self.config.get("rcp_merge_names", True) else "关"),
+            ("抽取前打乱：", "shuffle_before_sample", ["开", "关"],
+             "开" if self.config.get("shuffle_before_sample", True) else "关"),
+            ("使用加权抽样：", "use_weighted_sampling", ["开", "关"],
+             "开" if self.config.get("use_weighted_sampling", False) else "关")
         ]
         
         self.vars = {}
         for label_text, key, values, default_value in config_items:
             frame = tk.Frame(config_frame)
-            frame.pack(fill="x", pady=8)
+            frame.pack(fill="x", pady=5)  # 减少间距以容纳更多配置项
             tk.Label(frame, text=label_text, width=15, anchor="w").pack(side="left")
             var = tk.StringVar(value=default_value)
             self.vars[key] = var
@@ -1048,7 +1189,7 @@ class ConfigWindow:
         
         # 历史记录数量
         history_frame = tk.Frame(config_frame)
-        history_frame.pack(fill="x", pady=8)
+        history_frame.pack(fill="x", pady=5)
         tk.Label(history_frame, text="历史记录数量：", width=15, anchor="w").pack(side="left")
         self.history_var = tk.StringVar(value=str(self.config.get("max_history_items", 10)))
         tk.Spinbox(
@@ -1063,7 +1204,7 @@ class ConfigWindow:
         
         # 默认样本位置
         sample_frame = tk.Frame(config_frame)
-        sample_frame.pack(fill="x", pady=8)
+        sample_frame.pack(fill="x", pady=5)
         tk.Label(sample_frame, text="默认样本位置：", width=15, anchor="w").pack(side="left")
         self.sample_var = tk.Entry(sample_frame, width=20)
         self.sample_var.pack(side="left")
@@ -1118,7 +1259,9 @@ class ConfigWindow:
                 "auto_load_sample": self.vars["auto_load_sample"].get() == "开",
                 "max_history_items": int(self.history_var.get()),
                 "rcp_merge_names": self.vars["rcp_merge_names"].get() == "开",
-                "rcp_default_sample": self.sample_var.get()
+                "rcp_default_sample": self.sample_var.get(),
+                "shuffle_before_sample": self.vars["shuffle_before_sample"].get() == "开",
+                "use_weighted_sampling": self.vars["use_weighted_sampling"].get() == "开"
             }
 
             for key, value in config_updates.items():
@@ -1138,7 +1281,7 @@ class ApplicationFunctions:
     @staticmethod
     def show_help():
         """显示帮助"""
-        help_text = """随机抽取工具 v2.0 使用说明
+        help_text = """随机抽取工具 v2.1 使用说明
 
 一、主要功能：
 1. 随机抽组：从指定数量的组中随机抽取一个或多个组
@@ -1165,13 +1308,18 @@ class ApplicationFunctions:
 2. .txt文件：纯文本文件，支持逗号、分号、制表符或换行分隔
 3. .csv文件：逗号分隔值文件
 
-四、其他功能：
+四、智能抽样功能：
+1. 抽取前打乱：提高随机性，减少顺序影响
+2. 加权抽样：根据历史抽取次数调整权重，实现长期公平
+3. 可重置抽样历史：重新开始公平性计算
+
+五、其他功能：
 1. 结果保存：抽取结果自动保存为HTML格式
 2. 历史记录：记录最近的抽取历史
 3. 配置管理：可设置保存路径、自动保存等选项
 4. 日志查看：记录程序运行状态
 
-五、注意事项：
+六、注意事项：
 1. 支持重复名字自动去重
 2. 抽取人数不能超过样本总数
 3. 默认样本存放在 data/default.rcp
@@ -1189,7 +1337,7 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
         """打开RCP生成工具"""
         rcp_tool_path = os.path.join(work_path, "encode.exe")
         if os.path.exists(rcp_tool_path):
-            Popen(rcp_tool_path)
+            os.system(f"start {rcp_tool_path}")
             logger.info("打开RCP生成工具")
             return True
         else:
@@ -1317,8 +1465,8 @@ class Main:
         
         self.root = tk.Tk()
         self.root.title("随机抽取工具")
-        self.root.geometry("350x530+50+50")
-        self.root.minsize(300, 500)
+        self.root.geometry("400x550+50+50")  # 增加宽度以容纳重置历史按钮
+        self.root.minsize(350, 500)
         self.root.maxsize(1280, 1280)
         self.root.resizable(True, True)
         
@@ -1336,8 +1484,8 @@ class Main:
 
 def check_os():
     """检查操作系统"""
-    if pfs() != 'Windows':
-        logger.error("不支持的操作系统：%s" % pfs())
+    if os.name != 'nt':
+        logger.error("不支持的操作系统：%s" % os.name)
         messagebox.showerror("错误", "本程序仅支持Windows系统")
         sys_exit(1)
 
@@ -1345,7 +1493,7 @@ def main():
     """主函数"""
     try:
         logger.info("=" * 50)
-        logger.info("随机抽取工具 v2.0 启动")
+        logger.info("随机抽取工具 v2.1 启动")
         logger.info(f"工作目录: {work_path}")
         logger.info(f"数据目录: {prog_data_path}")
         logger.info(f"日志目录: {log_path}")
