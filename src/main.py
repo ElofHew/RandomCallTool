@@ -453,7 +453,7 @@ class HomeTab(BaseTab):
             button.pack(pady=5)
 
         # 显示启动时间
-        start_time = strftime("%Y-%m-d %H:%M:%S")
+        start_time = strftime("%Y-%m-%d %H:%M:%S")
         start_label = tk.Label(
             self.frame,
             text=f"启动时间：{start_time}",
