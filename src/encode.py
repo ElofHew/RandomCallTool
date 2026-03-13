@@ -8,14 +8,12 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
-import tkinter.font as tkFont
 import os
 import json
 from base64 import b64encode, b64decode
 from time import strftime
 import logging
 from logging.handlers import RotatingFileHandler
-from platform import system as pfs
 from sys import exit as sys_exit
 
 # 定义程序元数据
@@ -915,8 +913,8 @@ class ConfigWindow:
 
 def check_os():
     """检查操作系统"""
-    if pfs() != 'Windows':
-        logger.error("不支持的操作系统：%s" % pfs())
+    if os.name != 'nt':
+        logger.error("不支持的操作系统：%s" % os.name)
         messagebox.showerror("错误", "本程序仅支持Windows系统")
         sys_exit(1)
 
