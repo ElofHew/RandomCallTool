@@ -1,5 +1,5 @@
 """
-随机抽人名单编码工具 - 入口
+随机抽取工具 - 入口
 """
 import os
 import sys
@@ -8,10 +8,11 @@ from tkinter import messagebox
 import tkinter as tk
 
 from core.common import setup_logging
-from core.encode_constants import LOG_PATH, PROG_DATA_PATH, OUTPUT_PATH
-from core.encode_gui import MainApplication
+from core.constants import LOG_PATH, PROG_DATA_PATH, RESULT_PATH
+from core.app import MainApplication
 
-for path in [PROG_DATA_PATH, OUTPUT_PATH, LOG_PATH]:
+# 创建必要的目录
+for path in [PROG_DATA_PATH, RESULT_PATH, LOG_PATH]:
     os.makedirs(path, exist_ok=True)
 
 def check_os():
@@ -24,19 +25,22 @@ def main():
     try:
         logger = setup_logging(LOG_PATH)
         logger.info("=" * 50)
-        logger.info("随机抽人名单编码工具 V1.0 启动")
+        logger.info("随机抽取工具 v2.1 启动")
         logger.info("=" * 50)
 
         check_os()
 
         root = tk.Tk()
-        root.title("随机抽人名单编码工具")
-        root.geometry("600x600+50+50")
-        root.minsize(500, 500)
+        root.title("随机抽取工具")
+        root.geometry("400x550+50+50")
+        root.minsize(350, 500)
+        root.maxsize(1280, 1280)
+        root.resizable(True, True)
 
         app = MainApplication(root)
 
         def on_closing():
+            logger.info("用户关闭窗口，准备退出程序")
             if messagebox.askyesno("确认", "确定要退出程序吗？"):
                 logger.info("程序正常退出")
                 root.destroy()
