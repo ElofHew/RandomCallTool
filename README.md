@@ -125,8 +125,8 @@
 2. 下载或克隆项目到本地。
 3. 打开命令行或终端，进入项目目录。
 4. 运行 `pip install pyinstaller` 安装PyInstaller。
-5. 运行根目录下的 `build.bat` 脚本，生成可执行文件。
-6. 运行 `main.exe` 运行程序。
+5. 运行根目录下的 `build_standard.bat` 或 `build_onefile.bat` 脚本，生成可执行文件。
+6. (可选)使用 `7z SFX Builder` 搭配 `SFX_config.txt` (需自行修改部分目录)文件打包自解压安装程序。
 
 >[!TIP]
 > 或者可以直接下载Release版本并直接运行。
