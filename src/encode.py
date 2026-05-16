@@ -8,10 +8,10 @@ from tkinter import messagebox
 import tkinter as tk
 
 from core.common import setup_logging
-from core.encode_constants import LOG_PATH, PROG_DATA_PATH, OUTPUT_PATH
+from core.constants import ENCODE_LOG_PATH, ENCODE_DATA_PATH, ENCODE_OUTPUT_PATH
 from core.encode_gui import MainApplication
 
-for path in [PROG_DATA_PATH, OUTPUT_PATH, LOG_PATH]:
+for path in [ENCODE_DATA_PATH, ENCODE_OUTPUT_PATH, ENCODE_LOG_PATH]:
     os.makedirs(path, exist_ok=True)
 
 def check_os():
@@ -22,7 +22,7 @@ def check_os():
 
 def main():
     try:
-        logger = setup_logging(LOG_PATH)
+        logger = setup_logging(ENCODE_LOG_PATH)
         logger.info("=" * 50)
         logger.info("随机抽人名单编码工具 V1.0 启动")
         logger.info("=" * 50)

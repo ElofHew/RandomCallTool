@@ -6,11 +6,11 @@ import logging
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 
-from .encode_config import EncodeConfigManager
+from .config import EncodeConfigManager
 from .encoder import ListEncoder
 from .common import BaseFileManager
-from .encode_constants import (
-    OUTPUT_PATH, DESKTOP_OUTPUT_PATH, __version__, __author__, __date__, __description__
+from .constants import (
+    ENCODE_OUTPUT_PATH, ENCODE_DESKTOP_OUTPUT_PATH, __encode_version__, __author__, __encode_description__
 )
 
 logger = logging.getLogger(__name__)
@@ -158,9 +158,9 @@ class MainApplication:
             encoded = ListEncoder.encode_list(processed)
 
             if self.config.get("output_path", 0) == 1:
-                save_dir = DESKTOP_OUTPUT_PATH
+                save_dir = ENCODE_DESKTOP_OUTPUT_PATH
             else:
-                save_dir = OUTPUT_PATH
+                save_dir = ENCODE_OUTPUT_PATH
             os.makedirs(save_dir, exist_ok=True)
 
             filename = self.filename_var.get().strip()
@@ -265,9 +265,9 @@ class MainApplication:
 
     def open_output_dir(self):
         if self.config.get("output_path", 0) == 1:
-            open_dir = DESKTOP_OUTPUT_PATH
+            open_dir = ENCODE_DESKTOP_OUTPUT_PATH
         else:
-            open_dir = OUTPUT_PATH
+            open_dir = ENCODE_OUTPUT_PATH
         BaseFileManager.open_directory(open_dir)
 
     def test_encode_decode(self):
@@ -318,10 +318,9 @@ class MainApplication:
 
     def show_about(self):
         about_text = f"""随机抽人名单编码工具
-{__description__}
-版本：{__version__}
-作者：{__author__}
-日期：{__date__}"""
+{__encode_description__}
+版本：{__encode_version__}
+作者：{__author__}"""
         messagebox.showinfo("关于", about_text)
 
     def set_status(self, message):

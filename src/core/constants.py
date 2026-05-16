@@ -33,3 +33,16 @@ AVAILABLE_FILES_TYPES = [
     ("CSV文件", "*.csv"),
     ("所有文件", "*.*")
 ]
+
+__encode_version__ = "1.0"
+__encode_description__ = "一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。"
+
+ENCODE_DATA_PATH = os.path.join(PROG_DATA_PATH, "EncodeTool")
+ENCODE_LOG_PATH = os.path.join(ENCODE_DATA_PATH, "log")
+ENCODE_OUTPUT_PATH = os.path.join(ENCODE_DATA_PATH, "encoded_files")
+ENCODE_DESKTOP_OUTPUT_PATH = os.path.join(os.path.expanduser("~"), "Desktop", "编码名单")
+ENCODE_CONFIG_PATH = os.path.join(ENCODE_DATA_PATH, "config_encode.json")
+
+# 确保目录存在
+for path in [ENCODE_DATA_PATH, ENCODE_OUTPUT_PATH, ENCODE_LOG_PATH]:
+    os.makedirs(path, exist_ok=True)
