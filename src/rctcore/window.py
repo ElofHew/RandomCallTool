@@ -6,9 +6,9 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 # 导入应用库
-from core.logman import logger
-from core.config import ConfigManager
-from core.meta import document_path, available_files_types
+from core.logman import rctlog
+from rctcore.config import ConfigManager
+from core.info import document_path
 
 class ConfigWindow:
     """软件内配置窗口"""
@@ -96,7 +96,13 @@ class ConfigWindow:
             file_path = filedialog.askopenfilename(
                 title="选择文件",
                 initialdir=document_path,
-                filetypes=available_files_types
+                filetypes=[
+                    ("可用文件", "*.rcp;*.txt;*.csv"),
+                    ("名单文件", "*.rcp"),
+                    ("文本文件", "*.txt"),
+                    ("CSV文件", "*.csv"),
+                    ("所有文件", "*.*")
+                ]
             )
             if file_path:
                 self.sample_var.config(state="normal")
@@ -147,10 +153,10 @@ class ConfigWindow:
             for key, value in config_updates.items():
                 self.config.set(key, value)
 
-            logger.info("配置已保存")
+            rctlog.info("配置已保存")
             messagebox.showinfo("成功", "配置已保存")
             self.window.destroy()
 
         except Exception as e:
-            logger.error(f"保存配置失败: {e}")
+            rctlog.error(f"保存配置失败: {e}")
             messagebox.showerror("错误", f"保存配置失败: {e}")

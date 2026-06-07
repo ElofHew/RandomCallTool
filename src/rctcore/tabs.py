@@ -11,13 +11,13 @@ import tkinter as tk
 import tkinter.font as tkFont
 from tkinter import ttk, messagebox, filedialog
 # 导入应用库
-from core.meta import *
-from core.logman import logger
-from core.config import ConfigManager
-from core.more import More
-from core.window import ConfigWindow
-from core.sampler import SmartSampler
-from core.fileman import FileManager, SaveResult, base64decode
+from core.info import rct_prog_data_path, rct_version, document_path
+from core.logman import rctlog
+from rctcore.config import ConfigManager
+from rctcore.more import More
+from rctcore.window import ConfigWindow
+from rctcore.sampler import SmartSampler
+from rctcore.fileman import FileManager, SaveResult, base64decode
 
 class BaseTab:
     """选项卡基类"""
@@ -105,7 +105,7 @@ class BaseTab:
         """清空结果"""
         if hasattr(self, 'result_label'):
             self.result_label.config(text="")
-        logger.info(f"[{self.__class__.__name__}] 清空结果")
+        rctlog.info(f"[{self.__class__.__name__}] 清空结果")
 
 class HomeTab(BaseTab):
     """首页选项卡"""
@@ -118,7 +118,7 @@ class HomeTab(BaseTab):
         # 显示当前版本
         version_label = tk.Label(
             self.frame,
-            text=f"当前版本：{version}",
+            text=f"当前版本：{rct_version}",
             font=("Helvetica", 12),
             fg="purple"
         )
@@ -157,7 +157,7 @@ class HomeTab(BaseTab):
 
     def open_config_window(self):
         """打开配置窗口"""
-        logger.info("打开配置窗口")
+        rctlog.info("打开配置窗口")
         ConfigWindow(self.frame)
 
     def open_result_directory(self):
@@ -166,12 +166,12 @@ class HomeTab(BaseTab):
 
     def show_about(self):
         """显示关于信息"""
-        logger.info("打开关于窗口")
+        rctlog.info("打开关于窗口")
         More(self.frame).about()
 
     def quit_program(self):
         """退出程序"""
-        logger.info("程序正常退出")
+        rctlog.info("程序正常退出")
         sys.exit()
 
 class RandomGroupTab(BaseTab):
@@ -282,29 +282,29 @@ class RandomGroupTab(BaseTab):
             choice_num = int(choice_num)
             
             if total_num < 1:
-                logger.warning(f"[随机抽组] 样本总数 {total_num} 小于1")
+                rctlog.warning(f"[随机抽组] 样本总数 {total_num} 小于1")
                 messagebox.showwarning("错误", "样本总数不能小于1")
                 return False, 0, 0
             
             if choice_num < 1:
-                logger.warning(f"[随机抽组] 抽取数量 {choice_num} 小于1")
+                rctlog.warning(f"[随机抽组] 抽取数量 {choice_num} 小于1")
                 messagebox.showwarning("错误", "抽取数量不能小于1")
                 return False, 0, 0
             
             if choice_num > total_num:
-                logger.warning(f"[随机抽组] 抽取数量 {choice_num} 大于总数量 {total_num}")
+                rctlog.warning(f"[随机抽组] 抽取数量 {choice_num} 大于总数量 {total_num}")
                 messagebox.showwarning("错误", "抽取数量不能大于总数量")
                 return False, 0, 0
             
             if choice_num == total_num:
-                logger.info(f"[随机抽组] 抽取数量 {choice_num} 等于总数量 {total_num}")
+                rctlog.info(f"[随机抽组] 抽取数量 {choice_num} 等于总数量 {total_num}")
                 if not messagebox.askyesno("提示", "抽取数量与总数量相同，确定要抽取所有组吗？"):
                     return False, 0, 0
             
             return True, total_num, choice_num
             
         except ValueError:
-            logger.error(f"[随机抽组] 输入值 {total_num} 或 {choice_num} 不是数字")
+            rctlog.error(f"[随机抽组] 输入值 {total_num} 或 {choice_num} 不是数字")
             messagebox.showwarning("错误", "请输入有效的数字")
             return False, 0, 0
     
@@ -315,11 +315,11 @@ class RandomGroupTab(BaseTab):
         total_num = self.total_entry.get()
         choice_num = self.choice_entry.get()
         
-        logger.info(f"[随机抽组] 开始抽取: 总数={total_num}, 抽取数={choice_num}")
+        rctlog.info(f"[随机抽组] 开始抽取: 总数={total_num}, 抽取数={choice_num}")
         
         valid, total_num, choice_num = self.validate_input(total_num, choice_num)
         if not valid:
-            logger.warning("[随机抽组] 输入验证失败")
+            rctlog.warning("[随机抽组] 输入验证失败")
             return
         
         try:
@@ -341,7 +341,7 @@ class RandomGroupTab(BaseTab):
             history_item = f"{strftime('%H:%M:%S')} - 抽取{choice_num}组: {', '.join(map(str, selected_groups))}"
             self.add_history(history_item)
             
-            logger.info(f"[随机抽组] 抽取成功: {selected_groups}")
+            rctlog.info(f"[随机抽组] 抽取成功: {selected_groups}")
             
             # 显示结果对话框
             messagebox.showinfo("抽取结果", f"抽取结果：\n{result_text}")
@@ -351,17 +351,17 @@ class RandomGroupTab(BaseTab):
                 result_list = [f"{group}组" for group in selected_groups]
                 file_path = SaveResult().save_result("RandomGroup", "随机抽组", result_list)
                 if file_path:
-                    logger.info(f"[随机抽组] 结果已保存到: {file_path}")
+                    rctlog.info(f"[随机抽组] 结果已保存到: {file_path}")
             
         except Exception as e:
-            logger.error(f"[随机抽组] 抽取过程中发生错误: {e}")
+            rctlog.error(f"[随机抽组] 抽取过程中发生错误: {e}")
             messagebox.showerror("错误", f"抽取过程中发生错误: {e}")
     
     def reset_sampler_history(self):
         """重置抽样器历史记录"""
         if messagebox.askyesno("确认", "确定要重置抽样历史记录吗？这将影响加权抽样的公平性计算。"):
             self.sampler.reset_history()
-            logger.info("[随机抽组] 抽样历史记录已重置")
+            rctlog.info("[随机抽组] 抽样历史记录已重置")
             messagebox.showinfo("成功", "抽样历史记录已重置")
     
     def save_result(self, result_type):
@@ -369,7 +369,7 @@ class RandomGroupTab(BaseTab):
         result_text = self.result_label.cget("text")
         ready_to_save_message = self.save_message_entry.get().strip()
         if not result_text:
-            logger.warning(f"[随机抽组] 结果为空，无法保存")
+            rctlog.warning(f"[随机抽组] 结果为空，无法保存")
             messagebox.showwarning("错误", "结果为空，无法保存")
             return
         
@@ -380,7 +380,7 @@ class RandomPersonTab(BaseTab):
         super().__init__(parent, "随机抽人")
         self.names = []
         self.current_file = None
-        self.auto_file = ConfigManager().get("rcp_default_sample", os.path.join(prog_data_path, "default.rcp"))
+        self.auto_file = ConfigManager().get("rcp_default_sample", os.path.join(rct_prog_data_path, "default.rcp"))
         # 初始化抽样器
         config = ConfigManager()
         self.sampler = SmartSampler(
@@ -396,7 +396,7 @@ class RandomPersonTab(BaseTab):
         if config.get("auto_load_sample", True) and os.path.exists(self.auto_file):
             self.names, additional_messages = self.load_names_from_file(self.auto_file)
             if self.names:
-                logger.info(f"[随机抽人] 自动加载 {self.auto_file}, 共 {len(self.names)} 个名字")
+                rctlog.info(f"[随机抽人] 自动加载 {self.auto_file}, 共 {len(self.names)} 个名字")
         
     def create_widgets(self):
         """创建随机抽人界面组件"""
@@ -490,14 +490,20 @@ class RandomPersonTab(BaseTab):
         """从文件加载名字"""
         if not file_path:
             file_path = filedialog.askopenfilename(
-                filetypes=available_files_types,
+                filetypes=[
+                    ("可用文件", "*.rcp;*.txt;*.csv"),
+                    ("名单文件", "*.rcp"),
+                    ("文本文件", "*.txt"),
+                    ("CSV文件", "*.csv"),
+                    ("所有文件", "*.*")
+                ],
                 initialdir=document_path,
                 title="选择样本文件"
             )
-            logger.info(f"[随机抽人] 选择文件: {file_path if file_path else '(取消选择)'}")
+            rctlog.info(f"[随机抽人] 选择文件: {file_path if file_path else '(取消选择)'}")
         
         if not file_path:
-            logger.warning("[随机抽人] 未选择文件")
+            rctlog.warning("[随机抽人] 未选择文件")
             return [], []
         
         additional_messages = []
@@ -528,17 +534,17 @@ class RandomPersonTab(BaseTab):
                 # 判断并去除重复的名字
                 if len(names) != len(set(names)):
                     names = list(set(names))
-                    logger.warning(f"[随机抽人] 文件 {file_path} 中存在重复的名字")
+                    rctlog.warning(f"[随机抽人] 文件 {file_path} 中存在重复的名字")
                     additional_messages.append("注意，文件中存在重复的名字，已自动去除")
             else:
                 # 保留重复的名字
                 if len(names) != len(set(names)):
-                    logger.info(f"[随机抽人] 文件 {file_path} 中存在重复的名字，已保留")
+                    rctlog.info(f"[随机抽人] 文件 {file_path} 中存在重复的名字，已保留")
                     additional_messages.append("注意，文件中存在重复的名字，已保留")
 
             # 无效数据过滤
             if not names:
-                logger.warning(f"[随机抽人] 文件 {file_path} 中没有有效数据")
+                rctlog.warning(f"[随机抽人] 文件 {file_path} 中没有有效数据")
                 messagebox.showwarning("警告", "文件中没有有效的数据")
                 return [], additional_messages
             
@@ -559,7 +565,7 @@ class RandomPersonTab(BaseTab):
             
             self.current_file = file_path
 
-            logger.info(f"[随机抽人] 成功加载 {len(names)} 个名字")
+            rctlog.info(f"[随机抽人] 成功加载 {len(names)} 个名字")
             return names, additional_messages
             
         except UnicodeDecodeError:
@@ -572,11 +578,11 @@ class RandomPersonTab(BaseTab):
                     self.sample_count_label.config(text=f"样本数量: {len(names)}")
                     return names, additional_messages
             except Exception as e:
-                logger.error(f"[随机抽人] 读取文件失败: {e}")
+                rctlog.error(f"[随机抽人] 读取文件失败: {e}")
                 messagebox.showerror("错误", f"读取文件失败: {e}")
                 return [], additional_messages
         except Exception as e:
-            logger.error(f"[随机抽人] 读取文件失败: {e}")
+            rctlog.error(f"[随机抽人] 读取文件失败: {e}")
             messagebox.showerror("错误", f"读取文件失败: {e}")
             return [], additional_messages
     
@@ -596,10 +602,10 @@ class RandomPersonTab(BaseTab):
             self.names, additional_messages = self.load_names_from_file(self.auto_file)
             additional_messages = "\n".join(additional_messages) if additional_messages else ""
             if self.names:
-                logger.info(f"[随机抽人] 自动加载 {self.auto_file}, 共 {len(self.names)} 个名字")
+                rctlog.info(f"[随机抽人] 自动加载 {self.auto_file}, 共 {len(self.names)} 个名字")
                 messagebox.showinfo("成功", f"自动加载成功\n共加载 {len(self.names)} 个名字\n{additional_messages}")
         else:
-            logger.warning(f"[随机抽人] 自动加载失败，文件 {self.auto_file} 不存在")
+            rctlog.warning(f"[随机抽人] 自动加载失败，文件 {self.auto_file} 不存在")
             messagebox.showwarning("警告", f"自动加载失败，文件 {self.auto_file} 不存在")
 
     def decode_list(self, data=None):
@@ -616,18 +622,18 @@ class RandomPersonTab(BaseTab):
         additional_messages = "\n".join(additional_messages) if additional_messages else ""
         if self.names:
             messagebox.showinfo("成功", f"样本列表已加载\n共加载 {len(self.names)} 个名字\n{additional_messages}")
-            logger.info(f"[随机抽人] 手动加载样本列表，共 {len(self.names)} 个名字")
+            rctlog.info(f"[随机抽人] 手动加载样本列表，共 {len(self.names)} 个名字")
     
     def select_persons(self):
         """随机抽取人员"""
         if not self.names:
-            logger.warning("[随机抽人] 样本列表为空")
+            rctlog.warning("[随机抽人] 样本列表为空")
             messagebox.showwarning("警告", "请先加载样本列表文件")
             return
         
         choice_num = self.choice_entry.get()
         if not choice_num:
-            logger.warning("[随机抽人] 未选择抽取数量")
+            rctlog.warning("[随机抽人] 未选择抽取数量")
             messagebox.showwarning("警告", "请选择抽取数量")
             return
         
@@ -636,12 +642,12 @@ class RandomPersonTab(BaseTab):
             total_names = len(self.names)
             
             if choice_num < 1:
-                logger.warning(f"[随机抽人] 抽取数量 {choice_num} 小于1")
+                rctlog.warning(f"[随机抽人] 抽取数量 {choice_num} 小于1")
                 messagebox.showwarning("错误", "抽取数量必须大于0")
                 return
             
             if choice_num > total_names:
-                logger.warning(f"[随机抽人] 抽取数量 {choice_num} 大于样本数量 {total_names}")
+                rctlog.warning(f"[随机抽人] 抽取数量 {choice_num} 大于样本数量 {total_names}")
                 messagebox.showwarning("错误", f"抽取数量({choice_num})大于样本数量({total_names})")
                 return
             
@@ -660,7 +666,7 @@ class RandomPersonTab(BaseTab):
             history_item = f"{strftime('%H:%M:%S')} - 抽取{choice_num}人: {', '.join(display_names)}{'...' if len(selected_persons) > 10 else ''}"
             self.add_history(history_item)
             
-            logger.info(f"[随机抽人] 成功抽取 {choice_num} 人: {selected_persons}")
+            rctlog.info(f"[随机抽人] 成功抽取 {choice_num} 人: {selected_persons}")
             
             # 显示结果对话框
             messagebox.showinfo("抽取结果", f"抽取结果：\n" + "\n".join(selected_persons))
@@ -669,20 +675,20 @@ class RandomPersonTab(BaseTab):
             if ConfigManager().get("save_result", True):
                 file_path = SaveResult().save_result("RandomPerson", "随机抽人", selected_persons)
                 if file_path:
-                    logger.info(f"[随机抽人] 结果已保存到: {file_path}")
+                    rctlog.info(f"[随机抽人] 结果已保存到: {file_path}")
                     
         except ValueError:
-            logger.error("[随机抽人] 输入值不是有效数字")
+            rctlog.error("[随机抽人] 输入值不是有效数字")
             messagebox.showerror("错误", "请输入有效的数字")
         except Exception as e:
-            logger.error(f"[随机抽人] 抽取过程中发生错误: {e}")
+            rctlog.error(f"[随机抽人] 抽取过程中发生错误: {e}")
             messagebox.showerror("错误", f"抽取过程中发生错误: {e}")
     
     def reset_sampler_history(self):
         """重置抽样器历史记录"""
         if messagebox.askyesno("确认", "确定要重置抽样历史记录吗？这将影响加权抽样的公平性计算。"):
             self.sampler.reset_history()
-            logger.info("[随机抽人] 抽样历史记录已重置")
+            rctlog.info("[随机抽人] 抽样历史记录已重置")
             messagebox.showinfo("成功", "抽样历史记录已重置")
     
     def save_result(self, result_type):
@@ -690,7 +696,7 @@ class RandomPersonTab(BaseTab):
         result_text = self.result_label.cget("text")
         ready_to_save_message = self.save_message_entry.get().strip()
         if not result_text:
-            logger.warning(f"[随机抽人] 结果为空，无法保存")
+            rctlog.warning(f"[随机抽人] 结果为空，无法保存")
             messagebox.showwarning("错误", "结果为空，无法保存")
             return
         

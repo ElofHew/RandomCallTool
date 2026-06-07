@@ -6,16 +6,22 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 # 导入应用库（元数据、时间戳）
-from core.meta import log_path
+from core.info import rct_log_path, enc_log_path, rct_appname, enc_appname
 # 导入时间戳格式化
 from time import strftime
 
-def setup_logging():
+default_log_path = "logs"  # 默认日志路径
+default_appname = "Unknown"  # 默认应用名称
+
+def setup_logging(appname=default_appname, logpath=default_log_path):
     """设置日志记录"""
-    logger = logging.getLogger()
+    logger_name = f"{appname}-logger"  # 日志名称
+    logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
-    
-    logger.handlers.clear()
+
+    # 避免重复添加处理器（重要！）
+    if logger.handlers:
+        return logger
     
     # 控制台处理器
     console_handler = logging.StreamHandler()
@@ -25,7 +31,8 @@ def setup_logging():
     logger.addHandler(console_handler)
     
     # 文件处理器
-    log_file = os.path.join(log_path, f"{strftime('%Y-%m-%d')}.log")
+    base_file = f"{appname}-{strftime('%Y-%m-%d')}.log"
+    log_file = os.path.join(logpath, base_file)
     file_handler = RotatingFileHandler(
         log_file, 
         maxBytes=1024*1024,
@@ -39,4 +46,5 @@ def setup_logging():
     
     return logger
 
-logger = setup_logging()
+rctlog = setup_logging(appname=rct_appname, logpath=rct_log_path)
+enclog = setup_logging(appname=enc_appname, logpath=enc_log_path)

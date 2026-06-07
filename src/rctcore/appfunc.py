@@ -10,12 +10,12 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter import messagebox
 # 导入应用库
-from core.more import More, run_process
-from core.meta import work_path, log_path
-from core.logman import logger
-from core.fileman import FileManager
-from core.tabs import HomeTab, RandomGroupTab, RandomPersonTab
-from core.window import ConfigWindow
+from rctcore.more import More, run_process
+from core.info import work_path, rct_log_path, rct_appname
+from core.logman import rctlog
+from rctcore.fileman import FileManager
+from rctcore.tabs import HomeTab, RandomGroupTab, RandomPersonTab
+from rctcore.window import ConfigWindow
 
 class MainApplication:
     def __init__(self, root):
@@ -81,7 +81,7 @@ class MainApplication:
     
     def open_config_window(self):
         """打开配置窗口"""
-        logger.info("打开配置窗口")
+        rctlog.info("打开配置窗口")
         ConfigWindow(self.root)
     
     def open_result_dir(self):
@@ -91,7 +91,7 @@ class MainApplication:
     def quit_app(self):
         """退出应用程序"""
         if messagebox.askyesno("确认", "确定要退出程序吗？"):
-            logger.info("用户确认退出程序")
+            rctlog.info("用户确认退出程序")
             self.root.quit()
 
 class ApplicationFunctions:
@@ -100,7 +100,7 @@ class ApplicationFunctions:
     @staticmethod
     def show_help():
         """显示帮助"""
-        help_text = """随机抽取工具 v2.1 使用说明
+        help_text = """随机抽取工具 v2.2 使用说明
 
 一、主要功能：
 1. 随机抽组：从指定数量的组中随机抽取一个或多个组
@@ -149,7 +149,7 @@ GitHub: https://github.com/ElofHew/RandomCallTool
 Gitee: https://gitee.com/ElofHew/RandomCallTool"""
         
         messagebox.showinfo("使用说明", help_text)
-        logger.info("显示使用说明")
+        rctlog.info("显示使用说明")
     
     @staticmethod
     def create_rcp_file():
@@ -172,7 +172,7 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
                     tab.history.clear()
                     if hasattr(tab, 'history_listbox'):
                         tab.history_listbox.delete(0, tk.END)
-            logger.info("所有历史记录已清除")
+            rctlog.info("所有历史记录已清除")
             messagebox.showinfo("成功", "历史记录已清除")
             return True
         return False
@@ -182,15 +182,15 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
         """清除日志"""
         if messagebox.askyesno("确认", "确定要清除所有日志文件吗？"):
             try:
-                for file in os.listdir(log_path):
-                    if file == f"{strftime('%Y-%m-%d')}.log":
+                for file in os.listdir(rct_log_path):
+                    if file == (f"{rct_appname}-{strftime('%Y-%m-%d')}.log" or f"{strftime('%Y-%m-%d')}.log"):
                         continue
                     if file.endswith('.log'):
-                        os.remove(os.path.join(log_path, file))
-                logger.info("日志文件已清除")
+                        os.remove(os.path.join(rct_log_path, file))
+                rctlog.info("日志文件已清除")
                 messagebox.showinfo("成功", "日志文件已清除")
                 return True
             except Exception as e:
-                logger.error(f"清除日志失败: {e}")
+                rctlog.error(f"清除日志失败: {e}")
                 messagebox.showerror("错误", f"清除日志失败: {e}")
                 return False

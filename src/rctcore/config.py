@@ -5,8 +5,8 @@
 import os
 import json
 # 导入应用库
-from core.logman import logger
-from core.meta import config_path
+from core.logman import rctlog
+from core.info import rct_config_path
 
 class ConfigManager:
     """配置管理器"""
@@ -35,29 +35,29 @@ class ConfigManager:
             "use_weighted_sampling": False,  # 是否使用加权抽样
         }
         
-        if os.path.exists(config_path):
+        if os.path.exists(rct_config_path):
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(rct_config_path, "r", encoding="utf-8") as f:
                     self._config = json.load(f)
                     for key, value in default_config.items():
                         if key not in self._config:
                             self._config[key] = value
             except Exception as e:
-                logger.error(f"加载配置文件失败: {e}")
+                rctlog.error(f"加载配置文件失败: {e}")
                 self._config = default_config
         else:
             self._config = default_config
             self._save_config()
         
-        logger.info(f"配置已加载: {self._config}")
+        rctlog.info(f"配置已加载: {self._config}")
     
     def _save_config(self):
         """保存配置文件"""
         try:
-            with open(config_path, "w", encoding="utf-8") as f:
+            with open(rct_config_path, "w", encoding="utf-8") as f:
                 json.dump(self._config, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            logger.error(f"保存配置文件失败: {e}")
+            rctlog.error(f"保存配置文件失败: {e}")
     
     def get(self, key, default=None):
         """获取配置项"""
