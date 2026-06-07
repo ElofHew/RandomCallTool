@@ -11,13 +11,13 @@ import tkinter as tk
 import tkinter.font as tkFont
 from tkinter import ttk, messagebox, filedialog
 # 导入应用库
-from rctool_core.meta import *
-from rctool_core.logman import logger
-from rctool_core.config import ConfigManager
-from rctool_core.more import More
-from rctool_core.window import ConfigWindow
-from rctool_core.sampler import SmartSampler
-from rctool_core.fileman import FileManager, SaveResult, base64decode
+from core.meta import *
+from core.logman import logger
+from core.config import ConfigManager
+from core.more import More
+from core.window import ConfigWindow
+from core.sampler import SmartSampler
+from core.fileman import FileManager, SaveResult, base64decode
 
 class BaseTab:
     """选项卡基类"""

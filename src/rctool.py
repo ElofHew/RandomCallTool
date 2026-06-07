@@ -12,17 +12,17 @@ import sys
 import tkinter as tk
 from tkinter import messagebox
 # 导入文件管理器
-from rctool_core.fileman import init_dir
+from core.fileman import init_dir
 # 导入更多功能类
-from rctool_core.more import check_os
+from core.more import check_os
 # 导入元数据
-from rctool_core.meta import work_path, prog_data_path, log_path, result_path
+from core.meta import work_path, prog_data_path, log_path, result_path
 # 导入日志库
-from rctool_core.logman import logger
+from core.logman import logger
 # 导入配置管理器
-from rctool_core.config import ConfigManager
+from core.config import ConfigManager
 # 导入主应用类
-from rctool_core.appfunc import MainApplication
+from core.appfunc import MainApplication
 
 class Main:
     def __init__(self):

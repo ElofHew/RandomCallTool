@@ -6,9 +6,9 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 # 导入应用库
-from rctool_core.logman import logger
-from rctool_core.config import ConfigManager
-from rctool_core.meta import document_path, available_files_types
+from core.logman import logger
+from core.config import ConfigManager
+from core.meta import document_path, available_files_types
 
 class ConfigWindow:
     """软件内配置窗口"""

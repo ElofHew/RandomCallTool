@@ -2,8 +2,8 @@
 (更多)功能模块
 """
 # 导入应用库
-from rctool_core.logman import logger
-from rctool_core.meta import description, version, author, date, github, gitee
+from core.logman import logger
+from core.meta import description, version, author, date, github, gitee
 # 导入Tkinter消息框方法
 from tkinter import messagebox
 # 导入平台检测库

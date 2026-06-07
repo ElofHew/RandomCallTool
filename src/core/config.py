@@ -5,8 +5,8 @@
 import os
 import json
 # 导入应用库
-from rctool_core.logman import logger
-from rctool_core.meta import config_path
+from core.logman import logger
+from core.meta import config_path
 
 class ConfigManager:
     """配置管理器"""

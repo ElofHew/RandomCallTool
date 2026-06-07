@@ -9,9 +9,9 @@ from time import strftime
 # 导入Tkinter消息框方法
 from tkinter import messagebox
 # 导入应用库
-from rctool_core.logman import logger
-from rctool_core.config import ConfigManager
-from rctool_core.meta import prog_data_path, result_path, desktop_result_path, log_path, github, gitee
+from core.logman import logger
+from core.config import ConfigManager
+from core.meta import prog_data_path, result_path, desktop_result_path, log_path, github, gitee
 
 class FileManager:
     """文件管理器"""

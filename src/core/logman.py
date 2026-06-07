@@ -6,7 +6,7 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 # 导入应用库（元数据、时间戳）
-from rctool_core.meta import log_path
+from core.meta import log_path
 # 导入时间戳格式化
 from time import strftime
 

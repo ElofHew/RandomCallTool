@@ -10,12 +10,12 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter import messagebox
 # 导入应用库
-from rctool_core.more import More, run_process
-from rctool_core.meta import work_path, log_path
-from rctool_core.logman import logger
-from rctool_core.fileman import FileManager
-from rctool_core.tabs import HomeTab, RandomGroupTab, RandomPersonTab
-from rctool_core.window import ConfigWindow
+from core.more import More, run_process
+from core.meta import work_path, log_path
+from core.logman import logger
+from core.fileman import FileManager
+from core.tabs import HomeTab, RandomGroupTab, RandomPersonTab
+from core.window import ConfigWindow
 
 class MainApplication:
     def __init__(self, root):
