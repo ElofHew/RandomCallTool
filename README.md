@@ -2,7 +2,7 @@
 
 # 随机抽取工具
 
-![RandomCallTool](./icon/app.ico)
+![RandomCallTool](./icon/rctool.ico)
 
 </div>
 

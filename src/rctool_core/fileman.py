@@ -1,56 +1,83 @@
 """
-随机抽取工具 - 文件和结果管理
+文件管理器模块
 """
+# 导入本地库
 import os
-import logging
+from base64 import b64decode
+# 导入时间戳格式化
 from time import strftime
+# 导入Tkinter消息框方法
 from tkinter import messagebox
-
-from .common import BaseFileManager
-from .config import ConfigManager
-from .constants import (
-    RESULT_PATH, DESKTOP_RESULT_PATH, LOG_PATH,
-    __github__, __gitee__
-)
-
-logger = logging.getLogger(__name__)
-
+# 导入应用库
+from rctool_core.logman import logger
+from rctool_core.config import ConfigManager
+from rctool_core.meta import prog_data_path, result_path, desktop_result_path, log_path, github, gitee
 
 class FileManager:
+    """文件管理器"""
+    
     @staticmethod
     def get_result_path():
+        """获取结果保存路径"""
         config = ConfigManager()
         if config.get("result_path", 0) == 1:
-            save_dir = DESKTOP_RESULT_PATH
+            save_dir = desktop_result_path
         else:
-            save_dir = RESULT_PATH
-        os.makedirs(save_dir, exist_ok=True)
+            save_dir = result_path
+        
+        if not os.path.exists(save_dir):
+                os.makedirs(save_dir, exist_ok=True)
+        
         return save_dir
-
+    
     @staticmethod
     def open_directory(path):
-        return BaseFileManager.open_directory(path)
-
+        """打开目录"""
+        try:
+            if not os.path.exists(path):
+                os.makedirs(path)
+            os.startfile(path)
+            logger.info(f"打开目录: {path}")
+            return True
+        except Exception as e:
+            logger.error(f"打开目录失败: {e}")
+            messagebox.showerror("错误", f"无法打开目录: {e}")
+            return False
+    
     @staticmethod
     def open_log_file():
-        log_file = os.path.join(LOG_PATH, f"{strftime('%Y-%m-%d')}.log")
-        return BaseFileManager.open_file(log_file)
+        """打开日志文件"""
+        try:
+            log_file = os.path.join(log_path, f"{strftime('%Y-%m-%d')}.log")
+            if os.path.exists(log_file):
+                os.startfile(log_file)
+                logger.info("打开日志文件")
+                return True
+            else:
+                messagebox.showinfo("提示", "今天的日志文件不存在")
+                return False
+        except Exception as e:
+            logger.error(f"打开日志文件失败: {e}")
+            messagebox.showerror("错误", f"无法打开日志文件: {e}")
+            return False
 
 
 class SaveResult:
+    """保存结果功能模块"""
     def __init__(self):
         self.config = ConfigManager()
-
+    
     def make_html(self, class_name, result, save_message=None):
+        """生成HTML结果"""
         if class_name == "RandomGroup":
             cname = "随机抽组"
         elif class_name == "RandomPerson":
             cname = "随机抽人"
         else:
             cname = "抽取结果"
-
+        
         result_text = "<br>".join(result)
-        current_time = strftime('%Y-%m-%d %H:%M:%S')
+        curren_time = strftime('%Y-%m-%d %H:%M:%S')
 
         template = f"""<!DOCTYPE html>
 <html>
@@ -115,7 +142,7 @@ class SaveResult:
     <div class="container">
         <h1>抽取结果 - {cname}</h1>
         <div class="info">
-            <p><strong>抽取时间：</strong>{current_time}</p>
+            <p><strong>抽取时间：</strong>{curren_time}</p>
             <p><strong>抽取数量：</strong>{len(result)}</p>
         </div>
 {"<!--" if not save_message else ""}
@@ -128,27 +155,50 @@ class SaveResult:
             {result_text}
         </div>
         <div class="footer">
-            生成于 随机抽取工具 v2.1 | <a href="{__github__}" target="_blank">GitHub</a> | <a href="{__gitee__}" target="_blank">Gitee</a> | UTC+8 {current_time}
+            生成于 随机抽取工具 v2.1 | <a href="{github}" target="_blank">GitHub</a> | <a href="{gitee}" target="_blank">Gitee</a> | UTC+8 {curren_time}
         </div>
     </div>
 </body>
 </html>"""
         return template
-
+    
     def save_result(self, class_name, prefix, result, save_message=""):
+        """保存结果"""
         if not result:
             logger.warning(f"[{prefix}] 结果为空，跳过保存")
             return None
+        
         try:
             save_dir = FileManager.get_result_path()
             timestamp = strftime('%Y%m%d_%H%M%S')
             file_path = os.path.join(save_dir, f"{prefix}_{timestamp}.html")
+            
             with open(file_path, 'w', encoding='utf-8') as file:
                 file.write(self.make_html(class_name, result, save_message))
+            
             logger.info(f"[{prefix}] 结果已保存到: {file_path}")
             messagebox.showinfo("成功", f"抽取结果已保存到:\n{file_path}")
             return file_path
+            
         except Exception as e:
             logger.error(f"[{prefix}] 保存结果失败: {e}")
             messagebox.showwarning("错误", f"保存结果失败: {e}")
             return None
+
+def base64decode(data=None):
+    """Base64解码"""
+    try:
+        decoded = b64decode(data).decode('utf-8')
+        logger.info("Base64解码成功")
+        return decoded
+    except Exception as e:
+        logger.error(f"Base64解码失败: {e}")
+        return ""
+
+def init_dir():
+    # 创建程序数据目录
+    try:
+        for path in [prog_data_path, result_path, log_path]:
+            os.makedirs(path, exist_ok=True)
+    except Exception as e:
+        logger.error(f"创建目录失败: {e}")
