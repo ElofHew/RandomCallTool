@@ -6,7 +6,7 @@ from time import strftime
 import tkinter as tk
 from tkinter import ttk, messagebox
 from rctcore.more import More, run_process
-from core.info import work_path, rct_log_path, rct_appname
+from core.info import work_path, rct_log_path, rct_appname, rct_version
 from core.logman import rctlog
 from rctcore.fileman import FileManager, SampleLibrary
 from rctcore.tabs import HomeTab, RandomCallTab
@@ -50,6 +50,8 @@ class MainApplication:
                 ("随机抽取", lambda: self.notebook.select(self.call_tab.frame)),
                 ("-", None),
                 ("生成RCP文件", ApplicationFunctions.create_rcp_file),
+                ("-", None),
+                ("检测更新", ApplicationFunctions.check_update),
             ],
             "帮助": [
                 ("使用说明", ApplicationFunctions.show_help),
@@ -174,7 +176,58 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
         """打开RCP编码工具GUI"""
         rcp_tool_path = os.path.join(work_path, "encode.exe")
         run_process(rcp_tool_path)
-    
+
+    @staticmethod
+    def check_update():
+        """检测更新（菜单调用）"""
+        from rctcore.update import check_update as _check, open_download_page
+        from rctcore.config import ConfigManager
+
+        config = ConfigManager()
+        source = config.get("update_source", "github")
+
+        # 弹窗让用户选择更新源
+        choice = messagebox.askquestion(
+            "检测更新",
+            f"将从 {source.upper()} 获取版本信息\n"
+            f"当前版本: v{rct_version}\n\n"
+            f"是否继续？",
+            icon="info",
+        )
+        if choice != "yes":
+            return
+
+        result = _check(source=source)
+
+        if not result["success"]:
+            messagebox.showerror(
+                "检测失败",
+                f"无法获取版本信息\n\n原因: {result.get('error', '未知错误')}\n"
+                f"请检查网络连接或尝试切换更新源。"
+            )
+            return
+
+        if result["has_update"]:
+            reply = messagebox.askyesno(
+                "发现新版本",
+                f"发现新版本！\n\n"
+                f"当前版本: v{result['local_version']}\n"
+                f"最新版本: v{result['remote_version']} ({result['remote_date']})\n"
+                f"更新源: {result['source_name']}\n\n"
+                f"是否前往下载页面？"
+            )
+            if reply:
+                open_download_page(source)
+        else:
+            messagebox.showinfo(
+                "已是最新版本",
+                f"当前已是最新版本\n\n"
+                f"版本: v{result['local_version']} (vercode: {result['local_vercode']})\n"
+                f"远程版本: v{result['remote_version']} (vercode: {result['remote_vercode']})\n"
+                f"更新源: {result['source_name']}\n"
+                f"远程发布日期: {result['remote_date']}"
+            )
+
     @staticmethod
     def show_about(root):
         """显示关于信息"""

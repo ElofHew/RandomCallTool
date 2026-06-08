@@ -31,6 +31,9 @@ class ConfigManager:
             "rcp_default_sample": "",
             "sampler_mode": 0,
             "smart_window": 3,
+            # ── 更新设置 ──
+            "update_source": "github",
+            "auto_check_update": True,
         }
 
         if os.path.exists(rct_config_path):

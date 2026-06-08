@@ -48,6 +48,7 @@ class ConfigWindow:
         self._create_sampling_tab(notebook)
         self._create_sample_mgr_tab(notebook)
         self._create_defaults_tab(notebook)
+        self._create_update_tab(notebook)
 
         btn_frame = tk.Frame(self.window)
         btn_frame.pack(pady=10)
@@ -321,6 +322,104 @@ class ConfigWindow:
         self._refresh_sample_list()
         messagebox.showinfo("成功", f"样本「{name}」已删除")
 
+    # ── 标签页 5：更新设置 ──────────────────────────────
+
+    def _create_update_tab(self, notebook):
+        tab = self._make_tab(notebook, "更新")
+        pad = {"padx": 15}
+
+        # 更新源选择
+        f1 = tk.Frame(tab)
+        f1.pack(fill="x", **pad, pady=(15, 4))
+        tk.Label(f1, text="版本更新源：", width=15, anchor="w").pack(side="left")
+        self.update_source_var = tk.StringVar(
+            value=self.config.get("update_source", "github"))
+        for val, label in [("github", "GitHub"), ("gitee", "Gitee")]:
+            tk.Radiobutton(f1, text=label, variable=self.update_source_var,
+                           value=val).pack(side="left", padx=3)
+
+        tk.Label(tab, text="选择从哪个平台获取版本更新信息",
+                 fg="gray", font=("", 9)).pack(anchor="w", **pad)
+
+        # 自动检测更新
+        f2 = tk.Frame(tab)
+        f2.pack(fill="x", **pad, pady=4)
+        self.auto_check_var = tk.BooleanVar(
+            value=self.config.get("auto_check_update", True))
+        tk.Checkbutton(tab, text="启动时自动检测更新",
+                       variable=self.auto_check_var).pack(anchor="w", **pad)
+
+        tk.Label(tab, text="启用后，每次启动程序会自动检查是否有新版本",
+                 fg="gray", font=("", 9)).pack(anchor="w", **pad)
+
+        # 分隔线
+        ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=12)
+
+        # 立即检查按钮 + 版本信息
+        info_frame = tk.Frame(tab, relief="groove", bd=1)
+        info_frame.pack(fill="x", padx=15, pady=5)
+
+        from core.info import rct_version, rct_vercode, rct_date
+        tk.Label(info_frame, text="当前版本信息",
+                 font=("", 10, "bold")).pack(anchor="w", padx=10, pady=(8, 2))
+        tk.Label(info_frame,
+                 text=f"版本: {rct_version} (vercode: {rct_vercode})\n"
+                       f"日期: {rct_date}",
+                 fg="gray", font=("", 9), justify="left"
+                 ).pack(anchor="w", padx=10, pady=(0, 8))
+
+        btn_frame = tk.Frame(tab)
+        btn_frame.pack(fill="x", **pad, pady=10)
+        tk.Button(btn_frame, text="立即检查更新",
+                  command=self._check_update_now,
+                  width=16, height=1,
+                  bg="#4a90d9", fg="white",
+                  activebackground="#357abd", activeforeground="white",
+                  relief="flat", bd=0, cursor="hand2",
+                  ).pack()
+
+    def _check_update_now(self):
+        """立即检查更新（按钮回调）"""
+        source = self.update_source_var.get()
+        from rctcore.update import check_update, open_download_page
+
+        # 显示等待提示
+        self.window.config(cursor="watch")
+        self.window.update()
+
+        try:
+            result = check_update(source=source)
+
+            if not result["success"]:
+                messagebox.showerror(
+                    "检测失败",
+                    f"无法获取版本信息\n\n原因: {result.get('error', '未知错误')}"
+                )
+                return
+
+            if result["has_update"]:
+                reply = messagebox.askyesno(
+                    "发现新版本",
+                    f"发现新版本！\n\n"
+                    f"当前版本: v{result['local_version']}\n"
+                    f"最新版本: v{result['remote_version']} ({result['remote_date']})\n"
+                    f"更新源: {result['source_name']}\n\n"
+                    f"是否前往下载页面？"
+                )
+                if reply:
+                    open_download_page(source)
+            else:
+                messagebox.showinfo(
+                    "已是最新版本",
+                    f"当前已是最新版本\n\n"
+                    f"版本: v{result['local_version']}\n"
+                    f"更新源: {result['source_name']}\n"
+                    f"远程版本: v{result['remote_version']} ({result['remote_date']})"
+                )
+
+        finally:
+            self.window.config(cursor="")
+
     # ── 标签页 4：默认值 ────────────────────────────────
 
     def _create_defaults_tab(self, notebook):
@@ -359,6 +458,8 @@ class ConfigWindow:
                 "sampler_mode": self.sampler_mode_var.get(),
                 "smart_window": int(self.smart_window_var.get()),
                 "rcp_default_sample": self.sample_combo.get(),
+                "update_source": self.update_source_var.get(),
+                "auto_check_update": self.auto_check_var.get(),
             }
             # 防止保存占位文本
             if updates["rcp_default_sample"] in ("（无）", "（样本库为空）"):

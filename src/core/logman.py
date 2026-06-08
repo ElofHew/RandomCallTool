@@ -49,3 +49,4 @@ def setup_logging(appname=default_appname, logpath=default_log_path):
 
 rctlog = setup_logging(appname=rct_appname, logpath=rct_log_path)
 enclog = setup_logging(appname=enc_appname, logpath=enc_log_path)
+updlog = setup_logging(appname="UpdateTool", logpath=rct_log_path)
