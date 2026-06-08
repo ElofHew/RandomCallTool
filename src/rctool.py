@@ -30,16 +30,25 @@ class Main:
         self.root.mainloop()
 
     def _auto_check_update(self):
-        """启动时自动检测更新（静默模式）"""
+        """启动时自动检测更新（静默模式，异步线程）"""
         try:
             if not self.config.get("auto_check_update", True):
                 return
             source = self.config.get("update_source", "github")
-            from rctcore.update import check_update
-            result = check_update(source=source, timeout=5)
-            if result.get("success") and result.get("has_update"):
-                rctlog.info(f"发现新版本: v{result['remote_version']} (当前 v{result['local_version']})")
-                self._show_update_prompt(result, source)
+            from rctcore.update import check_update_async
+
+            def _on_success(result):
+                if result.get("success") and result.get("has_update"):
+                    rctlog.info(
+                        f"发现新版本: v{result['remote_version']} "
+                        f"(当前 v{result['local_version']})"
+                    )
+                    self._show_update_prompt(result, source)
+
+            check_update_async(
+                self.root, source=source, timeout=5,
+                on_success=_on_success,
+            )
         except Exception as e:
             rctlog.warning(f"自动检测更新失败（静默）: {e}")
 

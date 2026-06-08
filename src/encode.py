@@ -7,7 +7,6 @@
 """
 
 import os
-import sys
 import argparse
 import tkinter as tk
 from tkinter import messagebox

@@ -179,9 +179,10 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
 
     @staticmethod
     def check_update():
-        """检测更新（菜单调用）"""
-        from rctcore.update import check_update as _check, open_download_page
+        """检测更新（菜单调用，异步线程）"""
+        from rctcore.update import check_update_async, open_download_page
         from rctcore.config import ConfigManager
+        import tkinter as tk
 
         config = ConfigManager()
         source = config.get("update_source", "github")
@@ -197,35 +198,45 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
         if choice != "yes":
             return
 
-        result = _check(source=source)
+        # 获取顶层窗口用于异步回调
+        root = tk._default_root
 
-        if not result["success"]:
-            messagebox.showerror(
-                "检测失败",
-                f"无法获取版本信息\n\n原因: {result.get('error', '未知错误')}\n"
-                f"请检查网络连接或尝试切换更新源。"
-            )
-            return
+        def _on_success(result):
+            if not result["success"]:
+                messagebox.showerror(
+                    "检测失败",
+                    f"无法获取版本信息\n\n原因: {result.get('error', '未知错误')}\n"
+                    f"请检查网络连接或尝试切换更新源。"
+                )
+                return
+            if result["has_update"]:
+                reply = messagebox.askyesno(
+                    "发现新版本",
+                    f"发现新版本！\n\n"
+                    f"当前版本: v{result['local_version']}\n"
+                    f"最新版本: v{result['remote_version']} ({result['remote_date']})\n"
+                    f"更新源: {result['source_name']}\n\n"
+                    f"是否前往下载页面？"
+                )
+                if reply:
+                    open_download_page(source)
+            else:
+                messagebox.showinfo(
+                    "已是最新版本",
+                    f"当前已是最新版本\n\n"
+                    f"版本: v{result['local_version']} (vercode: {result['local_vercode']})\n"
+                    f"远程版本: v{result['remote_version']} (vercode: {result['remote_vercode']})\n"
+                    f"更新源: {result['source_name']}\n"
+                    f"远程发布日期: {result['remote_date']}"
+                )
 
-        if result["has_update"]:
-            reply = messagebox.askyesno(
-                "发现新版本",
-                f"发现新版本！\n\n"
-                f"当前版本: v{result['local_version']}\n"
-                f"最新版本: v{result['remote_version']} ({result['remote_date']})\n"
-                f"更新源: {result['source_name']}\n\n"
-                f"是否前往下载页面？"
-            )
-            if reply:
-                open_download_page(source)
-        else:
-            messagebox.showinfo(
-                "已是最新版本",
-                f"当前已是最新版本\n\n"
-                f"版本: v{result['local_version']} (vercode: {result['local_vercode']})\n"
-                f"远程版本: v{result['remote_version']} (vercode: {result['remote_vercode']})\n"
-                f"更新源: {result['source_name']}\n"
-                f"远程发布日期: {result['remote_date']}"
+        def _on_error(err):
+            messagebox.showerror("检测失败", f"网络请求失败:\n{err}")
+
+        if root:
+            check_update_async(
+                root, source=source, timeout=10,
+                on_success=_on_success, on_error=_on_error,
             )
 
     @staticmethod

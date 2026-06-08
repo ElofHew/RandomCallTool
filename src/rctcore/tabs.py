@@ -164,10 +164,10 @@ class RandomCallTab(BaseTab):
 
     def __init__(self, parent):
         super().__init__(parent, "随机抽取")
-        self.mode_var = tk.StringVar(value="person")
+        config = ConfigManager()
+        self.mode_var = tk.StringVar(value=config.get("rct_default_mode", "person"))
         self.mode_var.trace_add("write", self._on_mode_changed)
 
-        config = ConfigManager()
         sampler_mode = config.get("sampler_mode", 0)
         smart_window = config.get("smart_window", 3)
         self.sampler = SmartSampler(mode=sampler_mode, smart_window=smart_window)
@@ -246,22 +246,15 @@ class RandomCallTab(BaseTab):
             ).pack(side="left", padx=5)
 
         config = ConfigManager()
-        rcg_total = config.get("rcg_total_default", 9)
+        rcg_total = config.get("rct_group_total", 9)
         rcg_total = rcg_total if 0 < rcg_total <= 26 else 9
-        rcg_choice = config.get("rcg_choice_default", 3)
-        rcg_choice = rcg_choice if 0 < rcg_choice <= rcg_total else 3
 
-        for lbl, attr, default, mx in [
-            ("样本总数：", "total_entry", rcg_total, 26),
-            ("选取数量：", "g_choice_entry", rcg_choice, rcg_total),
-        ]:
-            row = tk.Frame(self.group_frame)
-            row.pack(pady=5)
-            tk.Label(row, text=lbl, width=10).pack(side="left")
-            combo = ttk.Combobox(row, values=list(range(1, mx + 1)), width=5, state="readonly")
-            combo.pack(side="left")
-            combo.set(str(default))
-            setattr(self, attr, combo)
+        row = tk.Frame(self.group_frame)
+        row.pack(pady=5)
+        tk.Label(row, text="样本总数：", width=10).pack(side="left")
+        self.total_entry = ttk.Combobox(row, values=list(range(1, 27)), width=5, state="readonly")
+        self.total_entry.pack(side="left")
+        self.total_entry.set(str(rcg_total))
 
         self.total_entry.bind("<<ComboboxSelected>>", self._on_total_change)
 
@@ -279,7 +272,7 @@ class RandomCallTab(BaseTab):
             inner_top, values=list(range(1, 11)), width=5, state="readonly",
         )
         self.choice_entry.pack(side="left", padx=5)
-        self.choice_entry.set(str(config.get("rcp_choice_default", 1)))
+        self.choice_entry.set(str(config.get("rct_choice_default", 1)))
 
         tk.Label(inner_top, text="抽样模式：").pack(side="left", padx=(10, 0))
         self.sampler_mode_var = tk.IntVar(value=config.get("sampler_mode", 0))
@@ -371,21 +364,22 @@ class RandomCallTab(BaseTab):
             try:
                 total = int(self.total_entry.get())
                 self.choice_entry["values"] = list(range(1, min(total + 1, 27)))
-                self.choice_entry.set(self.g_choice_entry.get() if hasattr(self, "g_choice_entry") else "1")
+                default_k = ConfigManager().get("rct_choice_default", 3)
+                self.choice_entry.set(str(min(default_k, total)))
             except ValueError:
                 pass
 
     def _on_total_change(self, event):
-        """组总数变化时更新可选的选取数量"""
+        """组总数变化时更新操作框的选取数量"""
         try:
             total = int(self.total_entry.get())
             if total > 0:
                 mx = min(total, 26)
-                self.g_choice_entry["values"] = list(range(1, mx + 1))
-                self.g_choice_entry.set(str(min(3, mx)))
                 if self.mode_var.get() == "group":
                     self.choice_entry["values"] = list(range(1, mx + 1))
-                    self.choice_entry.set(self.g_choice_entry.get())
+                    cur = self.choice_entry.get()
+                    if cur and int(cur) > mx:
+                        self.choice_entry.set(str(min(3, mx)))
         except ValueError:
             pass
 
@@ -514,7 +508,7 @@ class RandomCallTab(BaseTab):
         config = ConfigManager()
         if not config.get("auto_load_sample", True):
             return
-        default_name = config.get("rcp_default_sample", "")
+        default_name = config.get("rct_default_sample", "")
         if not default_name:
             return
         names = SampleLibrary.load_names(default_name)
@@ -572,7 +566,7 @@ class RandomCallTab(BaseTab):
                     names.append(line)
 
             config = ConfigManager()
-            if config.get("rcp_merge_names", True):
+            if config.get("rct_merge_names", True):
                 if len(names) != len(set(names)):
                     names = list(set(names))
                     extra.append("文件中存在重复的名字，已自动去除")
@@ -707,7 +701,7 @@ class RandomCallTab(BaseTab):
     def auto_load_file(self):
         """自动加载默认样本（从样本库）"""
         config = ConfigManager()
-        default_name = config.get("rcp_default_sample", "")
+        default_name = config.get("rct_default_sample", "")
         if not default_name:
             messagebox.showwarning("警告", "未设置默认样本，请先在配置中设置")
             return
@@ -771,7 +765,7 @@ class RandomCallTab(BaseTab):
         """随机抽组"""
         try:
             total = int(self.total_entry.get())
-            k = int(self.g_choice_entry.get())
+            k = int(self.choice_entry.get())
         except (ValueError, TypeError):
             messagebox.showwarning("错误", "请选择有效的数字")
             return

@@ -2,6 +2,7 @@
 检测更新模块 — 从 GitHub/Gitee 获取远程 metadata.json 并与本地版本比对
 """
 import json
+import threading
 import webbrowser
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
@@ -149,6 +150,48 @@ def open_download_page(source="github"):
     Args:
         source: "github" 或 "gitee"
     """
-    url = SOURCE_DOWNLOAD_URLS.get(source, GITHUB_RELEASE_URL)
-    webbrowser.open(url)
-    rctlog.info(f"[检测更新] 已打开下载页面: {url}")
+    try:
+        url = SOURCE_DOWNLOAD_URLS.get(source, GITHUB_RELEASE_URL)
+        webbrowser.open(url)
+        rctlog.info(f"[检测更新] 已打开下载页面: {url}")
+    except Exception as e:
+        rctlog.error(f"[检测更新] 打开下载页面失败: {e}")
+
+
+def check_update_async(root, source="github", timeout=10,
+                       on_success=None, on_error=None):
+    """在后台线程中检测更新，避免阻塞 UI
+
+    Args:
+        root: tkinter root 窗口，用于调度主线程回调
+        source: 更新源
+        timeout: 超时秒数
+        on_success: 成功时的回调函数 (result_dict) -> None
+        on_error: 失败时的回调函数 (error_message) -> None
+    """
+    def _worker():
+        try:
+            result = check_update(source=source, timeout=timeout)
+        except Exception as e:
+            rctlog.error(f"[检测更新] 后台线程出错: {e}")
+            _safe_call(lambda: on_error(str(e)) if on_error else None)
+            return
+
+        def _dispatch():
+            if on_success:
+                try:
+                    on_success(result)
+                except Exception as e:
+                    rctlog.error(f"[检测更新] 回调执行失败: {e}")
+
+        _safe_call(_dispatch)
+
+    def _safe_call(fn):
+        """安全地将回调调度到主线程，避免 root.after 本身抛异常"""
+        try:
+            root.after(0, fn)
+        except Exception as e:
+            rctlog.error(f"[检测更新] 调度回调到主线程失败: {e}")
+
+    t = threading.Thread(target=_worker, daemon=True, name="UpdateCheck")
+    t.start()
