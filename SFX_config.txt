@@ -1,4 +1,4 @@
-﻿;!@Install@!UTF-8!
+;!@Install@!UTF-8!
 InstallPath="C:\\Apps\\RandomCallTool\\"
 Title="随机抽取工具 安装程序"
 BeginPrompt="确定安装 随机抽取工具 吗？"
@@ -16,6 +16,7 @@ WarningTitle="警告"
 Shortcut="D,{C:\\Apps\\RandomCallTool\\rctool.exe},{},{},{一个随机抽取工具},{随机抽取工具},{C:\\Apps\\RandomCallTool\\},{},{}"
 Shortcut="P,{C:\\Apps\\RandomCallTool\\rctool.exe},{},{随机抽取工具套件},{一个随机抽取工具},{随机抽取工具},{C:\\Apps\\RandomCallTool\\},{},{}"
 Shortcut="P,{C:\\Apps\\RandomCallTool\\encode.exe},{},{随机抽取工具套件},{随机抽取工具名单编码工具},{名单编码工具},{C:\\Apps\\RandomCallTool\\},{},{}"
+Shortcut="P,{C:\\Apps\\RandomCallTool\\remove.exe},{},{随机抽取工具套件},{卸载随机抽取工具},{卸载工具},{C:\\Apps\\RandomCallTool\\},{},{}"
 ;!@InstallEnd@!
 7zSFXBuilder_7zArchive=dist.7z
 7zSFXBuilder_SFXName=RandomCallTool_Setup.exe
@@ -25,7 +26,7 @@ Shortcut="P,{C:\\Apps\\RandomCallTool\\encode.exe},{},{随机抽取工具套件}
 7zSFXBuilder_Res_FileVersion=2.2
 7zSFXBuilder_Res_CompanyName=Dan_Evan
 7zSFXBuilder_Res_Comments=
-7zSFXBuilder_Res_FileDescription=一个随机抽取工具
+7zSFXBuilder_Res_FileDescription=一个基于Python3和Tkinter的随机抽取工具
 7zSFXBuilder_Res_ProductVersion=2.2
 7zSFXBuilder_Res_ProductName=随机抽取工具
 7zSFXBuilder_Res_LegalCopyright=MIT License
