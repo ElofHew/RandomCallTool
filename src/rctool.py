@@ -7,18 +7,16 @@
 """
 
 # 导入系统库
+import os
 import sys
+import platform
 # 导入Tkinter GUI库
 import tkinter as tk
 from tkinter import messagebox
 # 导入日志库
 from core.logman import rctlog
 # 导入信息类
-from core.info import work_path, rct_version
-# 导入文件管理器
-from rctcore.fileman import init_dir
-# 导入更多功能类
-from rctcore.more import check_os
+from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path
 # 导入配置管理器
 from rctcore.config import ConfigManager
 # 导入主应用类
@@ -49,9 +47,30 @@ class Main:
             rctlog.info("程序正常退出")
             self.root.destroy()
 
+def init_dir():
+    # 创建程序数据目录
+    for path in [rct_prog_data_path, rct_result_path, rct_log_path]:
+        os.makedirs(path, exist_ok=True)
+
+def check_os():
+    pfs = platform.system()
+    pfr = platform.release()
+    pfv = platform.version()
+    pfn = platform.node()
+    pfall = f"{pfs} {pfr} ({pfv}) - {pfn}"
+    if pfs == "Darwin":
+        rctlog.error(f"操作系统检测不通过：{pfall}")
+        return False
+    else:
+        rctlog.info(f"操作系统检测通过：{pfall}")
+        return True
+
 def main():
     """主函数"""
     init_dir()
+    
+    if not check_os():
+        sys.exit(1)
 
     try:
         rctlog.info("=" * 50)
@@ -69,7 +88,4 @@ def main():
         messagebox.showerror("错误", f"程序启动失败:\n{e}")
 
 if __name__ == '__main__':
-    if not check_os():
-        sys.exit(1)
-    else:
-        main()
+    main()

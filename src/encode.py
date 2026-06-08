@@ -7,6 +7,7 @@
 """
 
 # 导入系统库
+import os
 import sys
 import platform
 # 导入Tkinter GUI库
@@ -15,9 +16,7 @@ from tkinter import messagebox
 # 导入日志库
 from core.logman import enclog
 # 导入信息类
-from core.info import work_path, enc_version
-# 导入初始化目录
-from enccore.dirman import init_dir
+from core.info import work_path, enc_version, enc_prog_data_path, enc_output_path, enc_log_path
 # 导入配置管理器
 from enccore.config import ConfigManager
 # 导入主应用类
@@ -46,8 +45,12 @@ class Main:
         if messagebox.askyesno("确认", "确定要退出程序吗？"):
             enclog.info("程序正常退出")
             self.root.destroy()
-        
-    
+
+def init_dir():
+    # 初始化目录结构
+    for path in [enc_prog_data_path, enc_output_path, enc_log_path]:
+        os.makedirs(path, exist_ok=True)
+
 def check_os():
     pfs = platform.system()
     pfr = platform.release()
@@ -63,7 +66,10 @@ def check_os():
 
 def main():
     """主函数"""
-    init_dir() # 初始化目录结构
+    init_dir()
+    
+    if not check_os():
+        sys.exit(1)
 
     try:
         enclog.info("=" * 50)
@@ -81,7 +87,4 @@ def main():
         messagebox.showerror("错误", f"程序启动失败:\n{e}")
 
 if __name__ == '__main__':
-    if not check_os():
-        sys.exit(1)
-    else:
-        main()
+    main()

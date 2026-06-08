@@ -172,7 +172,7 @@ class HomeTab(BaseTab):
     def quit_program(self):
         """退出程序"""
         rctlog.info("程序正常退出")
-        sys.exit()
+        sys.exit(0)
 
 class RandomGroupTab(BaseTab):
     def __init__(self, parent):

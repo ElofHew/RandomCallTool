@@ -5,10 +5,10 @@
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-# 导入应用库（元数据、时间戳）
-from core.info import rct_log_path, enc_log_path, rct_appname, enc_appname
 # 导入时间戳格式化
 from time import strftime
+# 导入应用库（元数据、时间戳）
+from core.info import rct_log_path, enc_log_path, rct_appname, enc_appname
 
 default_log_path = "logs"  # 默认日志路径
 default_appname = "Unknown"  # 默认应用名称
@@ -29,6 +29,9 @@ def setup_logging(appname=default_appname, logpath=default_log_path):
     console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
+    
+    # 确保日志目录存在
+    os.makedirs(logpath, exist_ok=True)
     
     # 文件处理器
     base_file = f"{appname}-{strftime('%Y-%m-%d')}.log"

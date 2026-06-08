@@ -8,7 +8,6 @@ from time import strftime
 # 导入Tkinter GUI库
 import tkinter as tk
 from tkinter import ttk, messagebox
-from tkinter import messagebox
 # 导入应用库
 from rctcore.more import More, run_process
 from core.info import work_path, rct_log_path, rct_appname
@@ -183,7 +182,7 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
         if messagebox.askyesno("确认", "确定要清除所有日志文件吗？"):
             try:
                 for file in os.listdir(rct_log_path):
-                    if file == (f"{rct_appname}-{strftime('%Y-%m-%d')}.log" or f"{strftime('%Y-%m-%d')}.log"):
+                    if file == f"{rct_appname}-{strftime('%Y-%m-%d')}.log" or file == f"{strftime('%Y-%m-%d')}.log":
                         continue
                     if file.endswith('.log'):
                         os.remove(os.path.join(rct_log_path, file))

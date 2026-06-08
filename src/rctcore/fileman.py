@@ -194,11 +194,3 @@ def base64decode(data=None):
     except Exception as e:
         rctlog.error(f"Base64解码失败: {e}")
         return ""
-
-def init_dir():
-    # 创建程序数据目录
-    try:
-        for path in [rct_prog_data_path, rct_result_path, rct_log_path]:
-            os.makedirs(path, exist_ok=True)
-    except Exception as e:
-        rctlog.error(f"创建目录失败: {e}")
