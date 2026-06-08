@@ -1,8 +1,7 @@
 """
-底层随机抽取逻辑运算模块
+底层随机抽取逻辑 — 支持简单随机抽样与加权抽样
 （注：当前模块为半成品，后续更新）
 """
-# 导入必要的基本库
 from random import sample, shuffle, choices
 from collections import defaultdict
 

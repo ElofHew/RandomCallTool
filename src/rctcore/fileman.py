@@ -1,15 +1,12 @@
 """
-文件管理器模块
+文件管理器模块 - 目录操作、结果保存与 Base64 解码
 """
-# 导入本地库
 import os
 from base64 import b64decode
-# 导入时间戳格式化
 from time import strftime
-# 导入Tkinter消息框方法
 from tkinter import messagebox
-# 导入应用库
 from core.logman import rctlog
+from core.utils import open_file_or_dir
 from rctcore.config import ConfigManager
 from core.info import rct_prog_data_path, rct_result_path, rct_desktop_result_path, rct_log_path, rct_appname, github, gitee
 
@@ -36,7 +33,7 @@ class FileManager:
         try:
             if not os.path.exists(path):
                 os.makedirs(path)
-            os.startfile(path)
+            open_file_or_dir(path)
             rctlog.info(f"打开目录: {path}")
             return True
         except Exception as e:
@@ -50,7 +47,7 @@ class FileManager:
         try:
             log_file = os.path.join(rct_log_path, f"{rct_appname}-{strftime('%Y-%m-%d')}.log")
             if os.path.exists(log_file):
-                os.startfile(log_file)
+                open_file_or_dir(log_file)
                 rctlog.info("打开日志文件")
                 return True
             else:

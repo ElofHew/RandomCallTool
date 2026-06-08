@@ -1,14 +1,10 @@
 """
-应用功能模块
+应用功能模块 - 主界面选项卡、菜单栏及通用功能
 """
-# 导入OS库
 import os
-# 导入时间戳格式化
 from time import strftime
-# 导入Tkinter GUI库
 import tkinter as tk
 from tkinter import ttk, messagebox
-# 导入应用库
 from rctcore.more import More, run_process
 from core.info import work_path, rct_log_path, rct_appname
 from core.logman import rctlog

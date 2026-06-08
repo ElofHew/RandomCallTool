@@ -1,14 +1,10 @@
 """
-(更多)功能模块
+功能模块 - 退出、关于及外部进程调用
 """
-# 导入应用库
-from core.logman import rctlog
-# 导入Tkinter消息框方法
 from tkinter import messagebox
-# 导入OS库
 import os
-# 导入SubProcess库
 import subprocess
+from core.logman import rctlog
 
 class More:
     def __init__(self, root):

@@ -1,16 +1,12 @@
 """
-选项卡界面模块
+选项卡界面模块 — 主页、随机抽组、随机抽人
 """
-# 导入基本库
 import os
 import sys
-# 导入时间戳格式化
 from time import strftime
-# 导入Tkinter GUI库
 import tkinter as tk
 import tkinter.font as tkFont
 from tkinter import ttk, messagebox, filedialog
-# 导入应用库
 from core.info import rct_prog_data_path, rct_version, document_path
 from core.logman import rctlog
 from rctcore.config import ConfigManager
@@ -114,8 +110,6 @@ class HomeTab(BaseTab):
         self.create_widgets()
 
     def create_widgets(self):
-        """创建主界面组件"""
-        # 显示当前版本
         version_label = tk.Label(
             self.frame,
             text=f"当前版本：{rct_version}",
@@ -124,7 +118,6 @@ class HomeTab(BaseTab):
         )
         version_label.pack(pady=5)
 
-        # 提示点击上方选项卡
         hint_label = tk.Label(
             self.frame,
             text="请点击上方选项卡进行操作",
@@ -133,19 +126,17 @@ class HomeTab(BaseTab):
         )
         hint_label.pack(pady=5, ipady=10)
 
-        # 创建功能按钮
         button_configs = [
             ("打开配置窗口", self.open_config_window),
             ("打开结果目录", self.open_result_directory),
             ("打开关于窗口", self.show_about),
             ("退出程序", self.quit_program)
         ]
-        
+
         for text, command in button_configs:
             button = self.create_button(self.frame, text, command)
             button.pack(pady=5)
 
-        # 显示启动时间
         start_time = strftime("%Y-%m-%d %H:%M:%S")
         start_label = tk.Label(
             self.frame,
@@ -187,12 +178,11 @@ class RandomGroupTab(BaseTab):
         
     def create_widgets(self):
         """创建随机抽组界面组件"""
-        # 选择分组方式
         self.group_order_var = tk.StringVar(value="123")
         group_order_frame = tk.Frame(self.frame)
         group_order_frame.pack(pady=5)
         tk.Label(group_order_frame, text="分组方式：").pack(side="left")
-        
+
         for text, value in [("123(数字)", "123"), ("ABC(字母)", "ABC")]:
             tk.Radiobutton(
                 group_order_frame,
@@ -201,68 +191,53 @@ class RandomGroupTab(BaseTab):
                 value=value
             ).pack(side="left", padx=5)
 
-        # 加载默认配置
         config = ConfigManager()
         rcg_total_default = config.get("rcg_total_default", 9)
         rcg_total_default = rcg_total_default if 0 < rcg_total_default <= 26 else 9
         rcg_choice_default = config.get("rcg_choice_default", 3)
         rcg_choice_default = rcg_choice_default if 0 < rcg_choice_default <= rcg_total_default else 3
 
-        # 创建标签和选择框
         input_configs = [
             ("样本总数：", "total_entry", rcg_total_default),
             ("选取数量：", "choice_entry", rcg_choice_default)
         ]
-        
+
         for label_text, attr_name, default_value in input_configs:
-            # 创建子容器
             sub_frame = tk.Frame(self.frame)
             sub_frame.pack(pady=5, fill='x')
-            
-            # 使用 grid 布局来居中显示标签和选择框
             sub_frame.grid_columnconfigure(0, weight=1)
             sub_frame.grid_columnconfigure(1, weight=1)
 
-            # 创建标签并放入子容器，使用 grid 布局并居中显示
             tk.Label(sub_frame, text=label_text, width=10).grid(row=0, column=0, padx=5, sticky='e')
 
-            # 创建下拉选择框并放入子容器，使用 grid 布局并居中显示
             combo = ttk.Combobox(
-                sub_frame, 
+                sub_frame,
                 values=list(range(1, 27 if attr_name == "total_entry" else rcg_total_default + 1)),
                 width=5,
                 state="readonly"
             )
             combo.grid(row=0, column=1, padx=5, sticky='w')
             combo.set(str(default_value))
-
-            # 设置属性
             setattr(self, attr_name, combo)
 
         self.total_entry.bind("<<ComboboxSelected>>", self._on_total_change)
-        
-        # 创建按钮框架
+
         button_frame = tk.Frame(self.frame)
         button_frame.pack(pady=10)
-        
+
         button_configs = [
             ("抽取", self.select_groups),
             ("清空", self.clear_result),
             ("保存", lambda: self.save_result("group")),
-            ("重置历史", self.reset_sampler_history)  # 新增按钮
+            ("重置历史", self.reset_sampler_history)
         ]
-        
+
         for text, command in button_configs:
             button = self.create_button(button_frame, text, command, width=8, height=1)
             button.pack(side="left", padx=5)
-        
-        # 创建保存提示信息
-        self.add_save_message()
 
-        # 创建历史记录框架
+        self.add_save_message()
         self.create_history_frame(height=10)
-        
-        # 创建结果标签
         self.create_result_label()
     
     def _on_total_change(self, event):
@@ -400,53 +375,46 @@ class RandomPersonTab(BaseTab):
         
     def create_widgets(self):
         """创建随机抽人界面组件"""
-        # 文件选择区域
         file_frame = tk.LabelFrame(self.frame, text="样本列表")
         file_frame.pack(pady=10, padx=10, fill="x")
-        
-        # 文件路径显示
+
         self.file_path_label = tk.Label(
-            file_frame, 
-            text="未选择文件", 
+            file_frame,
+            text="未选择文件",
             fg="gray",
             wraplength=300
         )
         self.file_path_label.pack(pady=5, padx=5)
-        
-        # 按钮框架
+
         button_frame = tk.Frame(file_frame)
         button_frame.pack(pady=5)
-        
+
         button_configs = [
             ("选择文件", self.load_names),
             ("重新加载", self.reload_current_file),
             ("自动加载", self.auto_load_file)
         ]
-        
+
         for text, command in button_configs:
             button = self.create_button(button_frame, text, command, width=9, height=1)
             button.pack(side="left", padx=2)
-        
-        # 样本信息
+
         info_frame = tk.Frame(self.frame)
         info_frame.pack(pady=5)
-        
+
         self.sample_count_label = tk.Label(
-            info_frame, 
-            text="样本数量: 0", 
+            info_frame,
+            text="样本数量: 0",
             fg="green"
         )
         self.sample_count_label.pack(side="left", padx=10)
-        
-        # 加载默认配置
+
         rcp_choice_default = ConfigManager().get("rcp_choice_default", 1)
         rcp_choice_default = rcp_choice_default if 0 < rcp_choice_default <= 10 else 1
 
-        # 抽取数量选择
         choice_frame = tk.Frame(self.frame)
         choice_frame.pack(pady=10)
 
-        # 使用grid布局将标签和组合框放置在一行
         tk.Label(choice_frame, text="抽取数量：").grid(row=0, column=0, padx=5, pady=5)
 
         self.choice_entry = ttk.Combobox(
@@ -458,32 +426,25 @@ class RandomPersonTab(BaseTab):
         self.choice_entry.grid(row=0, column=1, padx=5, pady=5)
         self.choice_entry.set(str(rcp_choice_default))
 
-        # 设置choice_frame居中
         choice_frame.grid_columnconfigure(0, weight=1)
         choice_frame.grid_columnconfigure(1, weight=1)
 
-        # 抽取按钮框架
         action_frame = tk.Frame(self.frame)
         action_frame.pack(pady=10)
-        
+
         button_configs = [
             ("抽取", self.select_persons),
             ("清空", self.clear_result),
             ("保存", lambda: self.save_result("person")),
-            ("重置历史", self.reset_sampler_history)  # 新增按钮
+            ("重置历史", self.reset_sampler_history)
         ]
-        
+
         for text, command in button_configs:
             button = self.create_button(action_frame, text, command, width=8, height=1)
             button.pack(side="left", padx=5)
-        
-        # 创建保存提示信息
-        self.add_save_message()
 
-        # 创建历史记录框架
+        self.add_save_message()
         self.create_history_frame(height=5)
-        
-        # 创建结果标签
         self.create_result_label()
     
     def load_names_from_file(self, file_path=None):
