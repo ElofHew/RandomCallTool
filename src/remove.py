@@ -1,5 +1,5 @@
 """
-Random Call Tool - 卸载工具
+随机抽取工具 - 卸载工具
 提供保留数据/完全卸载两种模式，支持 Windows / Linux / macOS
 """
 import os
@@ -9,7 +9,7 @@ import platform
 import subprocess
 import argparse
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 
 # 获取程序根目录（支持 PyInstaller 打包和源码两种模式）
 if getattr(sys, "frozen", False):
@@ -98,7 +98,9 @@ def build_remove_script(mode):
             else:
                 bat += '    del /f /q "' + n + '" >nul 2>&1\n'
             bat += ")\n"
-        bat += 'rmdir /s /q "' + root_dir + '" >nul 2>&1\n'
+        # 完全卸载模式才删除根目录，保留数据模式不能删
+        if mode == "full":
+            bat += 'rmdir /s /q "' + root_dir + '" >nul 2>&1\n'
         bat += 'del /f /q "%~f0" >nul 2>&1\n'
         tmp = os.path.join(os.environ.get("TEMP", "."), "rct_uninstall")
         os.makedirs(tmp, exist_ok=True)
@@ -116,8 +118,10 @@ def build_remove_script(mode):
                 cmds.append("rm -f '" + e + "' 2>/dev/null")
             else:
                 cmds.append("rm -rf '" + e + "' 2>/dev/null")
-        e = root_dir.replace("'", "'\\''")
-        cmds.append("rm -rf '" + e + "' 2>/dev/null")
+        # 完全卸载模式才删除根目录，保留数据模式不能删
+        if mode == "full":
+            e = root_dir.replace("'", "'\\''")
+            cmds.append("rm -rf '" + e + "' 2>/dev/null")
         cmds.append("echo '[Uninstall] Done'")
         return "; ".join(cmds), False
 

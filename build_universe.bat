@@ -20,6 +20,8 @@ if "%choice%"=="1" (
 
 goto :eof
 
+del /Q "dist"
+
 :build_standard
 echo Starting standard build...
 pyinstaller --icon=./icon/rctool.ico -w .\src\rctool.py
