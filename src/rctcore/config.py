@@ -28,9 +28,9 @@ class ConfigManager:
             "rcg_choice_default": 3,
             "rcp_choice_default": 1,
             "rcp_merge_names": True,
-            "rcp_default_sample": ".\\data\\default.rcp",
-            "shuffle_before_sample": True,
-            "use_weighted_sampling": False,
+            "rcp_default_sample": "",
+            "sampler_mode": 0,
+            "smart_window": 3,
         }
 
         if os.path.exists(rct_config_path):

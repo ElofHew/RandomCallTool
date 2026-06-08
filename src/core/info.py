@@ -23,6 +23,7 @@ rct_log_path = osp.join(rct_prog_data_path, "log")
 rct_result_path = osp.join(rct_prog_data_path, "result")
 rct_config_path = osp.join(rct_prog_data_path, "config.json")
 rct_desktop_result_path = osp.join(desktop_path, "随机抽取结果")
+rct_rcplist_path = osp.join(rct_prog_data_path, "rcplist")
 
 # ── 编码工具 EncodeTool ──
 enc_appname = "EncodeTool"

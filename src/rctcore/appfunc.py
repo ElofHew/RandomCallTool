@@ -8,63 +8,59 @@ from tkinter import ttk, messagebox
 from rctcore.more import More, run_process
 from core.info import work_path, rct_log_path, rct_appname
 from core.logman import rctlog
-from rctcore.fileman import FileManager
-from rctcore.tabs import HomeTab, RandomGroupTab, RandomPersonTab
+from rctcore.fileman import FileManager, SampleLibrary
+from rctcore.tabs import HomeTab, RandomCallTab
 from rctcore.window import ConfigWindow
 
 class MainApplication:
     def __init__(self, root):
         self.root = root
-        self.group_tab = None
-        self.person_tab = None
+        self.call_tab = None
         self.create_tabs()
         self.create_menu()
-        
+
     def create_tabs(self):
         """创建选项卡界面"""
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True, padx=5, pady=5)
-        
+
         self.home_tab = HomeTab(self.notebook)
-        self.group_tab = RandomGroupTab(self.notebook)
-        self.person_tab = RandomPersonTab(self.notebook)
-        
+        self.call_tab = RandomCallTab(self.notebook)
+
         self.notebook.add(self.home_tab.frame, text="主页")
-        self.notebook.add(self.group_tab.frame, text="随机抽组")
-        self.notebook.add(self.person_tab.frame, text="随机抽人")
-    
+        self.notebook.add(self.call_tab.frame, text="随机抽取")
+
     def create_menu(self):
         """创建菜单栏"""
         menu_bar = tk.Menu(self.root)
         self.root.config(menu=menu_bar)
-        
-        # 菜单项配置
+
         menus = {
             "文件": [
+                ("导入样本", ApplicationFunctions.import_sample),
                 ("打开结果目录", self.open_result_dir),
                 ("-", None),
-                ("退出", self.quit_app)
+                ("退出", self.quit_app),
             ],
             "编辑": [
                 ("配置", self.open_config_window),
-                ("清除所有历史", lambda: ApplicationFunctions.clear_all_history(self.group_tab, self.person_tab))
+                ("清除所有历史", lambda: ApplicationFunctions.clear_all_history(self.call_tab)),
             ],
             "工具": [
-                ("随机抽组", lambda: self.notebook.select(self.group_tab.frame)),
-                ("随机抽人", lambda: self.notebook.select(self.person_tab.frame)),
+                ("随机抽取", lambda: self.notebook.select(self.call_tab.frame)),
                 ("-", None),
-                ("生成RCP文件", ApplicationFunctions.create_rcp_file)
+                ("生成RCP文件", ApplicationFunctions.create_rcp_file),
             ],
             "帮助": [
                 ("使用说明", ApplicationFunctions.show_help),
-                ("关于", lambda: ApplicationFunctions.show_about(self.root))
+                ("关于", lambda: ApplicationFunctions.show_about(self.root)),
             ],
             "日志": [
                 ("查看日志", FileManager.open_log_file),
-                ("清除日志", ApplicationFunctions.clear_log)
-            ]
+                ("清除日志", ApplicationFunctions.clear_log),
+            ],
         }
-        
+
         for menu_name, items in menus.items():
             menu = tk.Menu(menu_bar, tearoff=0)
             menu_bar.add_cascade(label=menu_name, menu=menu)
@@ -91,7 +87,34 @@ class MainApplication:
 
 class ApplicationFunctions:
     """应用程序通用功能类"""
-    
+
+    @staticmethod
+    def import_sample():
+        """导入样本到样本库"""
+        from tkinter import simpledialog, filedialog as fd
+        fp = fd.askopenfilename(
+            title="选择要导入的名单文件",
+            filetypes=[("可用文件", "*.txt;*.csv;*.rcp"),
+                       ("文本文件", "*.txt"),
+                       ("CSV文件", "*.csv"),
+                       ("编码文件", "*.rcp"),
+                       ("所有文件", "*.*")])
+        if not fp:
+            return
+        if len(SampleLibrary.get_samples()) >= 50:
+            messagebox.showwarning("警告", "样本库已达上限（50个）")
+            return
+        name = simpledialog.askstring("导入样本", "请输入样本名称：")
+        if not name:
+            return
+        name = name.strip()
+        try:
+            SampleLibrary.import_sample(fp, name)
+            rctlog.info(f"样本已导入: {name}")
+            messagebox.showinfo("成功", f"样本「{name}」已导入")
+        except Exception as e:
+            messagebox.showerror("导入失败", str(e))
+
     @staticmethod
     def show_help():
         """显示帮助"""
@@ -148,10 +171,9 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
     
     @staticmethod
     def create_rcp_file():
-        """打开RCP生成工具"""
+        """打开RCP编码工具GUI"""
         rcp_tool_path = os.path.join(work_path, "encode.exe")
-        process = run_process(rcp_tool_path, "-h")
-        return process
+        run_process(rcp_tool_path)
     
     @staticmethod
     def show_about(root):
@@ -159,14 +181,12 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
         More(root).about()
     
     @staticmethod
-    def clear_all_history(group_tab, person_tab):
+    def clear_all_history(call_tab):
         """清除所有历史记录"""
         if messagebox.askyesno("确认", "确定要清除所有历史记录吗？"):
-            for tab in [group_tab, person_tab]:
-                if hasattr(tab, 'history'):
-                    tab.history.clear()
-                    if hasattr(tab, 'history_listbox'):
-                        tab.history_listbox.delete(0, tk.END)
+            if hasattr(call_tab, "history") and hasattr(call_tab, "_rebuild_history_ui"):
+                call_tab.history.clear()
+                call_tab._rebuild_history_ui()
             rctlog.info("所有历史记录已清除")
             messagebox.showinfo("成功", "历史记录已清除")
             return True
