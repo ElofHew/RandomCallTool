@@ -2,10 +2,19 @@
 项目全局路径与元数据常量
 """
 import os
+import sys
 
-work_path = os.getcwd()
-src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-res_path = os.path.join(src_path, "res")
+# ── 基础路径：区分源码运行和 PyInstaller 打包 ──
+if getattr(sys, "frozen", False):
+    # PyInstaller 打包后，exe 所在目录作为工作目录
+    work_path = os.path.dirname(sys.executable)
+    # res 文件夹复制到 exe 同目录
+    res_path = os.path.join(work_path, "res")
+else:
+    # 源码运行
+    work_path = os.getcwd()
+    src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    res_path = os.path.join(src_path, "res")
 user_home_path = os.path.expanduser("~")
 app_prog_data_path = os.path.join(work_path, "data")
 app_local_data_path = os.path.join(user_home_path, ".randomcalltool")

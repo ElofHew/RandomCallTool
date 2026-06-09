@@ -6,6 +6,7 @@ import webbrowser
 import tkinter as tk
 from tkinter import ttk
 from core.logman import rctlog
+from core.info import github, gitee
 
 
 # ══════════════════════════════════════════════════════════
@@ -25,27 +26,12 @@ class AboutWindow:
             - author: 作者
             - extra_lines: 可选，额外信息列表
         """
-        from core.info import github, gitee
-
         self.win = tk.Toplevel(parent)
         self.win.title(f"关于 {info['title']}")
         self.win.geometry("460x380")
         self.win.minsize(420, 340)
         self.win.resizable(False, False)
         self.win.transient(parent)
-        self.win.grab_set()
-
-        # 窗口居中
-        self.win.update_idletasks()
-        try:
-            pw, ph = parent.winfo_width(), parent.winfo_height()
-            px, py = parent.winfo_x(), parent.winfo_y()
-        except Exception:
-            pw, ph, px, py = 600, 400, 100, 100
-        ww, wh = 460, 380
-        x = px + (pw - ww) // 2
-        y = py + (ph - wh) // 2
-        self.win.geometry(f"{ww}x{wh}+{x}+{y}")
 
         main = tk.Frame(self.win, bg="#f0f4ff")
         main.pack(fill="both", expand=True)
@@ -125,7 +111,25 @@ class AboutWindow:
         ).pack(pady=5)
 
         self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
+
+        # 等所有控件构建完后，再处理模态和居中（避免 update_idletasks 卡死）
+        self.win.grab_set()
+        self.win.after(10, self._center_window, parent)
+
         rctlog.info("打开关于窗口")
+
+    def _center_window(self, parent):
+        """将窗口居中于父窗口"""
+        try:
+            self.win.update_idletasks()
+            pw, ph = parent.winfo_width(), parent.winfo_height()
+            px, py = parent.winfo_x(), parent.winfo_y()
+        except Exception:
+            pw, ph, px, py = 600, 400, 100, 100
+        ww, wh = 460, 380
+        x = px + (pw - ww) // 2
+        y = py + (ph - wh) // 2
+        self.win.geometry(f"{ww}x{wh}+{x}+{y}")
 
 
 # ══════════════════════════════════════════════════════════
