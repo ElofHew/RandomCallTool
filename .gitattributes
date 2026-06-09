@@ -5,6 +5,10 @@
 .gitignore text eol=crlf
 .gitmodules text eol=crlf
 
+# RandomCallTool Resources Files
+*.restxt text eol=crlf
+*.tpt text eol=crlf
+
 # Python files
 *.py text eol=crlf
 
@@ -45,3 +49,6 @@
 
 # log files
 *.log text eol=crlf
+
+# toml files
+*.toml text eol=crlf
