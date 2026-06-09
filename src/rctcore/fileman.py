@@ -156,7 +156,7 @@ class SaveResult:
             {result_text}
         </div>
         <div class="footer">
-            生成于 随机抽取工具 v2.2 | <a href="{github}" target="_blank">GitHub</a> | <a href="{gitee}" target="_blank">Gitee</a> | UTC+8 {current_time}
+            生成于 随机抽取工具 v2.3 | <a href="{github}" target="_blank">GitHub</a> | <a href="{gitee}" target="_blank">Gitee</a> | UTC+8 {current_time}
         </div>
     </div>
 </body>

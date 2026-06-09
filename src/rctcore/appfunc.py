@@ -5,12 +5,12 @@ import os
 from time import strftime
 import tkinter as tk
 from tkinter import ttk, messagebox
-from rctcore.more import More, run_process
+from rctcore.more import run_process
 from core.info import work_path, rct_log_path, rct_appname, rct_version
 from core.logman import rctlog
 from rctcore.fileman import FileManager, SampleLibrary
 from rctcore.tabs import HomeTab, RandomCallTab
-from rctcore.window import ConfigWindow
+from rctcore.window import ConfigWindow, AboutWindow, HelpWindow
 
 class MainApplication:
     def __init__(self, root):
@@ -18,6 +18,7 @@ class MainApplication:
         self.call_tab = None
         self.create_tabs()
         self.create_menu()
+        self._bind_shortcuts()
 
     def create_tabs(self):
         """创建选项卡界面"""
@@ -37,28 +38,41 @@ class MainApplication:
 
         menus = {
             "文件": [
-                ("导入样本", ApplicationFunctions.import_sample),
+                ("选择样本文件 (Ctrl+O)", lambda: self.call_tab.load_names() if self.call_tab else None),
+                ("从样本库加载 (Ctrl+Shift+O)", lambda: self.call_tab.load_from_library() if self.call_tab else None),
+                ("重新加载当前文件 (Ctrl+R)", lambda: self.call_tab.reload_current_file() if self.call_tab else None),
+                ("自动加载默认样本 (Ctrl+D)", lambda: self.call_tab.auto_load_file() if self.call_tab else None),
+                ("-", None),
+                ("导入样本到库 (Ctrl+I)", ApplicationFunctions.import_sample),
                 ("打开结果目录", self.open_result_dir),
                 ("-", None),
                 ("退出", self.quit_app),
             ],
             "编辑": [
-                ("配置", self.open_config_window),
-                ("清除所有历史", lambda: ApplicationFunctions.clear_all_history(self.call_tab)),
+                ("配置 (Ctrl+,)", self.open_config_window),
+                ("-", None),
+                ("抽取 (Ctrl+Enter)", lambda: self.call_tab.draw() if self.call_tab else None),
+                ("保存结果 (Ctrl+S)", lambda: self.call_tab.save_current_result() if self.call_tab else None),
+                ("批量保存所有 (Ctrl+Shift+S)", lambda: self.call_tab.batch_save_all() if self.call_tab else None),
+                ("-", None),
+                ("清除历史 (Ctrl+W)", lambda: ApplicationFunctions.clear_all_history(self.call_tab)),
+                ("重置抽样历史 (Ctrl+Shift+R)", lambda: self.call_tab.reset_sampler_history() if self.call_tab else None),
             ],
             "工具": [
-                ("随机抽取", lambda: self.notebook.select(self.call_tab.frame)),
-                ("-", None),
-                ("生成RCP文件", ApplicationFunctions.create_rcp_file),
+                ("随机抽取 (Ctrl+T)", lambda: self.notebook.select(self.call_tab.frame)),
                 ("-", None),
                 ("检测更新", ApplicationFunctions.check_update),
+                ("-", None),
+                ("编码工具", ApplicationFunctions.create_rcp_file),
+                ("-", None),
+                ("卸载工具", ApplicationFunctions.run_uninstall),
             ],
             "帮助": [
                 ("使用说明", ApplicationFunctions.show_help),
                 ("关于", lambda: ApplicationFunctions.show_about(self.root)),
             ],
             "日志": [
-                ("查看日志", FileManager.open_log_file),
+                ("查看日志 (Ctrl+L)", FileManager.open_log_file),
                 ("清除日志", ApplicationFunctions.clear_log),
             ],
         }
@@ -71,7 +85,27 @@ class MainApplication:
                     menu.add_separator()
                 else:
                     menu.add_command(label=item_text, command=command)
-    
+
+    # ── 快捷键 ──────────────────────────────────────────────
+
+    def _bind_shortcuts(self):
+        """绑定全局快捷键"""
+        ct = self.call_tab  # 简写引用
+
+        self.root.bind("<Control-o>", lambda e: ct.load_names() if ct else None)
+        self.root.bind("<Control-Shift-O>", lambda e: ct.load_from_library() if ct else None)
+        self.root.bind("<Control-r>", lambda e: ct.reload_current_file() if ct else None)
+        self.root.bind("<Control-d>", lambda e: ct.auto_load_file() if ct else None)
+        self.root.bind("<Control-Return>", lambda e: ct.draw() if ct else None)
+        self.root.bind("<Control-s>", lambda e: ct.save_current_result() if ct else None)
+        self.root.bind("<Control-Shift-S>", lambda e: ct.batch_save_all() if ct else None)
+        self.root.bind("<Control-w>", lambda e: ct.clear_all_history() if ct else None)
+        self.root.bind("<Control-Shift-R>", lambda e: ct.reset_sampler_history() if ct else None)
+        self.root.bind("<Control-comma>", lambda e: self.open_config_window())
+        self.root.bind("<Control-i>", lambda e: ApplicationFunctions.import_sample())
+        self.root.bind("<Control-t>", lambda e: self.notebook.select(ct.frame) if ct else None)
+        self.root.bind("<Control-l>", lambda e: FileManager.open_log_file())
+
     def open_config_window(self):
         """打开配置窗口"""
         rctlog.info("打开配置窗口")
@@ -119,56 +153,11 @@ class ApplicationFunctions:
 
     @staticmethod
     def show_help():
-        """显示帮助"""
-        help_text = """随机抽取工具 v2.2 使用说明
-
-一、主要功能：
-1. 随机抽组：从指定数量的组中随机抽取一个或多个组
-2. 随机抽人：从样本文件中随机抽取一个或多个人名
-
-二、操作指南：
-
-【随机抽组】
-1. 选择分组方式：数字(123)或字母(ABC)
-2. 输入总组数（1-26）
-3. 输入要抽取的组数（不能超过总组数）
-4. 点击"抽取"按钮进行随机抽取
-
-【随机抽人】
-1. 加载样本文件（支持 .rcp, .txt, .csv 格式）
-   - 点击"选择文件"手动选择
-   - 点击"自动加载"使用默认样本
-   - 点击"重新加载"刷新当前文件
-2. 输入要抽取的人数（不能超过样本数量）
-3. 点击"抽取"按钮进行随机抽取
-
-三、文件格式说明：
-1. .rcp文件：经过Base64编码的名单文件（推荐使用）
-2. .txt文件：纯文本文件，支持逗号、分号、制表符或换行分隔
-3. .csv文件：逗号分隔值文件
-
-四、智能抽样功能：
-1. 抽取前打乱：提高随机性，减少顺序影响
-2. 加权抽样：根据历史抽取次数调整权重，实现长期公平
-3. 可重置抽样历史：重新开始公平性计算
-
-五、其他功能：
-1. 结果保存：抽取结果自动保存为HTML格式
-2. 历史记录：记录最近的抽取历史
-3. 配置管理：可设置保存路径、自动保存等选项
-4. 日志查看：记录程序运行状态
-
-六、注意事项：
-1. 支持重复名字自动去重
-2. 抽取人数不能超过样本总数
-3. 默认样本存放在 data/default.rcp
-4. 结果文件保存在 data/result 目录或桌面
-
-如需更多帮助，请访问项目地址：
-GitHub: https://github.com/ElofHew/RandomCallTool
-Gitee: https://gitee.com/ElofHew/RandomCallTool"""
-        
-        messagebox.showinfo("使用说明", help_text)
+        """显示帮助（可翻页窗口）"""
+        import tkinter as tk
+        root = tk._default_root
+        if root:
+            HelpWindow(root)
         rctlog.info("显示使用说明")
     
     @staticmethod
@@ -176,6 +165,12 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
         """打开RCP编码工具GUI"""
         rcp_tool_path = os.path.join(work_path, "encode.exe")
         run_process(rcp_tool_path)
+
+    @staticmethod
+    def run_uninstall():
+        """卸载工具（菜单调用）"""
+        rem_tool_path = os.path.join(work_path, "remove.exe")
+        run_process(rem_tool_path)
 
     @staticmethod
     def check_update():
@@ -241,8 +236,8 @@ Gitee: https://gitee.com/ElofHew/RandomCallTool"""
 
     @staticmethod
     def show_about(root):
-        """显示关于信息"""
-        More(root).about()
+        """显示关于信息（美观窗口）"""
+        AboutWindow(root)
     
     @staticmethod
     def clear_all_history(call_tab):

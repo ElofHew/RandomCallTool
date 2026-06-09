@@ -12,7 +12,7 @@
 
 主程序提供**随机抽组**和**随机抽人**两大功能模块，并内置三档可切换的抽样模式（基本抽样/智能抽样/加权抽样）。配套的**名单编码工具**用于将明文名单编码为 RCP 文件，供主程序的"随机抽人"功能使用。
 
-## 主程序 v2.2
+## 主程序 v2.3
 
 ### 主要功能
 
@@ -28,6 +28,25 @@
 7. **配置管理**：多选项卡配置窗口（基本设置、抽样设置、样本管理、默认值、更新设置），支持自动保存结果、保存路径、自动加载样本等选项。
 8. **自动检测更新**：启动时静默检测 GitHub/Gitee 新版本，发现新版本时弹窗提示下载。
 9. **详细日志记录**：按日期滚动记录程序运行状态，支持查看和清理日志文件。
+10. **快捷键操作**：丰富的键盘快捷键支持，提升操作效率。
+
+### 快捷键支持
+
+| 快捷键 | 功能 |
+|:---|:---|
+| `Ctrl+O` | 选择样本文件 |
+| `Ctrl+Shift+O` | 从样本库加载 |
+| `Ctrl+R` | 重新加载当前文件 |
+| `Ctrl+D` | 自动加载默认样本 |
+| `Ctrl+I` | 导入样本到样本库 |
+| `Ctrl+Enter` | 执行抽取 |
+| `Ctrl+S` | 保存最新结果 |
+| `Ctrl+Shift+S` | 批量保存所有历史 |
+| `Ctrl+W` | 清除所有历史记录 |
+| `Ctrl+Shift+R` | 重置抽样历史 |
+| `Ctrl+,` | 打开配置窗口 |
+| `Ctrl+T` | 切换到随机抽取选项卡 |
+| `Ctrl+L` | 查看日志文件 |
 
 ### 使用说明
 
@@ -209,6 +228,9 @@ encode.exe --batch ./input_dir --output ./output_dir --method hex
 
 - **GitHub**：[https://github.com/ElofHew/RandomCallTool](https://github.com/ElofHew/RandomCallTool)
 - **Gitee**：[https://gitee.com/ElofHew/RandomCallTool](https://gitee.com/ElofHew/RandomCallTool)
+
+>[!NOTE]
+> 注：本项目约50%为AI代码，开发者在尝试 Vibe Coding 后发现这真是个好东西，但是出于代码质量，开发者在AI生成后会人工审查并修改，故不能完全视作AIGC项目，。
 
 ---
 

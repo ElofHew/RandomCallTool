@@ -9,8 +9,7 @@ from tkinter import ttk, messagebox, filedialog
 from core.info import rct_rcplist_path, rct_version, document_path
 from core.logman import rctlog
 from rctcore.config import ConfigManager
-from rctcore.more import More
-from rctcore.window import ConfigWindow
+from rctcore.window import ConfigWindow, AboutWindow
 from rctcore.sampler import SmartSampler
 from rctcore.fileman import SaveResult, base64decode, SampleLibrary
 
@@ -152,7 +151,7 @@ class HomeTab(BaseTab):
     def show_about(self):
         """显示关于信息"""
         rctlog.info("打开关于窗口")
-        More(self.frame).about()
+        AboutWindow(self.frame.winfo_toplevel())
 
     def quit_program(self):
         """退出程序"""
@@ -598,6 +597,9 @@ class RandomCallTab(BaseTab):
                 if lines:
                     self.file_path_label.config(text=os.path.basename(file_path), fg="purple")
                     self.sample_count_label.config(text=f"样本数量: {len(lines)}", fg="green")
+                    mx = len(lines)
+                    self.choice_entry["values"] = list(range(1, mx + 1))
+                    self.current_file = file_path
                     return lines, extra
             except Exception as e:
                 rctlog.error(f"[随机抽取] 读取文件失败: {e}")

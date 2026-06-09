@@ -14,10 +14,10 @@ gitee = "https://gitee.com/ElofHew/RandomCallTool"
 
 # ── 主程序 RandomCallTool ──
 rct_appname = "RandomCallTool"
-rct_version = "2.2"
-rct_vercode = 2200
+rct_version = "2.3"
+rct_vercode = 2300
 rct_author = "Dan_Evan"
-rct_date = "2026-06-07"
+rct_date = "2026-06-09"
 rct_description = "一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。"
 rct_prog_data_path = app_prog_data_path
 rct_log_path = os.path.join(rct_prog_data_path, "log")

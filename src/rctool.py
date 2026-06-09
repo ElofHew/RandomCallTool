@@ -1,8 +1,8 @@
 """
 @Name: 随机抽取工具
 @Author: Dan_Evan
-@Date: 2026-06-07
-@Version: 2.2
+@Date: 2026-06-09
+@Version: 2.3
 @Description: 一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。
 """
 
