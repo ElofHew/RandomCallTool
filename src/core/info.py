@@ -4,6 +4,8 @@
 import os
 
 work_path = os.getcwd()
+src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+res_path = os.path.join(src_path, "res")
 user_home_path = os.path.expanduser("~")
 app_prog_data_path = os.path.join(work_path, "data")
 app_local_data_path = os.path.join(user_home_path, ".randomcalltool")

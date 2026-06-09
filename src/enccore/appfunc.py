@@ -6,10 +6,8 @@ from core.logman import enclog
 from enccore.encoder import ListEncoder
 from enccore.window import ConfigWindow
 from core.utils import open_file_or_dir
-from core.info import (
-    enc_output_path, enc_desktop_output_path,
-    enc_version, enc_author, enc_date, enc_description,
-)
+from core.info import enc_output_path, enc_desktop_output_path, res_path
+from core.dialog import AboutWindow, HelpWindow, load_about_info
 
 
 class MainApplication:
@@ -680,59 +678,15 @@ class MainApplication:
     # ── 帮助 / 关于 ───────────────────────────────────────
 
     def show_help(self):
-        help_text = """使用说明：
-
-1. 输入明文名单
-   - 在文本框中输入名单（每行一个名字）
-   - 或点击"从文件加载"导入文本文件（自动识别编码）
-   - 也可通过"追加文件"将多个文件合并
-
-2. 处理文本（可选）
-   - 点击"处理文本"或按 F5 自动处理
-   - 可去除重复项、首尾空格、排序等
-   - 相关选项在"配置"中设置
-
-3. 编码名单
-   - 选择编码方式: Base64 / Hex（十六进制）
-   - 点击"快速编码"或按 Ctrl+Enter 仅生成编码文本
-   - 点击"编码并保存"或按 Ctrl+S 生成 .rcp 文件
-
-4. 解码测试
-   - 选中输出框中的编码内容
-   - 点击"解码测试"或按 Ctrl+D 查看解码结果
-   - 工具会自动检测编码方式
-
-5. 批量处理
-   - 文件菜单提供"批量编码"和"批量解码"
-   - 可选择整个文件夹进行批量转换
-
-6. 快捷键
-   Ctrl+O     打开文件
-   Ctrl+S     编码并保存
-   Ctrl+Enter 快速编码
-   Ctrl+D     解码测试
-   Ctrl+W     清空输入
-   F5         处理文本
-   Ctrl+I     统计信息
-   Ctrl+,     配置
-
-7. 文件格式
-   - 输入: .txt / .csv（UTF-8 / GBK 自动识别）
-   - 输出: .rcp（编码后文件）"""
-        messagebox.showinfo("使用说明", help_text)
+        """显示使用说明（可翻页窗口，从文件加载）"""
+        tips_file = os.path.join(res_path, "encode", "tips.restxt")
+        HelpWindow(self.root, tips_file, title="使用说明")
 
     def show_about(self):
-        about = (
-            f"随机抽人名单编码工具\n"
-            f"{enc_description}\n\n"
-            f"版本：{enc_version}\n"
-            f"作者：{enc_author}\n"
-            f"日期：{enc_date}\n\n"
-            f"支持编码方式：Base64 / Hex\n"
-            f"支持批量编码/解码\n"
-            f"自动识别文件编码"
-        )
-        messagebox.showinfo("关于", about)
+        """显示关于信息（从文件加载）"""
+        about_file = os.path.join(res_path, "encode", "about.restxt")
+        info = load_about_info(about_file)
+        AboutWindow(self.root, info)
 
     # ── 状态栏 ────────────────────────────────────────────
 

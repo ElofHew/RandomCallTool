@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>抽取结果 - {cname}</title>
+    <style>
+        body {{
+            font-family: "Helvetica", "Microsoft YaHei", sans-serif;
+            background-color: #f5f5f5;
+            margin: 40px;
+            line-height: 1.6;
+        }}
+        .container {{
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }}
+        h1 {{
+            text-align: center;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 15px;
+        }}
+        a, a:hover, a:active, a:visited {{
+            color: #6495ed;
+            text-decoration: none;
+        }}
+        .info {{
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+        .tips {{
+            background-color: #e9ffe9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }}
+        .result {{
+            font-size: 20px;
+            padding: 20px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 12px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>抽取结果 - {cname}</h1>
+        <div class="info">
+            <p><strong>抽取时间：</strong>{current_time}</p>
+            <p><strong>抽取数量：</strong>{result_count}</p>
+        </div>
+        {tips_section}
+        <div class="result">
+            {result_text}
+        </div>
+        <div class="footer">
+            生成于 随机抽取工具 v2.3 | <a href="{github}" target="_blank">GitHub</a> | <a href="{gitee}" target="_blank">Gitee</a> | UTC+8 {current_time}
+        </div>
+    </div>
+</body>
+</html>

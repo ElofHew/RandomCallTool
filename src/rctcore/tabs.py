@@ -10,6 +10,8 @@ from core.info import rct_rcplist_path, rct_version, document_path
 from core.logman import rctlog
 from rctcore.config import ConfigManager
 from rctcore.window import ConfigWindow, AboutWindow
+from core.dialog import load_about_info
+from core.info import res_path
 from rctcore.sampler import SmartSampler
 from rctcore.fileman import SaveResult, base64decode, SampleLibrary
 
@@ -149,9 +151,11 @@ class HomeTab(BaseTab):
         ConfigWindow(self.frame)
 
     def show_about(self):
-        """显示关于信息"""
+        """显示关于信息（从文件加载）"""
         rctlog.info("打开关于窗口")
-        AboutWindow(self.frame.winfo_toplevel())
+        about_file = os.path.join(res_path, "rctool", "about.restxt")
+        info = load_about_info(about_file)
+        AboutWindow(self.frame.winfo_toplevel(), info)
 
     def quit_program(self):
         """退出程序"""

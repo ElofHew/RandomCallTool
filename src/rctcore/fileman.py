@@ -9,7 +9,7 @@ from tkinter import messagebox
 from core.logman import rctlog
 from core.utils import open_file_or_dir
 from rctcore.config import ConfigManager
-from core.info import rct_prog_data_path, rct_result_path, rct_desktop_result_path, rct_log_path, rct_appname, rct_rcplist_path, github, gitee
+from core.info import rct_prog_data_path, rct_result_path, rct_desktop_result_path, rct_log_path, rct_appname, rct_rcplist_path, github, gitee, res_path
 
 class FileManager:
     """文件管理器"""
@@ -80,87 +80,34 @@ class SaveResult:
         result_text = "<br>".join(result)
         current_time = timestamp or strftime('%Y-%m-%d %H:%M:%S')
 
-        template = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>抽取结果 - {cname}</title>
-    <style>
-        body {{
-            font-family: "Helvetica", "Microsoft YaHei", sans-serif;
-            background-color: #f5f5f5;
-            margin: 40px;
-            line-height: 1.6;
-        }}
-        .container {{
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-        }}
-        h1 {{
-            text-align: center;
-            color: #2c3e50;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 15px;
-        }}
-        a, a:hover, a:active, a:visited {{
-            color: #6495ed;
-            text-decoration: none;
-        }}
-        .info {{
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }}
-        .tips {{
-            background-color: #e9ffe9;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-            text-align: center;
-        }}
-        .result {{
-            font-size: 20px;
-            padding: 20px;
-            background-color: #e8f4f8;
-            border-radius: 5px;
-            margin: 20px 0;
-            text-align: center;
-        }}
-        .footer {{
-            text-align: center;
-            margin-top: 30px;
-            color: #7f8c8d;
-            font-size: 12px;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>抽取结果 - {cname}</h1>
-        <div class="info">
-            <p><strong>抽取时间：</strong>{current_time}</p>
-            <p><strong>抽取数量：</strong>{len(result)}</p>
-        </div>
-{"<!--" if not save_message else ""}
-        <div class="tips">
-            <p><strong>提示/说明</strong></p>
-            <p style="font-size: 20px;">{save_message}</p>
-        </div>
-{"-->" if not save_message else ""}
-        <div class="result">
-            {result_text}
-        </div>
-        <div class="footer">
-            生成于 随机抽取工具 v2.3 | <a href="{github}" target="_blank">GitHub</a> | <a href="{gitee}" target="_blank">Gitee</a> | UTC+8 {current_time}
-        </div>
-    </div>
-</body>
-</html>"""
+        # 处理 tips 区域
+        if save_message:
+            tips_section = (
+                '<div class="tips">\n'
+                '            <p><strong>提示/说明</strong></p>\n'
+                f'            <p style="font-size: 20px;">{save_message}</p>\n'
+                "        </div>"
+            )
+        else:
+            tips_section = ""
+
+        # 从外置模板文件加载
+        template_path = os.path.join(res_path, "rctool", "htmltp.tpt")
+        if os.path.isfile(template_path):
+            with open(template_path, "r", encoding="utf-8") as f:
+                raw = f.read()
+        else:
+            raw = "<html><body><h1>抽取结果 - {cname}</h1><p>{result_text}</p></body></html>"
+
+        template = raw.format(
+            cname=cname,
+            current_time=current_time,
+            result_text=result_text,
+            result_count=len(result),
+            tips_section=tips_section,
+            github=github,
+            gitee=gitee,
+        )
         return template
     
     def save_result(self, class_name, prefix, result, save_message="",

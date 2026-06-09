@@ -2,7 +2,6 @@
 配置窗口模块 - 多选项卡配置界面、关于窗口、使用说明窗口
 """
 import os
-import webbrowser
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 from core.logman import rctlog
@@ -10,6 +9,8 @@ from rctcore.config import ConfigManager
 from core.info import rct_rcplist_path
 from rctcore.fileman import SampleLibrary
 from core.utils import open_file_or_dir
+from core.dialog import AboutWindow, HelpWindow, load_about_info
+from core.info import res_path
 
 
 class ConfigWindow:
@@ -522,338 +523,23 @@ class ConfigWindow:
 
 
 # ══════════════════════════════════════════════════════════
-#  关于窗口
+#  便捷引用 — 将公共对话框暴露在 rctcore.window 命名空间
+#  实际实现在 core.dialog
 # ══════════════════════════════════════════════════════════
 
-class AboutWindow:
-    """美观的关于窗口"""
-
-    def __init__(self, parent):
-        from core.info import (
-            rct_description, rct_version, rct_author, rct_date,
-            enc_description, enc_version, enc_author, enc_date,
-            github, gitee,
-        )
-
-        self.win = tk.Toplevel(parent)
-        self.win.title("关于 随机抽取工具")
-        self.win.geometry("460x380")
-        self.win.minsize(420, 340)
-        self.win.resizable(False, False)
-        self.win.transient(parent)
-        self.win.grab_set()
-
-        # 窗口居中
-        self.win.update_idletasks()
-        pw, ph = parent.winfo_width(), parent.winfo_height()
-        px, py = parent.winfo_x(), parent.winfo_y()
-        ww, wh = 460, 380
-        x = px + (pw - ww) // 2
-        y = py + (ph - wh) // 2
-        self.win.geometry(f"{ww}x{wh}+{x}+{y}")
-
-        main = tk.Frame(self.win, bg="#f0f4ff")
-        main.pack(fill="both", expand=True)
-
-        # ── 标题区 ──
-        title_frame = tk.Frame(main, bg="#4a7db4", height=90)
-        title_frame.pack(fill="x")
-        title_frame.pack_propagate(False)
-
-        tk.Label(
-            title_frame, text="随机抽取工具",
-            font=("Microsoft YaHei", 20, "bold"),
-            fg="white", bg="#4a7db4",
-        ).pack(pady=(12, 0))
-        tk.Label(
-            title_frame, text=rct_description,
-            font=("Microsoft YaHei", 9),
-            fg="#d0e0ff", bg="#4a7db4", wraplength=400,
-        ).pack(pady=(4, 0))
-
-        # ── 信息区 ──
-        info_frame = tk.Frame(main, bg="#f0f4ff", padx=30, pady=15)
-        info_frame.pack(fill="both", expand=True)
-
-        info_items = [
-            ("主程序版本", f"v{rct_version}  ({rct_date})"),
-            ("编码工具版本", f"v{enc_version}  ({enc_date})"),
-            ("作者", rct_author),
-        ]
-        for i, (label, value) in enumerate(info_items):
-            row = tk.Frame(info_frame, bg="#f0f4ff")
-            row.pack(fill="x", pady=4)
-            tk.Label(row, text=label + "：", font=("", 9, "bold"),
-                     width=14, anchor="e", bg="#f0f4ff").pack(side="left")
-            tk.Label(row, text=value, font=("", 9),
-                     anchor="w", bg="#f0f4ff", fg="#333").pack(side="left", padx=5)
-
-        # ── 彩色按钮项目地址 ──
-        link_frame = tk.Frame(info_frame, bg="#f0f4ff")
-        link_frame.pack(fill="x", pady=(12, 0))
-
-        tk.Label(link_frame, text="项目地址：", font=("", 9, "bold"),
-                 bg="#f0f4ff").pack(anchor="w")
-
-        btn_frame = tk.Frame(link_frame, bg="#f0f4ff")
-        btn_frame.pack(fill="x", pady=(5, 0))
-
-        for url, label, color in [
-            (github, "  GitHub  ", "#2b5b84"),
-            (gitee, "  Gitee  ", "#c71d23"),
-        ]:
-            btn = tk.Button(
-                btn_frame, text=label,
-                font=("", 9, "bold"),
-                fg="white", bg=color,
-                activebackground=color,
-                activeforeground="white",
-                relief="flat", bd=0, padx=12, pady=3,
-                cursor="hand2",
-                command=lambda u=url: webbrowser.open(u),
-            )
-            btn.pack(side="left", padx=(0, 10))
-            # hover 效果
-            btn.bind("<Enter>", lambda e, b=btn, c=color: b.config(bg=self._lighten(c)))
-            btn.bind("<Leave>", lambda e, b=btn, c=color: b.config(bg=c))
-
-        # ── 底部关闭按钮 ──
-        bottom_frame = tk.Frame(main, bg="#f0f4ff", height=40)
-        bottom_frame.pack(fill="x")
-        tk.Button(
-            bottom_frame, text="关闭",
-            font=("", 10), width=12,
-            command=self.win.destroy,
-            relief="groove", bd=1,
-        ).pack(pady=5)
-
-        self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
-        rctlog.info("打开关于窗口")
-
-    @staticmethod
-    def _lighten(color):
-        """简单颜色变浅"""
-        try:
-            r = int(color[1:3], 16)
-            g = int(color[3:5], 16)
-            b = int(color[5:7], 16)
-            r = min(255, r + 40)
-            g = min(255, g + 40)
-            b = min(255, b + 40)
-            return f"#{r:02x}{g:02x}{b:02x}"
-        except Exception:
-            return color
+def _get_rct_about_info():
+    """读取 rctool 的关于信息"""
+    about_file = os.path.join(res_path, "rctool", "about.restxt")
+    return load_about_info(about_file)
 
 
-# ══════════════════════════════════════════════════════════
-#  使用说明窗口（支持翻页）
-# ══════════════════════════════════════════════════════════
+def _get_rct_help_window(parent):
+    """打开 rctool 的使用说明窗口"""
+    tips_file = os.path.join(res_path, "rctool", "tips.restxt")
+    return HelpWindow(parent, tips_file, title="使用说明")
 
-class HelpWindow:
-    """可翻页的使用说明窗口"""
 
-    # 每页内容（标题, [(文本, 是否加粗), ...]）
-    PAGES = [
-        # 第 1 页
-        ("简介与主要功能", [
-            ("一、主要功能", True), ("", False),
-            ("1. 随机抽组", False),
-            ("   从指定数量的组（数字或字母）中随机抽取一个或多个组。", False), ("", False),
-            ("2. 随机抽人", False),
-            ("   从样本文件（.rcp / .txt / .csv）或样本库中", False),
-            ("   随机抽取指定数量的人名。", False), ("", False),
-            ("3. 三档抽样模式", False),
-            ("   · 基本抽样：random.sample 简单随机抽取", False),
-            ("   · 智能抽样：追踪近期历史，自动降低刚被选中项的权重", False),
-            ("   · 加权抽样：可单独设置权重，权重越高概率越大", False), ("", False),
-            ("4. 样本库管理：常用名单导入样本库（上限 50 个）", False),
-            ("5. 整合式操作界面：抽人与抽组一键切换", False),
-            ("6. 历史记录面板：支持单条保存和批量保存", False),
-            ("7. 配置管理：多选项卡配置窗口", False),
-            ("8. 快捷键操作：Ctrl+Enter 抽取 / Ctrl+O 选择文件等", False),
-        ]),
-        # 第 2 页
-        ("操作指南 — 随机抽组", [
-            ("二、操作指南", True), ("", False),
-            ("【随机抽组】", True), ("", False),
-            ("1. 切换到「随机抽取」选项卡，选择「随机抽组」模式", False), ("", False),
-            ("2. 选择分组方式：", False),
-            ("   · 数字 (123)：组编号为 1, 2, 3 ...", False),
-            ("   · 字母 (ABC)：组编号为 A, B, C ...", False), ("", False),
-            ("3. 设置样本总数（1-26）", False), ("", False),
-            ("4. 设置要抽取的组数（不能超过总组数）", False), ("", False),
-            ("5. 点击「抽取」按钮或按 Ctrl+Enter 进行抽取", False), ("", False),
-            ("6. 结果展示在程序窗口，可保存为 HTML 文件", False),
-        ]),
-        # 第 3 页
-        ("操作指南 — 随机抽人", [
-            ("【随机抽人】", True), ("", False),
-            ("1. 切换到「随机抽取」选项卡，选择「随机抽人」模式", False), ("", False),
-            ("2. 加载样本文件（支持 .rcp / .txt / .csv）：", False),
-            ("   · Ctrl+O  → 手动选择文件", False),
-            ("   · Ctrl+Shift+O → 从样本库加载", False),
-            ("   · Ctrl+R  → 重新加载当前文件", False),
-            ("   · Ctrl+D  → 自动加载默认样本", False), ("", False),
-            ("3. 设置抽取数量", False), ("", False),
-            ("4. 选择抽样模式（基本 / 智能 / 加权）", False), ("", False),
-            ("5. 点击「抽取」按钮或按 Ctrl+Enter 进行抽取", False), ("", False),
-            ("6. 结果展示在程序窗口，可保存为 HTML 文件", False),
-        ]),
-        # 第 4 页
-        ("文件格式说明", [
-            ("三、文件格式说明", True), ("", False),
-            ("1. .rcp 文件（推荐）", False),
-            ("   经过 Base64 编码的名单文件，", False),
-            ("   使用配套的「名单编码工具」生成。", False), ("", False),
-            ("2. .txt 文件", False),
-            ("   纯文本文件，每行一个名字，", False),
-            ("   也支持逗号、分号、制表符分隔。", False), ("", False),
-            ("3. .csv 文件", False),
-            ("   逗号分隔值文件。", False), ("", False),
-            ("4. 重复名字处理：", False),
-            ("   可在配置中开启「合并重复名字」功能，", False),
-            ("   开启后自动去除重复项。", False),
-        ]),
-        # 第 5 页
-        ("抽样模式与附加功能", [
-            ("四、智能抽样功能", True), ("", False),
-            ("1. 抽取前打乱：提高随机性，减少顺序影响", False),
-            ("2. 加权抽样：根据历史抽取次数调整权重，实现长期公平", False),
-            ("3. 可重置抽样历史：重新开始公平性计算", False), ("", False),
-            ("五、其他功能", True), ("", False),
-            ("1. 结果保存：抽取结果自动保存为 HTML 格式", False),
-            ("2. 历史记录：记录最近的抽取历史，支持查看和保存", False),
-            ("3. 配置管理：可设置保存路径、自动保存、默认值等", False),
-            ("4. 日志查看：记录程序运行状态，支持查看和清理", False),
-            ("5. 自动检测更新：启动时静默检测新版本", False),
-            ("6. 快捷键操作：全程键盘可完成大部分操作", False),
-        ]),
-        # 第 6 页
-        ("注意事项", [
-            ("六、注意事项", True), ("", False),
-            ("1. 支持重复名字自动去重（可在配置中关闭）", False),
-            ("2. 抽取人数不能超过样本总数", False),
-            ("3. 默认样本文件存放在 data/default.rcp", False),
-            ("4. 结果文件默认保存在 data/result 或桌面", False),
-            ("5. 支持跨平台运行（Windows / Linux / macOS）", False), ("", False), ("", False),
-            ("如需更多帮助，请访问项目地址（关于界面）。", False),
-        ]),
-    ]
-
-    def __init__(self, parent):
-        self.win = tk.Toplevel(parent)
-        self.win.title("使用说明")
-        self.win.geometry("450x610+60+60")
-        self.win.minsize(450, 350)
-        self.win.maxsize(800, 1000)
-        self.win.resizable(True, True)
-        self.win.transient(parent)
-        self.win.grab_set()
-
-        self.current_page = 0
-        self.total_pages = len(self.PAGES)
-        self._build_ui()
-        self._show_page(0)
-
-        self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
-        rctlog.info("打开使用说明窗口")
-
-    def _build_ui(self):
-        """构建界面"""
-        # ── 标题栏 ──
-        title_frame = tk.Frame(self.win, bg="#4a7db4", height=40)
-        title_frame.pack(fill="x")
-        title_frame.pack_propagate(False)
-        tk.Label(
-            title_frame, text="使用说明",
-            font=("Microsoft YaHei", 14, "bold"),
-            fg="white", bg="#4a7db4",
-        ).pack(expand=True)
-
-        # ── 页面标题 ──
-        self.page_title_label = tk.Label(
-            self.win, text="",
-            font=("Microsoft YaHei", 12, "bold"),
-            fg="#2b5b84",
-        )
-        self.page_title_label.pack(pady=(10, 5))
-
-        # ── 内容区（Text 组件 + 滚动条） ──
-        content_frame = tk.Frame(self.win)
-        content_frame.pack(fill="both", expand=True, padx=15, pady=(0, 5))
-
-        self.content_text = tk.Text(
-            content_frame,
-            font=("Microsoft YaHei", 10),
-            wrap=tk.WORD,
-            relief="flat",
-            bg="#fafcff",
-            padx=10, pady=10,
-            state="disabled",
-        )
-        scrollbar = tk.Scrollbar(content_frame, command=self.content_text.yview)
-        self.content_text.config(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-        self.content_text.pack(side="left", fill="both", expand=True)
-
-        # ── 底部导航栏 ──
-        nav_frame = tk.Frame(self.win, bg="#e8ecf0", height=45)
-        nav_frame.pack(fill="x", side="bottom")
-        nav_frame.pack_propagate(False)
-
-        self.prev_btn = tk.Button(
-            nav_frame, text="◀ 上一页",
-            font=("", 10), width=10,
-            command=self._prev_page,
-            relief="groove", bd=1,
-        )
-        self.prev_btn.pack(side="left", padx=(15, 5), pady=5)
-
-        self.page_label = tk.Label(
-            nav_frame, text="",
-            font=("", 10), bg="#e8ecf0", fg="#555",
-        )
-        self.page_label.pack(side="left", expand=True)
-
-        self.next_btn = tk.Button(
-            nav_frame, text="下一页 ▶",
-            font=("", 10), width=10,
-            command=self._next_page,
-            relief="groove", bd=1,
-        )
-        self.next_btn.pack(side="right", padx=(5, 15), pady=5)
-
-        # ── 关闭按钮 ──
-        tk.Button(
-            nav_frame, text="关闭",
-            font=("", 10), width=8,
-            command=self.win.destroy,
-            relief="groove", bd=1,
-        ).pack(side="right", padx=(0, 5), pady=5)
-
-    def _show_page(self, index):
-        """显示指定页"""
-        self.current_page = index
-        title, lines = self.PAGES[index]
-        self.page_title_label.config(text=title)
-
-        # 更新内容
-        self.content_text.config(state="normal")
-        self.content_text.delete(1.0, tk.END)
-        for text, is_bold in lines:
-            self.content_text.insert(tk.END, text + "\n", "bold" if is_bold else "")
-        self.content_text.config(state="disabled")
-        self.content_text.see(1.0)
-
-        # 更新页码 / 按钮状态
-        self.page_label.config(text=f"第 {index + 1} 页，共 {self.total_pages} 页")
-        self.prev_btn.config(state="normal" if index > 0 else "disabled")
-        self.next_btn.config(state="normal" if index < self.total_pages - 1 else "disabled")
-
-    def _prev_page(self):
-        if self.current_page > 0:
-            self._show_page(self.current_page - 1)
-
-    def _next_page(self):
-        if self.current_page < self.total_pages - 1:
-            self._show_page(self.current_page + 1)
+def _get_rct_about_window(parent):
+    """打开 rctool 的关于窗口"""
+    info = _get_rct_about_info()
+    return AboutWindow(parent, info)

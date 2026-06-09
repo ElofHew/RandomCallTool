@@ -6,7 +6,8 @@ from time import strftime
 import tkinter as tk
 from tkinter import ttk, messagebox
 from rctcore.more import run_process
-from core.info import work_path, rct_log_path, rct_appname, rct_version
+from core.dialog import load_about_info
+from core.info import res_path, work_path, rct_log_path, rct_appname, rct_version
 from core.logman import rctlog
 from rctcore.fileman import FileManager, SampleLibrary
 from rctcore.tabs import HomeTab, RandomCallTab
@@ -153,11 +154,12 @@ class ApplicationFunctions:
 
     @staticmethod
     def show_help():
-        """显示帮助（可翻页窗口）"""
+        """显示帮助（可翻页窗口，从文件加载）"""
         import tkinter as tk
         root = tk._default_root
         if root:
-            HelpWindow(root)
+            tips_file = os.path.join(res_path, "rctool", "tips.restxt")
+            HelpWindow(root, tips_file, title="使用说明")
         rctlog.info("显示使用说明")
     
     @staticmethod
@@ -236,8 +238,10 @@ class ApplicationFunctions:
 
     @staticmethod
     def show_about(root):
-        """显示关于信息（美观窗口）"""
-        AboutWindow(root)
+        """显示关于信息（从文件加载）"""
+        about_file = os.path.join(res_path, "rctool", "about.restxt")
+        info = load_about_info(about_file)
+        AboutWindow(root, info)
     
     @staticmethod
     def clear_all_history(call_tab):
