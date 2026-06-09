@@ -30,10 +30,10 @@ rct_rcplist_path = os.path.join(rct_prog_data_path, "rcplist")
 
 # ── 编码工具 EncodeTool ──
 enc_appname = "EncodeTool"
-enc_version = "1.1"
-enc_vercode = 1100
+enc_version = "1.2"
+enc_vercode = 1200
 enc_author = "Dan_Evan"
-enc_date = "2026-06-07"
+enc_date = "2026-06-09"
 enc_description = "一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。"
 enc_prog_data_path = os.path.join(app_prog_data_path, "EncodeTool")
 enc_log_path = os.path.join(enc_prog_data_path, "log")

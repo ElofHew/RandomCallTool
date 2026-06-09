@@ -23,7 +23,7 @@ class AboutWindow:
             - version: 版本号
             - date: 日期
             - author: 作者
-            - extra_lines: 可选，额外信息列表（如 ["编码工具版本: v1.1"]）
+            - extra_lines: 可选，额外信息列表
         """
         from core.info import github, gitee
 
