@@ -35,6 +35,10 @@ if exist "dist\remove" (
     rmdir /S /Q "dist\remove"
 )
 
+:: 复制 res 资源文件到 dist 目录
+echo Copying res files to dist...
+xcopy /E /I /Y "src\res" "dist\res"
+
 :: 删除 spec 文件
 echo Deleting spec files...
 if exist "rctool.spec" del /Q "rctool.spec"

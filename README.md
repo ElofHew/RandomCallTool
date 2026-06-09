@@ -215,7 +215,6 @@ encode.exe --batch ./input_dir --output ./output_dir --method hex
 5. 运行根目录下的构建脚本，生成可执行文件：
    - `build_standard.bat` — 标准目录构建（标准打包，依赖包外置于 `_internal` 目录）。
    - `build_onefile.bat` — 单文件构建（每个程序打包为单个独立 exe，依赖包内置）。
-   - `build_universe.bat` — 通用版构建脚本（提示自行选择单文件或标准构建）。
 6. （可选）使用 **7z SFX Builder** 搭配 `SFX_config.txt`（需自行修改部分目录）打包自解压安装程序。
 
 >[!NOTE]

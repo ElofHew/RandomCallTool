@@ -14,6 +14,10 @@ pyinstaller --icon=./icon/remove.ico -F -w .\src\remove.py
 
 echo Compilation completed, single file mode requires no folder content moving...
 
+:: 复制 res 资源文件到 dist 目录
+echo Copying res files to dist...
+xcopy /E /I /Y "src\res" "dist\res"
+
 :: 单文件模式下，.exe 直接生成在 dist/ 目录
 :: 但可能还是会生成临时文件夹，如果有则删除
 if exist "dist\rctool" rmdir /S /Q "dist\rctool"
