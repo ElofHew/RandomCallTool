@@ -12,6 +12,8 @@ from core.logman import rctlog
 # ── 远程元数据地址 ──
 GITHUB_META_URL = "https://raw.githubusercontent.com/ElofHew/RandomCallTool/refs/heads/main/metadata.json"
 GITEE_META_URL = "https://raw.giteeusercontent.com/ElofHew/RandomCallTool/raw/main/metadata.json"
+# GITEE_META_URL = "https://gitee.com/ElofHew/RandomCallTool/raw/main/metadata.json"
+# 这个URL是Gitee的直连地址，但是不确定在本地程序能不能正常用，先留个URL在这里以后测试。
 
 # ── 各平台下载页面 ──
 GITHUB_RELEASE_URL = "https://github.com/ElofHew/RandomCallTool/releases/latest"
