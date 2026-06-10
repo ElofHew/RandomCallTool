@@ -1,6 +1,6 @@
 """
 随机抽取工具 - 卸载工具
-提供保留数据/完全卸载两种模式，支持 Windows / Linux / macOS
+提供保留数据/重置/完全卸载三种模式，支持 Windows / Linux / macOS
 """
 import os
 import sys
@@ -48,6 +48,11 @@ def kill_processes():
 
 def get_files_to_delete(mode):
     """获取要删除的文件/目录列表"""
+    # 重置模式：仅删除 data 文件夹
+    if mode == "reset":
+        data_dir = os.path.join(PROGRAM_ROOT, "data")
+        return [data_dir], PROGRAM_ROOT
+
     all_items = []
     for name in os.listdir(PROGRAM_ROOT):
         path = os.path.join(PROGRAM_ROOT, name)
@@ -128,7 +133,8 @@ def build_remove_script(mode):
 
 def run_uninstall(mode):
     """执行卸载流程"""
-    label = "Keep Data" if mode == "keep-data" else "Full Uninstall"
+    MODE_LABELS = {"keep-data": "Keep Data", "reset": "Reset (Delete Data Only)", "full": "Full Uninstall"}
+    label = MODE_LABELS.get(mode, mode)
     print("=" * 50)
     print("  Random Call Tool - Uninstaller")
     print("  Mode: " + label)
@@ -162,8 +168,8 @@ def parse_args():
     )
     p.add_argument(
         "mode", nargs="?", default=None,
-        choices=["keep-data", "full"],
-        help="keep-data: keep data & config | full: remove everything"
+        choices=["keep-data", "reset", "full"],
+        help="keep-data: keep data & config | reset: delete data only | full: remove everything"
     )
     p.add_argument(
         "-y", "--yes", action="store_true",
@@ -175,8 +181,8 @@ def parse_args():
 def gui_main():
     """tkinter GUI 模式 — 让用户选择卸载方式并确认"""
     root = tk.Tk()
-    root.title("Random Call Tool - 卸载")
-    root.geometry("460x280+200+200")
+    root.title("随机抽取工具 - 卸载")
+    root.geometry("460x320+200+200")
     root.resizable(False, False)
     try:
         icon_path = os.path.join(PROGRAM_ROOT, "res", "icon", "remove.ico")
@@ -212,7 +218,14 @@ def gui_main():
 
     tk.Radiobutton(
         mode_frame,
-        text="完全卸载 - 删除所有文件（包括数据/配置/日志）",
+        text="重置配置 - 仅删除数据配置和日志，保留程序文件",
+        variable=mode_var, value="reset",
+        anchor="w", font=("", 10),
+    ).pack(fill="x", padx=15, pady=(2, 2))
+
+    tk.Radiobutton(
+        mode_frame,
+        text="完全卸载 - 删除所有文件（包括程序/数据/配置/日志）",
         variable=mode_var, value="full",
         anchor="w", font=("", 10),
     ).pack(fill="x", padx=15, pady=(2, 10))
@@ -231,9 +244,10 @@ def gui_main():
 
     def on_confirm():
         mode = mode_var.get()
-        label = "保留数据" if mode == "keep-data" else "完全卸载"
+        labels = {"keep-data": "保留数据", "reset": "重置（仅删除数据）", "full": "完全卸载"}
+        label = labels.get(mode, mode)
         ok = messagebox.askyesno(
-            "确认卸载",
+            "确认",
             "即将执行: " + label + "\n\n"
             "目标目录: " + PROGRAM_ROOT + "\n\n"
             "确定要继续吗？\n(此操作不可撤销！)"
@@ -273,7 +287,8 @@ def main():
         mode = args.mode
 
     if not args.yes:
-        label = "Keep Data" if mode == "keep-data" else "Full Uninstall"
+        labels = {"keep-data": "Keep Data", "reset": "Reset (Delete Data Only)", "full": "Full Uninstall"}
+        label = labels.get(mode, mode)
         print("\nAbout to: " + label)
         print("Target: " + PROGRAM_ROOT)
         try:

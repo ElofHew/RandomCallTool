@@ -68,7 +68,8 @@ class Main:
                 dl_source = self.config.get("download_source", "github")
                 from rctcore.update import open_download_page
                 open_download_page(dl_source,
-                                   lanzou_url=result.get("lanzou_download_url", ""))
+                                   lanzou_url=result.get("lanzou_download_url", ""),
+                                   lanzou_password=result.get("lanzou_password", ""))
         except Exception:
             pass
 

@@ -226,7 +226,8 @@ class ApplicationFunctions:
                 )
                 if reply:
                     open_download_page(dl_source,
-                                       lanzou_url=result.get("lanzou_download_url", ""))
+                                       lanzou_url=result.get("lanzou_download_url", ""),
+                                       lanzou_password=result.get("lanzou_password", ""))
             else:
                 messagebox.showinfo(
                     "已是最新版本",

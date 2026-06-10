@@ -161,16 +161,26 @@ def check_update(source="github", timeout=10):
     return result
 
 
-def open_download_page(source="github", lanzou_url=None):
+def open_download_page(source="github", lanzou_url=None, lanzou_password=None):
     """在浏览器中打开对应平台的下载页面
 
     Args:
         source: "github" / "gitee" / "lanzou" / "official"
         lanzou_url: 从远程 metadata 获取的蓝奏云链接（动态，不硬编码）
+        lanzou_password: 蓝奏云提取码（有值时弹窗提示）
     """
     try:
         if source == "lanzou" and lanzou_url:
             url = lanzou_url
+            if lanzou_password:
+                from tkinter import messagebox
+                messagebox.showinfo(
+                    "蓝奏云提取码",
+                    f"蓝奏云下载页面需要提取码\n\n"
+                    f"提取码: {lanzou_password}\n\n"
+                    f"将在浏览器中打开下载页面，请输入该提取码。\n"
+                    "提示：打开浏览器后URL最后的“?pwd=”后面四位文字即为提取码。"
+                )
         else:
             url = SOURCE_DOWNLOAD_URLS.get(source, GITHUB_RELEASE_URL)
         webbrowser.open(url)
