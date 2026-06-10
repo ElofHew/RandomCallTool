@@ -42,7 +42,7 @@ class ConfigManager:
             "smart_window": 3,             # 智能模式的记忆次数
 
             # ── 更新设置 ──
-            "update_source": "github",      # 版本更新源: github/gitee
+            "update_source": "gitee",      # 版本更新源: github/gitee
             "auto_check_update": True,     # 启动时自动检测更新
         }
 

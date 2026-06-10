@@ -6,7 +6,7 @@ import webbrowser
 import tkinter as tk
 from tkinter import ttk
 from core.logman import rctlog
-from core.info import github, gitee
+from core.info import github, gitee, official_website
 
 
 # ══════════════════════════════════════════════════════════
@@ -85,6 +85,7 @@ class AboutWindow:
         for url, label, color in [
             (github, "  GitHub  ", "#2b5b84"),
             (gitee, "  Gitee  ", "#c71d23"),
+            (official_website, "  官方网站  ", "#2d8a4e"),
         ]:
             btn = tk.Button(
                 btn_frame, text=label,

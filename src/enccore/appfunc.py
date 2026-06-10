@@ -1,4 +1,5 @@
 import os
+import webbrowser
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 from enccore.config import ConfigManager
@@ -6,7 +7,7 @@ from core.logman import enclog
 from enccore.encoder import ListEncoder
 from enccore.window import ConfigWindow
 from core.utils import open_file_or_dir
-from core.info import enc_output_path, enc_desktop_output_path, res_path
+from core.info import enc_output_path, enc_desktop_output_path, res_path, official_website
 from core.dialog import AboutWindow, HelpWindow, load_about_info
 
 
@@ -101,6 +102,7 @@ class MainApplication:
         help_menu = tk.Menu(menu_bar, tearoff=0)
         menu_bar.add_cascade(label="帮助", menu=help_menu)
         help_menu.add_command(label="使用说明", command=self.show_help)
+        help_menu.add_command(label="访问官网", command=self.open_website)
         help_menu.add_command(label="关于", command=self.show_about)
 
         self._update_recent_menu()
@@ -676,6 +678,11 @@ class MainApplication:
         ConfigWindow(self.root, self.config, self)
 
     # ── 帮助 / 关于 ───────────────────────────────────────
+
+    def open_website(self):
+        """在浏览器中打开官网"""
+        webbrowser.open(official_website)
+        enclog.info(f"已打开官网: {official_website}")
 
     def show_help(self):
         """显示使用说明（可翻页窗口，从文件加载）"""

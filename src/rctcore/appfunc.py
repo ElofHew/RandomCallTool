@@ -2,12 +2,13 @@
 应用功能模块 - 主界面选项卡、菜单栏及通用功能
 """
 import os
+import webbrowser
 from time import strftime
 import tkinter as tk
 from tkinter import ttk, messagebox
 from rctcore.more import run_process
 from core.dialog import load_about_info
-from core.info import res_path, work_path, rct_log_path, rct_appname, rct_version
+from core.info import res_path, work_path, rct_log_path, rct_appname, rct_version, official_website
 from core.logman import rctlog
 from rctcore.fileman import FileManager, SampleLibrary
 from rctcore.tabs import HomeTab, RandomCallTab
@@ -70,6 +71,7 @@ class MainApplication:
             ],
             "帮助": [
                 ("使用说明", ApplicationFunctions.show_help),
+                ("访问官网", ApplicationFunctions.open_website),
                 ("关于", lambda: ApplicationFunctions.show_about(self.root)),
             ],
             "日志": [
@@ -151,6 +153,12 @@ class ApplicationFunctions:
             messagebox.showinfo("成功", f"样本「{name}」已导入")
         except Exception as e:
             messagebox.showerror("导入失败", str(e))
+
+    @staticmethod
+    def open_website():
+        """在浏览器中打开官网"""
+        webbrowser.open(official_website)
+        rctlog.info(f"已打开官网: {official_website}")
 
     @staticmethod
     def show_help():

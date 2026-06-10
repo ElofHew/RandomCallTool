@@ -18,6 +18,8 @@ GITEE_META_URL = "https://raw.giteeusercontent.com/ElofHew/RandomCallTool/raw/ma
 # ── 各平台下载页面 ──
 GITHUB_RELEASE_URL = "https://github.com/ElofHew/RandomCallTool/releases/latest"
 GITEE_RELEASE_URL = "https://gitee.com/ElofHew/RandomCallTool/releases/latest"
+LANZOU_DOWNLOAD_URL = "https://lzofevan.lanzn.com/i6W4m3rho2mb?pwd=ek3y"
+OFFICIAL_WEBSITE_URL = "https://rct.danevan.top/#download"
 
 # ── 更新源名称映射 ──
 SOURCE_NAMES = {
@@ -30,9 +32,19 @@ SOURCE_META_URLS = {
     "gitee": GITEE_META_URL,
 }
 
+# ── 下载源映射 ──
+DOWNLOAD_SOURCE_NAMES = {
+    "github": "GitHub",
+    "gitee": "Gitee",
+    "lanzou": "蓝奏云",
+    "official": "官网",
+}
+
 SOURCE_DOWNLOAD_URLS = {
     "github": GITHUB_RELEASE_URL,
     "gitee": GITEE_RELEASE_URL,
+    "lanzou": LANZOU_DOWNLOAD_URL,
+    "official": OFFICIAL_WEBSITE_URL,
 }
 
 

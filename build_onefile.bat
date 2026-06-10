@@ -4,13 +4,13 @@ chcp 65001 >nul
 del /Q "dist"
 
 echo Starting compilation of rctool (single file)...
-pyinstaller --icon=./icon/rctool.ico -F -w .\src\rctool.py
+pyinstaller --icon=./src/res/icon/rctool.ico -F -w .\src\rctool.py
 
 echo Starting compilation of encode (single file)...
-pyinstaller --icon=./icon/encode.ico -F -w .\src\encode.py
+pyinstaller --icon=./src/res/icon/encode.ico -F -w .\src\encode.py
 
 echo Starting compilation of remove (single file)...
-pyinstaller --icon=./icon/remove.ico -F -w .\src\remove.py
+pyinstaller --icon=./src/res/icon/remove.ico -F -w .\src\remove.py
 
 echo Compilation completed, single file mode requires no folder content moving...
 

@@ -10,7 +10,8 @@ import os
 import tkinter as tk
 from tkinter import messagebox
 from core.logman import rctlog
-from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path
+from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path, rct_icon_path
+from core.utils import set_window_icon
 from rctcore.config import ConfigManager
 from rctcore.appfunc import MainApplication
 
@@ -23,6 +24,7 @@ class Main:
         self.root.minsize(560, 460)
         self.root.maxsize(1280, 1280)
         self.root.resizable(True, True)
+        set_window_icon(self.root, rct_icon_path)
         self.app = MainApplication(self.root)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         # 启动后延迟执行自动检测更新

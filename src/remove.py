@@ -178,6 +178,12 @@ def gui_main():
     root.title("Random Call Tool - 卸载")
     root.geometry("460x280+200+200")
     root.resizable(False, False)
+    try:
+        icon_path = os.path.join(PROGRAM_ROOT, "res", "icon", "remove.ico")
+        if os.path.isfile(icon_path):
+            root.iconbitmap(icon_path)
+    except Exception:
+        pass
 
     mode_var = tk.StringVar(value="keep-data")
 

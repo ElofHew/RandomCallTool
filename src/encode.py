@@ -13,8 +13,9 @@ from tkinter import messagebox
 from core.logman import enclog
 from core.info import (
     work_path, enc_version, enc_prog_data_path,
-    enc_output_path, enc_log_path,
+    enc_output_path, enc_log_path, enc_icon_path,
 )
+from core.utils import set_window_icon
 from enccore.config import ConfigManager
 from enccore.appfunc import MainApplication
 
@@ -26,7 +27,7 @@ class Main:
         self.root.title("随机抽人名单编码工具")
         self.root.minsize(500, 500)
         self.root.resizable(True, True)
-
+        set_window_icon(self.root, enc_icon_path)
         self.app = MainApplication(self.root)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 

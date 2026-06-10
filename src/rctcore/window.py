@@ -10,7 +10,8 @@ from core.info import rct_rcplist_path
 from rctcore.fileman import SampleLibrary
 from core.utils import open_file_or_dir
 from core.dialog import AboutWindow, HelpWindow, load_about_info
-from core.info import res_path
+from core.info import res_path, rct_icon_path
+from core.utils import set_window_icon
 
 
 class ConfigWindow:
@@ -27,7 +28,7 @@ class ConfigWindow:
         self.window.maxsize(800, 600)
         self.window.transient(parent)
         self.window.grab_set()
-
+        set_window_icon(self.window, rct_icon_path)
         self._create_widgets()
 
     def _make_tab(self, notebook, title):
@@ -339,6 +340,26 @@ class ConfigWindow:
         tk.Label(tab, text="中国大陆建议使用Gitee，其他地区建议使用GitHub",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
 
+        # ── 下载源选择 ──
+        ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=8)
+
+        f_dl = tk.Frame(tab)
+        f_dl.pack(fill="x", **pad, pady=4)
+        tk.Label(f_dl, text="下载源：", width=15, anchor="w").pack(side="left")
+        self.download_source_var = tk.StringVar(
+            value=self.config.get("download_source", "github"))
+        for val, label in [
+            ("github", "GitHub"),
+            ("gitee", "Gitee"),
+            ("lanzou", "蓝奏云"),
+            ("official", "官网"),
+        ]:
+            tk.Radiobutton(f_dl, text=label, variable=self.download_source_var,
+                           value=val).pack(side="left", padx=3)
+
+        tk.Label(tab, text="检测到新版本时，点击下载将打开此平台页面",
+                 fg="gray", font=("", 9)).pack(anchor="w", **pad)
+
         # 自动检测更新
         f2 = tk.Frame(tab)
         f2.pack(fill="x", **pad, pady=4)
@@ -378,7 +399,8 @@ class ConfigWindow:
 
     def _check_update_now(self):
         """立即检查更新（按钮回调，异步线程）"""
-        source = self.update_source_var.get()
+        update_source = self.update_source_var.get()
+        download_source = self.download_source_var.get()
         from rctcore.update import check_update_async, open_download_page
 
         def _safe_callback(fn):
@@ -410,7 +432,7 @@ class ConfigWindow:
                     f"是否前往下载页面？"
                 )
                 if reply:
-                    open_download_page(source)
+                    open_download_page(download_source)
             else:
                 messagebox.showinfo(
                     "已是最新版本",
@@ -427,7 +449,7 @@ class ConfigWindow:
         # 显示等待光标，异步启动
         self.window.config(cursor="watch")
         check_update_async(
-            self.window, source=source, timeout=10,
+            self.window, source=update_source, timeout=10,
             on_success=_safe_callback(_on_success),
             on_error=_safe_callback(_on_error),
         )
@@ -483,6 +505,7 @@ class ConfigWindow:
                 "smart_window": int(self.smart_window_var.get()),
                 "rct_default_sample": self.sample_combo.get(),
                 "update_source": self.update_source_var.get(),
+                "download_source": self.download_source_var.get(),
                 "auto_check_update": self.auto_check_var.get(),
             }
             # 防止保存占位文本

@@ -4,13 +4,13 @@ chcp 65001 >nul
 del /Q "dist"
 
 echo Starting compilation of rctool...
-pyinstaller --icon=./icon/rctool.ico -w .\src\rctool.py
+pyinstaller --icon=./src/res/icon/rctool.ico -w .\src\rctool.py
 
 echo Starting compilation of encode...
-pyinstaller --icon=./icon/encode.ico -w .\src\encode.py
+pyinstaller --icon=./src/res/icon/encode.ico -w .\src\encode.py
 
 echo Starting compilation of remove...
-pyinstaller --icon=./icon/remove.ico -w .\src\remove.py
+pyinstaller --icon=./src/res/icon/remove.ico -w .\src\remove.py
 
 echo Compilation completed, organizing files...
 

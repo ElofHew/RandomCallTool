@@ -2,7 +2,9 @@
 
 # 随机抽取工具
 
-![RandomCallTool](./icon/rctool.ico)
+![RandomCallTool](./icon/rctool.png)
+
+[官方网站](https://rct.danevan.top/) | [GitHub](https://github.com/danevan/RandomCallTool) | [Gitee](https://gitee.com/danevan/RandomCallTool)
 
 </div>
 
@@ -17,7 +19,7 @@
 >[!NOTE]
 > 该项目优先支持 Windows 操作系统环境。对于 Linux 和 macOS 用户，可以使用，但可能会遇到一些未查明的问题。
 
-## 主程序 v2.3
+## 主程序
 
 ### 主要功能
 
@@ -35,7 +37,7 @@
 9. **详细日志记录**：按日期滚动记录程序运行状态，支持查看和清理日志文件。
 10. **快捷键操作**：丰富的键盘快捷键支持，提升操作效率。
 
-### 快捷键支持
+### 快捷键
 
 | 快捷键 | 功能 |
 |:---|:---|
@@ -96,7 +98,7 @@
 3. 结果文件默认保存在 `data/result` 目录或桌面，具体位置可在配置中设置。
 4. 程序支持三大平台（Windows / Linux / macOS），但仅提供 Windows 编译版本。
 
-## 随机抽人名单编码工具 v1.2
+## 名单编码工具
 
 ### 主要功能
 
@@ -171,7 +173,7 @@ encode.exe --batch ./input_dir --output ./output_dir --method hex
 4. 编码方式可在配置中切换，默认为 Base64。
 5. 命令行批量模式适合大批量名单处理场景。
 
-## 卸载工具 v1.0
+## 卸载工具
 
 项目附带独立的卸载工具 `remove.exe`，提供两种卸载模式：
 
@@ -180,7 +182,7 @@ encode.exe --batch ./input_dir --output ./output_dir --method hex
 
 支持 Windows / Linux / macOS 三大平台，但对 Windows 支持最佳。
 
-## 截图
+## 截图（来自2.3版本）
 
 <div align="center">
 

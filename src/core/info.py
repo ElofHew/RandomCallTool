@@ -22,6 +22,8 @@ desktop_path = os.path.join(user_home_path, "Desktop")
 document_path = os.path.join(user_home_path, "Documents")
 github = "https://github.com/ElofHew/RandomCallTool"
 gitee = "https://gitee.com/ElofHew/RandomCallTool"
+official_website = "https://rct.danevan.top"
+lanzou_download = "https://lzofevan.lanzn.com/i6W4m3rho2mb?pwd=ek3y"
 
 # ── 主程序 RandomCallTool ──
 rct_appname = "RandomCallTool"
@@ -49,3 +51,8 @@ enc_log_path = os.path.join(enc_prog_data_path, "log")
 enc_output_path = os.path.join(enc_prog_data_path, "encoded_files")
 enc_config_path = os.path.join(enc_prog_data_path, "config.json")
 enc_desktop_output_path = os.path.join(desktop_path, "编码名单")
+
+# ── 程序图标路径 ──
+rct_icon_path = os.path.join(res_path, "icon", "rctool.ico")
+enc_icon_path = os.path.join(res_path, "icon", "encode.ico")
+rem_icon_path = os.path.join(res_path, "icon", "remove.ico")

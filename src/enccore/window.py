@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from core.logman import enclog
+from core.info import enc_icon_path
+from core.utils import set_window_icon
 
 
 class ConfigWindow:
@@ -17,7 +19,7 @@ class ConfigWindow:
         # 模态
         self.window.transient(parent)
         self.window.grab_set()
-
+        set_window_icon(self.window, enc_icon_path)
         self._create_widgets()
 
     # ── 构建界面 ──────────────────────────────────────────────
