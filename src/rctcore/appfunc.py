@@ -191,6 +191,7 @@ class ApplicationFunctions:
 
         config = ConfigManager()
         source = config.get("update_source", "github")
+        dl_source = config.get("download_source", "github")
 
         # 弹窗让用户选择更新源
         choice = messagebox.askquestion(
@@ -224,7 +225,8 @@ class ApplicationFunctions:
                     f"是否前往下载页面？"
                 )
                 if reply:
-                    open_download_page(source)
+                    open_download_page(dl_source,
+                                       lanzou_url=result.get("lanzou_download_url", ""))
             else:
                 messagebox.showinfo(
                     "已是最新版本",

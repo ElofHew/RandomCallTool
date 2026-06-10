@@ -23,7 +23,6 @@ document_path = os.path.join(user_home_path, "Documents")
 github = "https://github.com/ElofHew/RandomCallTool"
 gitee = "https://gitee.com/ElofHew/RandomCallTool"
 official_website = "https://rct.danevan.top"
-lanzou_download = "https://lzofevan.lanzn.com/i6W4m3rho2mb?pwd=ek3y"
 
 # ── 主程序 RandomCallTool ──
 rct_appname = "RandomCallTool"

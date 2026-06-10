@@ -18,7 +18,6 @@ GITEE_META_URL = "https://raw.giteeusercontent.com/ElofHew/RandomCallTool/raw/ma
 # ── 各平台下载页面 ──
 GITHUB_RELEASE_URL = "https://github.com/ElofHew/RandomCallTool/releases/latest"
 GITEE_RELEASE_URL = "https://gitee.com/ElofHew/RandomCallTool/releases/latest"
-LANZOU_DOWNLOAD_URL = "https://lzofevan.lanzn.com/i6W4m3rho2mb?pwd=ek3y"
 OFFICIAL_WEBSITE_URL = "https://rct.danevan.top/#download"
 
 # ── 更新源名称映射 ──
@@ -43,7 +42,7 @@ DOWNLOAD_SOURCE_NAMES = {
 SOURCE_DOWNLOAD_URLS = {
     "github": GITHUB_RELEASE_URL,
     "gitee": GITEE_RELEASE_URL,
-    "lanzou": LANZOU_DOWNLOAD_URL,
+    "lanzou": "",  # 从远程 metadata.json 动态获取
     "official": OFFICIAL_WEBSITE_URL,
 }
 
@@ -140,6 +139,10 @@ def check_update(source="github", timeout=10):
 
         cmp = compare_version(metadata)
         result.update(cmp)
+        # 从 metadata 中提取蓝奏云链接（动态，不硬编码）
+        lanzou_info = metadata.get("lanzou", {})
+        result["lanzou_download_url"] = lanzou_info.get("download", "")
+        result["lanzou_password"] = lanzou_info.get("password", "")
         result["success"] = True
 
     except (URLError, HTTPError) as e:
@@ -158,14 +161,18 @@ def check_update(source="github", timeout=10):
     return result
 
 
-def open_download_page(source="github"):
+def open_download_page(source="github", lanzou_url=None):
     """在浏览器中打开对应平台的下载页面
 
     Args:
-        source: "github" 或 "gitee"
+        source: "github" / "gitee" / "lanzou" / "official"
+        lanzou_url: 从远程 metadata 获取的蓝奏云链接（动态，不硬编码）
     """
     try:
-        url = SOURCE_DOWNLOAD_URLS.get(source, GITHUB_RELEASE_URL)
+        if source == "lanzou" and lanzou_url:
+            url = lanzou_url
+        else:
+            url = SOURCE_DOWNLOAD_URLS.get(source, GITHUB_RELEASE_URL)
         webbrowser.open(url)
         rctlog.info(f"[检测更新] 已打开下载页面: {url}")
     except Exception as e:

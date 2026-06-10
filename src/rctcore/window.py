@@ -432,7 +432,8 @@ class ConfigWindow:
                     f"是否前往下载页面？"
                 )
                 if reply:
-                    open_download_page(download_source)
+                    open_download_page(download_source,
+                                       lanzou_url=result.get("lanzou_download_url", ""))
             else:
                 messagebox.showinfo(
                     "已是最新版本",
