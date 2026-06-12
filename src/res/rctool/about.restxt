@@ -1,6 +1,6 @@
 title=随机抽取工具
 description=一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。
-version=2.4
-date=2026-06-10
+version=2.4.1
+date=2026-06-12
 author=Dan_Evan
 extra_line1=编码工具版本：v1.3（2026-06-10）

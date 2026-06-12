@@ -1,7 +1,0 @@
-[tool.poetry]
-name = "RandomCallTool"
-version = "2.4"
-authors = ["ElofHew 2352235176@qq.com"]
-
-[tool.poetry.dependencies]
-python = "^3.6"
