@@ -200,7 +200,7 @@ class RandomCallTab(BaseTab):
         mode_frame = tk.Frame(self.frame)
         mode_frame.pack(pady=(5, 0))
         tk.Label(mode_frame, text="抽取模式：", font=("", 10)).pack(side="left", padx=5)
-        for text, val in [("随机抽人", "person"), ("随机抽组", "group")]:
+        for text, val in [("抽人", "person"), ("抽组", "group")]:
             tk.Radiobutton(
                 mode_frame, text=text, variable=self.mode_var, value=val,
                 command=self._switch_mode,
@@ -237,7 +237,7 @@ class RandomCallTab(BaseTab):
         self.sample_count_label.pack(pady=(0, 5))
 
         # ----- 抽组控件（LabelFrame，固定最小高度）-----
-        self.group_frame = tk.LabelFrame(self.control_frame, text="组设置", height=130)
+        self.group_frame = tk.LabelFrame(self.control_frame, text="抽组设置", height=130)
         self.group_frame.pack_propagate(False)
 
         order_row = tk.Frame(self.group_frame)
@@ -298,8 +298,8 @@ class RandomCallTab(BaseTab):
         inner_btns.pack(fill="x", padx=8, pady=(2, 6))
         actions = [
             ("抽取", self.draw),
-            ("保存结果", self.save_current_result),
-            ("清空历史", self.clear_all_history),
+            ("保存当前结果", self.save_current_result),
+            ("清空历史记录", self.clear_all_history),
             ("重置抽样历史", self.reset_sampler_history),
         ]
         for i, (text, cmd) in enumerate(actions):
@@ -313,11 +313,11 @@ class RandomCallTab(BaseTab):
 
     def _create_history_area(self, parent):
         """创建右侧历史记录面板"""
-        hist_frame = tk.LabelFrame(parent, text="历史记录", width=280)
+        hist_frame = tk.LabelFrame(parent, text="历史记录", width=160)
         hist_frame.pack(side="right", fill="y", padx=(10, 0))
         hist_frame.pack_propagate(False)
 
-        canvas = tk.Canvas(hist_frame, highlightthickness=0, width=260)
+        canvas = tk.Canvas(hist_frame, highlightthickness=0, width=140)
         vbar = tk.Scrollbar(hist_frame, orient="vertical", command=canvas.yview)
         self.history_inner = tk.Frame(canvas)
 
@@ -494,8 +494,8 @@ class RandomCallTab(BaseTab):
 
         btn_frame = tk.Frame(win)
         btn_frame.pack(fill="x", padx=10, pady=(0, 10))
-        tk.Button(btn_frame, text="保存权重", command=save_weights, width=12).pack(side="left", padx=3)
-        tk.Button(btn_frame, text="全部重置为 1.0",
+        tk.Button(btn_frame, text="应用", command=save_weights, width=12).pack(side="left", padx=3)
+        tk.Button(btn_frame, text="重置",
                   command=lambda: [var.set("1.0") for var in weight_vars.values()],
                   width=15).pack(side="left", padx=3)
         tk.Button(btn_frame, text="取消",
@@ -901,6 +901,8 @@ class RandomCallTab(BaseTab):
         if not entry:
             return
         msg = self._prompt_save_message()
+        if msg is None:
+            return  # 用户取消
         class_name = "RandomPerson" if entry["mode"] == "person" else "RandomGroup"
         prefix = "随机抽人" if entry["mode"] == "person" else "随机抽组"
         SaveResult().save_result(
@@ -914,6 +916,8 @@ class RandomCallTab(BaseTab):
             messagebox.showinfo("提示", "暂无历史记录")
             return
         msg = self._prompt_save_message()
+        if msg is None:
+            return  # 用户取消
         saved = 0
         for entry in self.history:
             class_name = "RandomPerson" if entry["mode"] == "person" else "RandomGroup"
@@ -927,13 +931,17 @@ class RandomCallTab(BaseTab):
         messagebox.showinfo("批量保存", f"已保存 {saved}/{len(self.history)} 条记录")
 
     def _prompt_save_message(self):
-        """弹窗输入保存提示信息，留空则无提示"""
+        """弹窗输入保存提示信息
+
+        Returns:
+            str: 用户输入的提示信息（可能为空字符串）
+            None: 用户点了取消或关闭窗口
+        """
         from tkinter import simpledialog
-        result = simpledialog.askstring(
+        return simpledialog.askstring(
             "保存提示", "输入保存提示信息（留空则无提示）:",
             parent=self.frame.winfo_toplevel(),
         )
-        return result if result else ""
 
     # ══════════════════════════════════════════════════════════
     #  保存当前结果
@@ -946,6 +954,8 @@ class RandomCallTab(BaseTab):
             return
         entry = self.history[0]
         msg = self._prompt_save_message()
+        if msg is None:
+            return  # 用户取消
         class_name = "RandomPerson" if self.mode_var.get() == "person" else "RandomGroup"
         prefix = "随机抽人" if self.mode_var.get() == "person" else "随机抽组"
         SaveResult().save_result(

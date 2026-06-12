@@ -124,7 +124,7 @@ class ConfigWindow:
             tk.Radiobutton(f1, text=name, variable=self.sampler_mode_var,
                            value=i).pack(side="left", padx=1)
 
-        tk.Label(tab, text="基本: 纯随机 | 智能: 避免连续抽中 | 加权: 用户设置权重",
+        tk.Label(tab, text="基本: 纯随机 | 智能: 避免连续抽中 | 加权: 可自定义权重",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
 
         # 智能窗口大小
@@ -359,6 +359,9 @@ class ConfigWindow:
 
         tk.Label(tab, text="检测到新版本时，点击下载将打开此平台页面",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
+        
+        tk.Label(tab, text="建议选择蓝奏云，官网是三个源的整合页面",
+                 fg="gray", font=("", 9)).pack(anchor="w", **pad)
 
         # 自动检测更新
         f2 = tk.Frame(tab)
@@ -476,7 +479,7 @@ class ConfigWindow:
         tk.Label(mode_row, text="默认抽取方式：", width=15, anchor="w").pack(side="left")
         self.default_mode_var = tk.StringVar(
             value=self.config.get("rct_default_mode", "person"))
-        for val, label in [("person", "随机抽人"), ("group", "随机抽组")]:
+        for val, label in [("person", "抽人"), ("group", "抽组")]:
             tk.Radiobutton(mode_row, text=label, variable=self.default_mode_var,
                            value=val).pack(side="left", padx=3)
 
