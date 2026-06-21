@@ -1,7 +1,7 @@
 title=随机抽人名单编码工具
 description=一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。
-version=1.3
-date=2026-06-10
+version=1.4
+date=2026-06-21
 author=Dan_Evan
 extra_line1=支持编码方式：Base64 / Hex
 extra_line2=支持批量编码/解码 · 自动识别文件编码

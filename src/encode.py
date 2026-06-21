@@ -1,8 +1,8 @@
 """
 @Name: 随机抽人名单编码工具
 @Author: Dan_Evan
-@Date: 2026-06-10
-@Version: 1.3
+@Date: 2026-06-21
+@Version: 1.4
 @Description: 一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。
 """
 

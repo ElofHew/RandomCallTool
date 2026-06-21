@@ -26,10 +26,10 @@ official_website = "https://rct.danevan.top"
 
 # ── 主程序 RandomCallTool ──
 rct_appname = "RandomCallTool"
-rct_version = "2.4.1"
-rct_vercode = 2410
+rct_version = "2.5"
+rct_vercode = 250000
 rct_author = "Dan_Evan"
-rct_date = "2026-06-12"
+rct_date = "2026-06-21"
 rct_description = "一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。"
 rct_prog_data_path = app_prog_data_path
 rct_log_path = os.path.join(rct_prog_data_path, "log")
@@ -40,10 +40,10 @@ rct_rcplist_path = os.path.join(rct_prog_data_path, "rcplist")
 
 # ── 编码工具 EncodeTool ──
 enc_appname = "EncodeTool"
-enc_version = "1.3"
-enc_vercode = 1300
+enc_version = "1.4"
+enc_vercode = 1400
 enc_author = "Dan_Evan"
-enc_date = "2026-06-10"
+enc_date = "2026-06-21"
 enc_description = "一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。"
 enc_prog_data_path = os.path.join(app_prog_data_path, "EncodeTool")
 enc_log_path = os.path.join(enc_prog_data_path, "log")
