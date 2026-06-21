@@ -316,11 +316,14 @@ class SmartSampler:
             # 连续循环：先取剩余的，再重载补足
             result = list(remaining)
             need = k - len(result)
-            new_pool = population.copy()
-            shuffle(new_pool)
-            result.extend(new_pool[:need])
-            self._remaining_pool = new_pool[need:]
-            return result
+            while need > 0:
+                new_pool = population.copy()
+                shuffle(new_pool)
+                take = min(need, len(new_pool))
+                result.extend(new_pool[:take])
+                need -= take
+            self._remaining_pool = new_pool[take:]
+            return result[:k]
 
         elif method == self.NO_REPLACE_METHOD_DIVISIBLE:
             # 整除式重载：直接重载进入下一次循环
@@ -350,12 +353,19 @@ class SmartSampler:
             current = sample(current, half)
         if len(current) >= k:
             return sample(current, k)
-        return current
+        # 递进后不足 k 个，从原总体中补充
+        remaining = [x for x in population if x not in current]
+        shuffle(remaining)
+        need = k - len(current)
+        return current + sample(remaining, min(need, len(remaining)))
 
     def _weighted_select(self, population, k, weights):
-        """带权重的无放回抽样（通用实现）"""
+        """带权重的无放回抽样（通用实现）
+        使用 (索引, 项) 元组避免重复项的 index() 查找错误。
+        """
         result = []
-        temp_pop = population.copy()
+        # 用 [(idx, item), ...] 跟踪索引，避免重复项时 index() 返回错误位置
+        temp_pop = list(enumerate(population))
         temp_w = weights.copy()
 
         for _ in range(k):
@@ -363,15 +373,15 @@ class SmartSampler:
                 break
             total = sum(temp_w)
             if total <= 0:
-                selected = sample(temp_pop, 1)[0]
+                sel_idx = sample(range(len(temp_pop)), 1)[0]
             else:
                 norm = [w / total for w in temp_w]
-                selected = choices(temp_pop, weights=norm, k=1)[0]
+                sel_idx = choices(range(len(temp_pop)), weights=norm, k=1)[0]
 
-            result.append(selected)
-            idx = temp_pop.index(selected)
-            temp_pop.pop(idx)
-            temp_w.pop(idx)
+            idx, item = temp_pop[sel_idx]
+            result.append(item)
+            temp_pop.pop(sel_idx)
+            temp_w.pop(sel_idx)
 
         return result
 
