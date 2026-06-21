@@ -38,8 +38,29 @@ class ConfigManager:
             "rct_default_mode": "group",   # 默认抽取方式: person=抽人, group=抽组
 
             # ── 抽样设置 ──
-            "sampler_mode": 1,             # 抽样模式: 0=基本, 1=智能, 2=加权
+            "sampler_mode": 1,             # 抽样模式: 0=基本, 1=智能, 2=高级
             "smart_window": 3,             # 智能模式的记忆次数
+            "smart_use_fixed_weights": False,  # 智能模式是否使用固定权重
+
+            # ── 高级抽取设置 ──
+            "adv_with_replacement": True,        # 放回式抽取
+            "adv_no_replace_method": 0,          # 不放回调整方法: 0=连续循环, 1=整除式, 2=比率式
+            "adv_no_replace_ratio": 0.5,         # 比率式调整阈值 (0.10~0.50)
+            "adv_shuffle_before": False,         # 抽取前打乱
+            "adv_shuffle_count": 1,              # 打乱次数 (1~10)
+            "adv_shuffle_frequency": "each",     # 打乱频率: each=每次, once=仅启动时
+            "adv_pre_draw_balance": False,       # 预抽取平衡
+            "adv_pre_draw_count": 1,             # 预抽取次数 (1~10)
+            "adv_pre_draw_frequency": "each",    # 预抽取频率: each=每次, once=仅启动时
+            "adv_multi_draw_best": False,        # 多次取最值
+            "adv_multi_draw_count": 3,           # 多次抽取次数 (2+)
+            "adv_random_weights": False,         # 随机定权重
+            "adv_random_weight_min": 0.10,       # 随机权重最小值
+            "adv_random_weight_max": 2.00,       # 随机权重最大值
+            "adv_progressive_draw": False,       # 递进式抽取
+            "adv_smart_reduce_weight": True,     # 智能降权/配权
+            "adv_smart_memory_count": 3,         # 高级模式记忆次数
+            "adv_custom_weights": False,         # 高级模式自定义权重
 
             # ── 更新设置 ──
             "update_source": "gitee",      # 版本更新源: github/gitee

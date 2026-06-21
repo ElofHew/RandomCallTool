@@ -8,7 +8,7 @@ from enccore.encoder import ListEncoder
 from enccore.window import ConfigWindow
 from core.utils import open_file_or_dir
 from core.info import enc_output_path, enc_desktop_output_path, res_path, official_website
-from core.dialog import AboutWindow, HelpWindow, load_about_info
+from core.dialog import AboutWindow, load_about_info
 
 
 class MainApplication:
@@ -685,9 +685,9 @@ class MainApplication:
         enclog.info(f"已打开官网: {official_website}")
 
     def show_help(self):
-        """显示使用说明（可翻页窗口，从文件加载）"""
-        tips_file = os.path.join(res_path, "encode", "tips.restxt")
-        HelpWindow(self.root, tips_file, title="使用说明")
+        """打开在线帮助文档"""
+        webbrowser.open("https://rct.danevan.top/docs/")
+        enclog.info("打开在线帮助文档")
 
     def show_about(self):
         """显示关于信息（从文件加载）"""

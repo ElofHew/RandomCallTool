@@ -93,7 +93,6 @@ def main():
         rctlog.info(f"工作目录: {work_path}")
         rctlog.info("=" * 50)
         Main()
-        rctlog.info("程序正常退出")
         rctlog.info("=" * 50)
     except Exception as e:
         rctlog.error(f"程序启动失败: {e}", exc_info=True)
