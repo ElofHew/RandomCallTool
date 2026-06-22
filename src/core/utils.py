@@ -4,7 +4,6 @@
 import os
 import platform
 import subprocess
-import tkinter as tk
 
 
 def open_file_or_dir(path):

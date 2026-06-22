@@ -1,9 +1,6 @@
 """
-@Name: 随机抽人名单编码工具
-@Author: Dan_Evan
-@Date: 2026-06-21
-@Version: 1.4
-@Description: 一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。
+EncodeTool for RandomCallTool - 随机抽取工具配套名单编码工具
+编码工具入口 - encode.py
 """
 
 import os
@@ -116,7 +113,6 @@ def main():
         file_to_load = os.path.abspath(args.file) if args.file else None
         Main(file_to_load=file_to_load)
 
-        enclog.info("程序正常退出")
         enclog.info("=" * 50)
 
     except Exception as e:

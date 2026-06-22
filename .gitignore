@@ -5,8 +5,9 @@
 data/
 src/data/
 
-# PyCharm IDE Files
+# PyCharm IDE and Visual Studio Code Files
 .idea/
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

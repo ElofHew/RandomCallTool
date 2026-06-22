@@ -9,7 +9,7 @@ from tkinter import messagebox
 from core.logman import rctlog
 from core.utils import open_file_or_dir
 from rctcore.config import ConfigManager
-from core.info import rct_prog_data_path, rct_result_path, rct_desktop_result_path, rct_log_path, rct_appname, rct_rcplist_path, github, gitee, res_path
+from core.info import rct_result_path, rct_desktop_result_path, rct_log_path, rct_appname, rct_rcplist_path, github, gitee, res_path, official_website, rct_version
 
 class FileManager:
     """文件管理器"""
@@ -92,7 +92,7 @@ class SaveResult:
             tips_section = ""
 
         # 从外置模板文件加载
-        template_path = os.path.join(res_path, "rctool", "htmltp.tpt")
+        template_path = os.path.join(res_path, "htmltp.tpt")
         if os.path.isfile(template_path):
             with open(template_path, "r", encoding="utf-8") as f:
                 raw = f.read()
@@ -105,6 +105,8 @@ class SaveResult:
             result_text=result_text,
             result_count=len(result),
             tips_section=tips_section,
+            version=rct_version,
+            official=official_website,
             github=github,
             gitee=gitee,
         )

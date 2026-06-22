@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from rctcore.more import run_process
 from core.dialog import load_about_info
-from core.info import res_path, work_path, rct_log_path, rct_appname, rct_version, official_website
+from core.info import work_path, rct_log_path, rct_appname, rct_version, official_website, rct_icon_path
 from core.logman import rctlog
 from rctcore.fileman import FileManager, SampleLibrary
 from rctcore.window import HomeTab, RandomCallTab, ConfigWindow, AboutWindow
@@ -244,10 +244,9 @@ class ApplicationFunctions:
 
     @staticmethod
     def show_about(root):
-        """显示关于信息（从文件加载）"""
-        about_file = os.path.join(res_path, "rctool", "about.restxt")
-        info = load_about_info(about_file)
-        AboutWindow(root, info)
+        """显示关于信息"""
+        info = load_about_info("rct")
+        AboutWindow(root, info, rct_icon_path)
     
     @staticmethod
     def clear_all_history(call_tab):

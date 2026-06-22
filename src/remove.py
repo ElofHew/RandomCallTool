@@ -1,7 +1,6 @@
 """
-随机抽取工具 - 卸载工具
-提供保留数据/重置/完全卸载三种模式，支持 Windows / Linux / macOS
-当前版本: 1.1
+RemoveTool for RandomCallTool - 随机抽取工具配套卸载工具
+卸载工具入口 - remove.py
 """
 import os
 import sys

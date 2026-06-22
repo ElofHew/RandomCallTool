@@ -7,7 +7,7 @@ from core.logman import enclog
 from enccore.encoder import ListEncoder
 from enccore.window import ConfigWindow
 from core.utils import open_file_or_dir
-from core.info import enc_output_path, enc_desktop_output_path, res_path, official_website
+from core.info import enc_output_path, enc_desktop_output_path, res_path, official_website, enc_icon_path
 from core.dialog import AboutWindow, load_about_info
 
 
@@ -690,10 +690,9 @@ class MainApplication:
         enclog.info("打开在线帮助文档")
 
     def show_about(self):
-        """显示关于信息（从文件加载）"""
-        about_file = os.path.join(res_path, "encode", "about.restxt")
-        info = load_about_info(about_file)
-        AboutWindow(self.root, info)
+        """显示关于信息"""
+        info = load_about_info("enc")
+        AboutWindow(self.root, info, enc_icon_path)
 
     # ── 状态栏 ────────────────────────────────────────────
 

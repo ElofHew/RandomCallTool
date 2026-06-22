@@ -4,9 +4,8 @@
 import os
 import webbrowser
 import tkinter as tk
-from tkinter import ttk
 from core.logman import rctlog
-from core.info import github, gitee, official_website
+from core.info import github, gitee, official_website, res_path
 
 
 # ══════════════════════════════════════════════════════════
@@ -16,7 +15,8 @@ from core.info import github, gitee, official_website
 class AboutWindow:
     """美观的关于窗口（通用版，信息从参数字典传入）"""
 
-    def __init__(self, parent, info):
+    def __init__(self, parent, info, icon_path=None):
+        from core.utils import set_window_icon
         """
         info: dict 包含以下键
             - title: 应用名称
@@ -32,6 +32,7 @@ class AboutWindow:
         self.win.minsize(420, 340)
         self.win.resizable(False, False)
         self.win.transient(parent)
+        set_window_icon(self.win, icon_path)
 
         main = tk.Frame(self.win, bg="#f0f4ff")
         main.pack(fill="both", expand=True)
@@ -150,25 +151,47 @@ def _lighten(color):
         return color
 
 
-def load_about_info(filepath):
-    """从 about.restxt 文件加载关于信息，返回 dict"""
-    info = {}
-    if not os.path.isfile(filepath):
-        return info
-    extra_lines = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                key, _, value = line.partition("=")
-                key = key.strip()
-                value = value.strip()
-                if key.startswith("extra_line"):
-                    extra_lines.append(value)
-                else:
-                    info[key] = value
-    if extra_lines:
-        info["extra_lines"] = extra_lines
+def load_about_info(app_key):
+    """从 about.resd（JSON）+ info.py 加载关于信息
+
+    Args:
+        app_key: "rct" 或 "enc"，对应约应用标识
+
+    Returns:
+        dict: {
+            "title", "description", "version", "date", "author",
+            "extra_lines": []
+        }
+    """
+    import json
+    from core.info import (
+        rct_version, rct_date, rct_author, rct_appname,
+        enc_version, enc_date, enc_author, enc_appname,
+    )
+
+    # 从 JSON 获取标题和描述
+    info = {"title": "", "description": "", "extra_lines": []}
+    about_file = os.path.join(res_path, "about.resd")
+    if os.path.isfile(about_file):
+        with open(about_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        entry = data.get(app_key, {})
+        info.update(entry)
+
+    # 版本信息从 info.py 获取
+    if app_key == "rct":
+        info.setdefault("version", rct_version)
+        info.setdefault("date", rct_date)
+        info.setdefault("author", rct_author)
+        info.setdefault("title", rct_appname)
+        info.setdefault("extra_lines",
+                        [f"编码工具版本：v{enc_version}（{enc_date}）"])
+    elif app_key == "enc":
+        info.setdefault("version", enc_version)
+        info.setdefault("date", enc_date)
+        info.setdefault("author", enc_author)
+        info.setdefault("title", enc_appname)
+        info.setdefault("extra_lines",
+                        [f"抽取工具版本：v{rct_version}（{rct_date}）"])
+
     return info

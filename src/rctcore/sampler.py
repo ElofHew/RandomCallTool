@@ -3,7 +3,6 @@
 """
 from random import sample, shuffle, choices, random, uniform
 from collections import defaultdict, Counter
-from core.logman import rctlog
 
 
 class SmartSampler:

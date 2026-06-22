@@ -13,7 +13,7 @@ from rctcore.fileman import SampleLibrary, SaveResult, base64decode
 from rctcore.sampler import SmartSampler
 from core.utils import open_file_or_dir
 from core.dialog import AboutWindow, load_about_info
-from core.info import res_path, rct_icon_path
+from core.info import rct_icon_path
 from core.utils import set_window_icon
 
 
@@ -604,14 +604,13 @@ class ConfigWindow:
 
 def _get_rct_about_info():
     """读取 rctool 的关于信息"""
-    about_file = os.path.join(res_path, "rctool", "about.restxt")
-    return load_about_info(about_file)
+    return load_about_info("rct")
 
 
 def _get_rct_about_window(parent):
     """打开 rctool 的关于窗口"""
     info = _get_rct_about_info()
-    return AboutWindow(parent, info)
+    return AboutWindow(parent, info, rct_icon_path)
 
 # ========================================
 #  选项卡界面类 (原 tabs.py)
@@ -753,11 +752,10 @@ class HomeTab(BaseTab):
         ConfigWindow(self.frame)
 
     def show_about(self):
-        """显示关于信息（从文件加载）"""
+        """显示关于信息"""
         rctlog.info("打开关于窗口")
-        about_file = os.path.join(res_path, "rctool", "about.restxt")
-        info = load_about_info(about_file)
-        AboutWindow(self.frame.winfo_toplevel(), info)
+        info = load_about_info("rct")
+        AboutWindow(self.frame.winfo_toplevel(), info, rct_icon_path)
 
     def quit_program(self):
         """退出程序"""
@@ -919,9 +917,18 @@ class RandomCallTab(BaseTab):
         self.sampler_mode_combo.set(SmartSampler.MODE_NAMES[self.sampler_mode_var.get()])
         self.sampler_mode_combo.bind("<<ComboboxSelected>>", self._on_sampler_mode_change)
 
+        # 根据当前模式初始化按钮文字/状态
+        init_mode = self.sampler_mode_var.get()
+        if init_mode == SmartSampler.MODE_BASIC:
+            btn_text, btn_state = "权重", "disabled"
+        elif init_mode == SmartSampler.MODE_SMART:
+            btn_text, btn_state = "权重", "normal"
+        else:
+            btn_text, btn_state = "高级", "normal"
+
         self.weight_btn = tk.Button(
-            inner_top, text="权重", command=self._open_weight_config,
-            state="normal", width=5,
+            inner_top, text=btn_text, command=self._open_weight_config,
+            state=btn_state, width=5,
         )
         self.weight_btn.pack(side="left")
 
@@ -1672,7 +1679,7 @@ class RandomCallTab(BaseTab):
             messagebox.showinfo("成功", "抽样历史记录已重置")
 
 # ========================================
-#  高级抽取配置窗口 (原 advanced.py)
+#  高级抽取配置窗口
 # ========================================
 
 class AdvancedConfigWindow:
@@ -1688,8 +1695,8 @@ class AdvancedConfigWindow:
 
         self.win = tk.Toplevel(parent)
         self.win.title("高级抽取配置")
-        self.win.geometry("480x550+80+80")
-        self.win.minsize(480, 550)
+        self.win.geometry("450x550+80+80")
+        self.win.minsize(450, 550)
         self.win.maxsize(550, 650)
         self.win.resizable(True, True)
         self.win.transient(parent)
