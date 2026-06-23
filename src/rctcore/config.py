@@ -50,7 +50,7 @@ class ConfigManager:
             "adv_shuffle_count": 1,              # 打乱次数 (1~10)
             "adv_shuffle_frequency": "each",     # 打乱频率: each=每次, once=仅启动时
             "adv_pre_draw_balance": False,       # 预抽取平衡
-            "adv_pre_draw_count": 1,             # 预抽取次数 (1~10)
+            "adv_pre_draw_count": 3,             # 预抽取次数 (1~10)
             "adv_pre_draw_frequency": "each",    # 预抽取频率: each=每次, once=仅启动时
             "adv_multi_draw_best": False,        # 多次取最值
             "adv_multi_draw_count": 3,           # 多次抽取次数 (2+)
@@ -59,13 +59,13 @@ class ConfigManager:
             "adv_random_weight_max": 2.00,       # 随机权重最大值
             "adv_progressive_draw": False,       # 递进式抽取
             "adv_smart_reduce_weight": True,     # 智能降权/配权
-            "adv_smart_memory_count": 3,         # 高级模式记忆次数
+            "adv_smart_memory_count": 5,         # 高级模式记忆次数
             "adv_custom_weights": False,         # 高级模式自定义权重
 
             # ── 更新设置 ──
             "update_source": "gitee",      # 版本更新源: github/gitee
             "auto_check_update": True,     # 启动时自动检测更新
-            "download_source": "lanzou"    # 下载源: github/gitee/lanzou/official"
+            "download_source": "official"    # 下载源: github/gitee/lanzou/official"
         }
 
         if os.path.exists(rct_config_path):

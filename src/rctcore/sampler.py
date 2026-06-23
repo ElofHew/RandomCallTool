@@ -80,7 +80,7 @@ class SmartSampler:
 
             # 加权抽取
             "smart_reduce_weight": True,     # 智能降权/配权
-            "smart_memory_count": 3,         # 记忆次数
+            "smart_memory_count": 5,         # 记忆次数
             "custom_weights": False,         # 自定义权重
         }
 
