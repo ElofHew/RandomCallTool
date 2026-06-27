@@ -37,6 +37,7 @@ rct_result_path = os.path.join(rct_prog_data_path, "result")
 rct_config_path = os.path.join(rct_prog_data_path, "config.json")
 rct_desktop_result_path = os.path.join(desktop_path, "随机抽取结果")
 rct_rcplist_path = os.path.join(rct_prog_data_path, "rcplist")
+rct_cache_path = os.path.join(rct_prog_data_path, "cache")
 
 # ── 编码工具 EncodeTool ──
 enc_appname = "EncodeTool"

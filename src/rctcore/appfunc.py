@@ -180,7 +180,7 @@ class ApplicationFunctions:
     @staticmethod
     def check_update():
         """检测更新（菜单调用，异步线程）"""
-        from rctcore.update import check_update_async, open_download_page
+        from rctcore.update import check_update_async, run_auto_update, open_download_page
         from rctcore.config import ConfigManager
         import tkinter as tk
 
@@ -211,15 +211,25 @@ class ApplicationFunctions:
                 )
                 return
             if result["has_update"]:
-                reply = messagebox.askyesno(
+                reply = messagebox.askyesnocancel(
                     "发现新版本",
                     f"发现新版本！\n\n"
                     f"当前版本: v{result['local_version']}\n"
                     f"最新版本: v{result['remote_version']} ({result['remote_date']})\n"
                     f"更新源: {result['source_name']}\n\n"
-                    f"是否前往下载页面？"
+                    f"是否自动更新？\n"
+                    f"「是」自动下载安装  |  「否」前往下载页面  |  「取消」稍后"
                 )
+                if reply is None:
+                    return  # 取消
                 if reply:
+                    success = run_auto_update(source=dl_source)
+                    if not success:
+                        messagebox.showwarning("启动失败", "自动更新程序启动失败，将打开下载页面。")
+                        open_download_page(dl_source,
+                                           lanzou_url=result.get("lanzou_download_url", ""),
+                                           lanzou_password=result.get("lanzou_password", ""))
+                else:
                     open_download_page(dl_source,
                                        lanzou_url=result.get("lanzou_download_url", ""),
                                        lanzou_password=result.get("lanzou_password", ""))

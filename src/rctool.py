@@ -7,7 +7,7 @@ import os
 import tkinter as tk
 from tkinter import messagebox
 from core.logman import rctlog
-from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path, rct_icon_path
+from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path, rct_icon_path
 from core.utils import set_window_icon
 from rctcore.config import ConfigManager
 from rctcore.appfunc import MainApplication
@@ -54,16 +54,29 @@ class Main:
     def _show_update_prompt(self, result, source):
         """显示更新提示弹窗"""
         try:
-            reply = messagebox.askyesno(
+            from tkinter import messagebox as _mb
+            reply = _mb.askyesnocancel(
                 "发现新版本",
                 f"检测到新版本可用！\n\n"
                 f"当前版本: v{result['local_version']}\n"
                 f"最新版本: v{result['remote_version']} ({result['remote_date']})\n\n"
-                f"是否前往下载页面？"
+                f"是否自动更新？\n"
+                f"「是」自动下载安装  |  「否」前往下载页面  |  「取消」稍后"
             )
+            if reply is None:
+                return  # 取消
+            dl_source = self.config.get("download_source", "github")
+            from rctcore.update import run_auto_update, open_download_page
             if reply:
-                dl_source = self.config.get("download_source", "github")
-                from rctcore.update import open_download_page
+                # 自动更新
+                success = run_auto_update(source=dl_source)
+                if not success:
+                    _mb.showwarning("启动失败", "自动更新程序启动失败，将打开下载页面。")
+                    open_download_page(dl_source,
+                                       lanzou_url=result.get("lanzou_download_url", ""),
+                                       lanzou_password=result.get("lanzou_password", ""))
+            else:
+                # 手动下载
                 open_download_page(dl_source,
                                    lanzou_url=result.get("lanzou_download_url", ""),
                                    lanzou_password=result.get("lanzou_password", ""))
@@ -78,7 +91,7 @@ class Main:
             self.root.destroy()
 
 def init_dir():
-    for path in [rct_prog_data_path, rct_result_path, rct_log_path]:
+    for path in [rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path]:
         os.makedirs(path, exist_ok=True)
 
 def main():

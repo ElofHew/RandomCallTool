@@ -2,6 +2,9 @@
 检测更新模块 — 从 GitHub/Gitee 获取远程 metadata.json 并与本地版本比对
 """
 import json
+import os
+import sys
+import subprocess
 import threading
 import webbrowser
 from urllib.request import urlopen, Request
@@ -187,6 +190,53 @@ def open_download_page(source="github", lanzou_url=None, lanzou_password=None):
         rctlog.info(f"[检测更新] 已打开下载页面: {url}")
     except Exception as e:
         rctlog.error(f"[检测更新] 打开下载页面失败: {e}")
+
+
+def run_auto_update(source="github", timeout=120):
+    """启动独立更新程序（update.py）进行自动下载安装
+
+    Args:
+        source: "github" / "gitee" / "lanzou"
+        timeout: 下载超时秒数
+
+    Returns:
+        bool: 是否成功启动更新程序
+    """
+    try:
+        import subprocess
+        from core.info import work_path
+
+        # 查找 update.py / update.exe
+        upd_py = os.path.join(work_path, "update.py")
+        upd_exe = os.path.join(work_path, "update.exe")
+        upd_src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "update.py")
+
+        upd_path = upd_exe if os.path.isfile(upd_exe) else (
+            upd_py if os.path.isfile(upd_py) else upd_src
+        )
+
+        if not os.path.isfile(upd_path):
+            rctlog.error(f"[自动更新] 更新程序不存在 ({upd_path})")
+            return False
+
+        args = [upd_path, "--source", source, "--timeout", str(timeout)]
+
+        if upd_path.endswith(".py"):
+            # 通过 Python 解释器运行
+            python = sys.executable or "python"
+            args = [python] + args
+
+        proc = subprocess.Popen(
+            args,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        rctlog.info(f"[自动更新] 更新程序已启动 (PID: {proc.pid}): {upd_path}")
+        return True
+
+    except Exception as e:
+        rctlog.error(f"[自动更新] 启动更新程序失败: {e}")
+        return False
 
 
 def check_update_async(root, source="github", timeout=10,

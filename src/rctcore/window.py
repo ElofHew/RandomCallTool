@@ -485,7 +485,7 @@ class ConfigWindow:
         """立即检查更新（按钮回调，异步线程）"""
         update_source = self.update_source_var.get()
         download_source = self.download_source_var.get()
-        from rctcore.update import check_update_async, open_download_page
+        from rctcore.update import check_update_async, run_auto_update, open_download_page
 
         def _safe_callback(fn):
             """包装回调，先检查窗口是否仍存在"""
@@ -507,15 +507,25 @@ class ConfigWindow:
                 )
                 return
             if result["has_update"]:
-                reply = messagebox.askyesno(
+                reply = messagebox.askyesnocancel(
                     "发现新版本",
                     f"发现新版本！\n\n"
                     f"当前版本: v{result['local_version']}\n"
                     f"最新版本: v{result['remote_version']} ({result['remote_date']})\n"
                     f"更新源: {result['source_name']}\n\n"
-                    f"是否前往下载页面？"
+                    f"是否自动更新？\n"
+                    f"「是」自动下载安装  |  「否」前往下载页面  |  「取消」稍后"
                 )
+                if reply is None:
+                    return
                 if reply:
+                    success = run_auto_update(source=download_source)
+                    if not success:
+                        messagebox.showwarning("启动失败", "自动更新程序启动失败，将打开下载页面。")
+                        open_download_page(download_source,
+                                           lanzou_url=result.get("lanzou_download_url", ""),
+                                           lanzou_password=result.get("lanzou_password", ""))
+                else:
                     open_download_page(download_source,
                                        lanzou_url=result.get("lanzou_download_url", ""),
                                        lanzou_password=result.get("lanzou_password", ""))
