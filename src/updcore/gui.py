@@ -12,7 +12,7 @@ from updcore.config import VERSION, PROGRAM_ROOT, CACHE_DIR, RES_PATH, SOURCE_NA
 from updcore.config import get_config_source, save_config_source, OFFICIAL_URL
 from updcore.network import check_remote_version, get_download_url
 from updcore.downloader import DownloadWorker
-from updcore.installer import run_remove_keep_data, run_installer
+from updcore.installer import run_remove_with_setup
 
 
 class UpdateApp:
@@ -27,6 +27,7 @@ class UpdateApp:
         self.root.title("RandomCallTool 更新程序")
         self.root.geometry("460x400+100+100")
         self.root.resizable(False, False)
+        self.root.configure(bg="#f0f4ff")
         self._set_icon()
         self._build_home()
         if self.auto_check:
@@ -173,29 +174,37 @@ class UpdateApp:
         dl_url, filename = get_download_url(meta, self.source, ver)
         dest_path = os.path.join(CACHE_DIR, filename)
         self._dl_info.config(text="正在下载: " + filename)
+        # 通过 after(0) 将 tkinter 操作调度到主线程，避免后台线程竞争
         def on_progress(downloaded, total, pct):
-            if total > 0:
-                self._dl_bar["value"] = pct
-                self._dl_pct.config(text=str(pct) + "%")
-                self._dl_size.config(text=str(downloaded // 1024) + "KB / " + str(total // 1024) + "KB")
-            else:
-                self._dl_pct.config(text=str(downloaded // 1024) + "KB")
+            self.root.after(0, self._on_dl_progress, downloaded, total, pct)
         def on_done(success, size, error):
-            self._dl_btn.config(state="disabled")
-            if success:
-                self._dl_info.config(text="下载完成，正在安装...", fg="green")
-                self._dl_bar["value"] = 100
-                self._dl_pct.config(text="100%")
-                self.root.update()
-                self._do_install(dest_path)
-            else:
-                msg = "下载失败: " + (error or "") if error else "下载已取消"
-                self._dl_info.config(text=msg, fg="red")
-                self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
-                                    command=self.root.destroy if self.auto_check else self._build_home,
-                                    state="normal")
+            self.root.after(0, self._on_dl_done, success, size, error, dest_path)
         self.worker = DownloadWorker(dl_url, dest_path, on_progress, on_done)
         self.worker.start(timeout=180)
+
+    def _on_dl_progress(self, downloaded, total, pct):
+        """主线程：更新下载进度"""
+        if total > 0:
+            self._dl_bar["value"] = pct
+            self._dl_pct.config(text=str(pct) + "%")
+            self._dl_size.config(text=str(downloaded // 1024) + "KB / " + str(total // 1024) + "KB")
+        else:
+            self._dl_pct.config(text=str(downloaded // 1024) + "KB")
+
+    def _on_dl_done(self, success, size, error, dest_path):
+        """主线程：下载完成回调"""
+        self._dl_btn.config(state="disabled")
+        if success:
+            self._dl_info.config(text="下载完成，正在安装...", fg="green")
+            self._dl_bar["value"] = 100
+            self._dl_pct.config(text="100%")
+            self._do_install(dest_path)
+        else:
+            msg = "下载失败: " + (error or "") if error else "下载已取消"
+            self._dl_info.config(text=msg, fg="red")
+            self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
+                                command=self.root.destroy if self.auto_check else self._build_home,
+                                state="normal")
 
     def _build_download(self):
         self._clear()
@@ -204,6 +213,8 @@ class UpdateApp:
         tk.Label(main, text="正在下载更新包...",
                  font=("Microsoft YaHei", 12, "bold"),
                  fg="#2b5b84", bg="#f0f4ff").pack(anchor="w")
+        tk.Label(main, text="网络库特性，下载可能会卡住一会，请耐心等待。",
+                 font=("", 8), fg="#888", bg="#f0f4ff").pack(anchor="w", pady=(0, 5))
         self._dl_info = tk.Label(main, text="", font=("", 9), fg="#555",
                                   bg="#f0f4ff", anchor="w", justify="left")
         self._dl_info.pack(fill="x", pady=5)
@@ -225,23 +236,26 @@ class UpdateApp:
         self._build_home()
 
     def _do_install(self, exe_path):
+        """链式卸载+安装：启动 remove.exe --setup-path → 自毁"""
         try:
-            self._dl_info.config(text="正在保留数据卸载旧版...")
+            self._dl_info.config(text="即将安装，正在准备...")
+            self._dl_btn.config(state="disabled")
             self.root.update()
-            run_remove_keep_data()
-            time.sleep(1)
-            self._dl_info.config(text="正在运行安装包...")
-            self.root.update()
-            success = run_installer(exe_path)
-            if success:
-                self._dl_info.config(text="安装包已启动，即将退出。", fg="green")
-                self._dl_btn.config(text="  退出  ", command=self.root.destroy,
-                                    state="normal", bg="#4a90d9", fg="white")
-            else:
-                self._dl_info.config(text="安装包启动失败，请手动安装。", fg="red")
+            time.sleep(2)
+
+            # 启动 remove.exe；它会建 bat 链式完成：杀进程→删文件→运行安装包→自删
+            ok = run_remove_with_setup(exe_path)
+            if not ok:
+                self._dl_info.config(text="启动卸载程序失败，请手动运行安装包。", fg="red")
                 self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
                                     command=self.root.destroy if self.auto_check else self._build_home,
                                     state="normal")
+                return
+
+            # 更新程序自身退出，remove.exe 和 bat 接管后续
+            self.root.destroy()
+            import os as _os
+            _os._exit(0)
         except Exception as e:
             self._dl_info.config(text="安装过程出错: " + str(e), fg="red")
             self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
