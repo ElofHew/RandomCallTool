@@ -5,7 +5,6 @@ RemoveTool for RandomCallTool - 随机抽取工具配套卸载工具
 import os
 import sys
 import time
-import platform
 import subprocess
 import argparse
 import tkinter as tk
@@ -17,30 +16,13 @@ if getattr(sys, "frozen", False):
 else:
     PROGRAM_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-SYSTEM = platform.system()
-EXE_NAMES = ["rctool", "encode"]
-
-
-def get_process_kill_cmd():
-    """生成杀死指定进程的系统命令"""
-    cmds = []
-    for name in EXE_NAMES:
-        if SYSTEM == "Windows":
-            cmds.append(["taskkill", "/F", "/IM", f"{name}.exe"])
-        elif SYSTEM == "Darwin":
-            cmds.append(["pkill", "-9", name])
-            cmds.append(["pkill", "-9", f"{name}.app"])
-        else:
-            cmds.append(["pkill", "-9", name])
-    return cmds
-
 
 def kill_processes():
     """杀死正在运行的 rctool / encode 进程"""
     print("[Uninstall] Killing running processes...")
-    for cmd in get_process_kill_cmd():
+    for name in ("rctool", "encode"):
         try:
-            subprocess.run(cmd, capture_output=True, timeout=5)
+            subprocess.run(["taskkill", "/F", "/IM", f"{name}.exe"], capture_output=True, timeout=5)
         except Exception:
             pass
     time.sleep(0.5)
@@ -86,49 +68,31 @@ def get_files_to_delete(mode):
 
 
 def build_remove_script(mode):
-    """构建系统级删除脚本"""
+    """构建系统级删除脚本（Windows .bat）"""
     items, root_dir = get_files_to_delete(mode)
     root_dir = os.path.normpath(root_dir)
 
-    if SYSTEM == "Windows":
-        # Windows: 生成临时 .bat 脚本
-        bat = "@echo off\nchcp 65001 >nul\n"
-        bat += "echo [Uninstall] Removing program files...\n"
-        bat += "timeout /t 1 /nobreak >nul\n"
-        for item in items:
-            n = os.path.normpath(item)
-            bat += 'if exist "' + n + '" (\n'
-            if os.path.isdir(item):
-                bat += '    rmdir /s /q "' + n + '" >nul 2>&1\n'
-            else:
-                bat += '    del /f /q "' + n + '" >nul 2>&1\n'
-            bat += ")\n"
-        # 完全卸载模式才删除根目录，保留数据模式不能删
-        if mode == "full":
-            bat += 'rmdir /s /q "' + root_dir + '" >nul 2>&1\n'
-        bat += 'del /f /q "%~f0" >nul 2>&1\n'
-        tmp = os.path.join(os.environ.get("TEMP", "."), "rct_uninstall")
-        os.makedirs(tmp, exist_ok=True)
-        sp = os.path.join(tmp, "uninstall.bat")
-        with open(sp, "w", encoding="utf-8") as f:
-            f.write(bat)
-        return sp, True
-
-    else:
-        # Linux/macOS: 返回 Shell 命令字符串
-        cmds = ["echo '[Uninstall] Removing program files...'", "sleep 1"]
-        for item in items:
-            e = item.replace("'", "'\\''")
-            if os.path.isfile(item):
-                cmds.append("rm -f '" + e + "' 2>/dev/null")
-            else:
-                cmds.append("rm -rf '" + e + "' 2>/dev/null")
-        # 完全卸载模式才删除根目录，保留数据模式不能删
-        if mode == "full":
-            e = root_dir.replace("'", "'\\''")
-            cmds.append("rm -rf '" + e + "' 2>/dev/null")
-        cmds.append("echo '[Uninstall] Done'")
-        return "; ".join(cmds), False
+    bat = "@echo off\nchcp 65001 >nul\n"
+    bat += "echo [Uninstall] Removing program files...\n"
+    bat += "timeout /t 1 /nobreak >nul\n"
+    for item in items:
+        n = os.path.normpath(item)
+        bat += 'if exist "' + n + '" (\n'
+        if os.path.isdir(item):
+            bat += '    rmdir /s /q "' + n + '" >nul 2>&1\n'
+        else:
+            bat += '    del /f /q "' + n + '" >nul 2>&1\n'
+        bat += ")\n"
+    # 完全卸载模式才删除根目录，保留数据模式不能删
+    if mode == "full":
+        bat += 'rmdir /s /q "' + root_dir + '" >nul 2>&1\n'
+    bat += 'del /f /q "%~f0" >nul 2>&1\n'
+    tmp = os.path.join(os.environ.get("TEMP", "."), "rct_uninstall")
+    os.makedirs(tmp, exist_ok=True)
+    sp = os.path.join(tmp, "uninstall.bat")
+    with open(sp, "w", encoding="utf-8") as f:
+        f.write(bat)
+    return sp
 
 
 def run_uninstall(mode):
@@ -143,19 +107,12 @@ def run_uninstall(mode):
     print()
 
     kill_processes()
-    script, is_file = build_remove_script(mode)
+    script = build_remove_script(mode)
 
     print("[Uninstall] Starting cleanup...")
-    if SYSTEM == "Windows":
-        subprocess.Popen(
-            ["cmd.exe", "/c", "start", "", "/MIN", script], shell=True
-        )
-    else:
-        subprocess.Popen(
-            ["nohup", "sh", "-c", script, "&"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+    subprocess.Popen(
+        ["cmd.exe", "/c", "start", "", "/MIN", script], shell=True
+    )
 
     print("[Uninstall] Uninstaller exiting, cleanup continues in background...")
     time.sleep(0.5)

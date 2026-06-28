@@ -29,57 +29,36 @@ class Main:
         self.root.mainloop()
 
     def _auto_check_update(self):
-        """启动时自动检测更新（静默模式，异步线程）"""
+        """启动时静默检测更新 — 调用 update.py --check-silent"""
         try:
             if not self.config.get("auto_check_update", True):
                 return
             source = self.config.get("update_source", "github")
-            from rctcore.update import check_update_async
+            from rctcore.update import run_auto_update
 
-            def _on_success(result):
-                if result.get("success") and result.get("has_update"):
-                    rctlog.info(
-                        f"发现新版本: v{result['remote_version']} "
-                        f"(当前 v{result['local_version']})"
-                    )
-                    self._show_update_prompt(result, source)
+            def _check():
+                has_update = run_auto_update(source=source, mode="--check-silent", timeout=8)
+                if has_update:
+                    self.root.after(0, self._show_update_prompt, source)
 
-            check_update_async(
-                self.root, source=source, timeout=5,
-                on_success=_on_success,
-            )
+            import threading
+            t = threading.Thread(target=_check, daemon=True)
+            t.start()
         except Exception as e:
             rctlog.warning(f"自动检测更新失败（静默）: {e}")
 
-    def _show_update_prompt(self, result, source):
-        """显示更新提示弹窗"""
+    def _show_update_prompt(self, source):
+        """检测到新版本时弹窗"""
         try:
-            from tkinter import messagebox as _mb
-            reply = _mb.askyesnocancel(
+            reply = messagebox.askyesno(
                 "发现新版本",
-                f"检测到新版本可用！\n\n"
-                f"当前版本: v{result['local_version']}\n"
-                f"最新版本: v{result['remote_version']} ({result['remote_date']})\n\n"
-                f"是否自动更新？\n"
-                f"「是」自动下载安装  |  「否」前往下载页面  |  「取消」稍后"
+                "检测到新版本可用！\n\n"
+                "是否立即打开更新程序进行升级？\n\n"
+                "「是」打开更新程序  |  「否」稍后手动更新"
             )
-            if reply is None:
-                return  # 取消
-            dl_source = self.config.get("download_source", "github")
-            from rctcore.update import run_auto_update, open_download_page
             if reply:
-                # 自动更新
-                success = run_auto_update(source=dl_source)
-                if not success:
-                    _mb.showwarning("启动失败", "自动更新程序启动失败，将打开下载页面。")
-                    open_download_page(dl_source,
-                                       lanzou_url=result.get("lanzou_download_url", ""),
-                                       lanzou_password=result.get("lanzou_password", ""))
-            else:
-                # 手动下载
-                open_download_page(dl_source,
-                                   lanzou_url=result.get("lanzou_download_url", ""),
-                                   lanzou_password=result.get("lanzou_password", ""))
+                from rctcore.update import run_auto_update
+                run_auto_update(source=source, mode="--check")
         except Exception:
             pass
 

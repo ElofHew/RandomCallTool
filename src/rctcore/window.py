@@ -424,26 +424,6 @@ class ConfigWindow:
         tk.Label(tab, text="中国大陆建议使用Gitee，其他地区建议使用GitHub",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
 
-        # ── 下载源选择 ──
-        ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=8)
-
-        f_dl = tk.Frame(tab)
-        f_dl.pack(fill="x", **pad, pady=4)
-        tk.Label(f_dl, text="下载源：", width=15, anchor="w").pack(side="left")
-        self.download_source_var = tk.StringVar(
-            value=self.config.get("download_source", "github"))
-        for val, label in [
-            ("github", "GitHub"),
-            ("gitee", "Gitee"),
-            ("lanzou", "蓝奏云"),
-            ("official", "官网"),
-        ]:
-            tk.Radiobutton(f_dl, text=label, variable=self.download_source_var,
-                           value=val).pack(side="left", padx=3)
-
-        tk.Label(tab, text="检测到新版本时，点击下载将打开此平台页面",
-                 fg="gray", font=("", 9)).pack(anchor="w", **pad)
-
         # 自动检测更新
         f2 = tk.Frame(tab)
         f2.pack(fill="x", **pad, pady=4)
@@ -482,73 +462,12 @@ class ConfigWindow:
                   ).pack()
 
     def _check_update_now(self):
-        """立即检查更新（按钮回调，异步线程）"""
+        """立即检查更新 — 启动 update.py --check"""
         update_source = self.update_source_var.get()
-        download_source = self.download_source_var.get()
-        from rctcore.update import check_update_async, run_auto_update, open_download_page
-
-        def _safe_callback(fn):
-            """包装回调，先检查窗口是否仍存在"""
-            def wrapper(*args, **kwargs):
-                try:
-                    if not self.window.winfo_exists():
-                        return
-                except tk.TclError:
-                    return
-                fn(*args, **kwargs)
-            return wrapper
-
-        def _on_success(result):
-            self.window.config(cursor="")
-            if not result["success"]:
-                messagebox.showerror(
-                    "检测失败",
-                    f"无法获取版本信息\n\n原因: {result.get('error', '未知错误')}"
-                )
-                return
-            if result["has_update"]:
-                reply = messagebox.askyesnocancel(
-                    "发现新版本",
-                    f"发现新版本！\n\n"
-                    f"当前版本: v{result['local_version']}\n"
-                    f"最新版本: v{result['remote_version']} ({result['remote_date']})\n"
-                    f"更新源: {result['source_name']}\n\n"
-                    f"是否自动更新？\n"
-                    f"「是」自动下载安装  |  「否」前往下载页面  |  「取消」稍后"
-                )
-                if reply is None:
-                    return
-                if reply:
-                    success = run_auto_update(source=download_source)
-                    if not success:
-                        messagebox.showwarning("启动失败", "自动更新程序启动失败，将打开下载页面。")
-                        open_download_page(download_source,
-                                           lanzou_url=result.get("lanzou_download_url", ""),
-                                           lanzou_password=result.get("lanzou_password", ""))
-                else:
-                    open_download_page(download_source,
-                                       lanzou_url=result.get("lanzou_download_url", ""),
-                                       lanzou_password=result.get("lanzou_password", ""))
-            else:
-                messagebox.showinfo(
-                    "已是最新版本",
-                    f"当前已是最新版本\n\n"
-                    f"版本: v{result['local_version']}\n"
-                    f"更新源: {result['source_name']}\n"
-                    f"远程版本: v{result['remote_version']} ({result['remote_date']})"
-                )
-
-        def _on_error(err):
-            self.window.config(cursor="")
-            messagebox.showerror("检测失败", f"网络请求失败:\n{err}")
-
-        # 显示等待光标，异步启动
-        self.window.config(cursor="watch")
-        check_update_async(
-            self.window, source=update_source, timeout=10,
-            on_success=_safe_callback(_on_success),
-            on_error=_safe_callback(_on_error),
-        )
+        from rctcore.update import run_auto_update
+        success = run_auto_update(source=update_source, mode="--check")
+        if not success:
+            messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载。")
 
     # ── 保存（纯逻辑，不涉及 UI 弹窗）──────────────
 
@@ -567,7 +486,6 @@ class ConfigWindow:
                 "smart_use_fixed_weights": self.smart_fixed_weights_var.get(),
                 "rct_default_sample": self.sample_combo.get(),
                 "update_source": self.update_source_var.get(),
-                "download_source": self.download_source_var.get(),
                 "auto_check_update": self.auto_check_var.get(),
             }
             # 防止保存占位文本

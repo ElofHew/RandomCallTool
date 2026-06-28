@@ -65,7 +65,6 @@ class ConfigManager:
             # ── 更新设置 ──
             "update_source": "gitee",      # 版本更新源: github/gitee
             "auto_check_update": True,     # 启动时自动检测更新
-            "download_source": "official"    # 下载源: github/gitee/lanzou/official"
         }
 
         if os.path.exists(rct_config_path):

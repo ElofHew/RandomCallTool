@@ -179,78 +179,23 @@ class ApplicationFunctions:
 
     @staticmethod
     def check_update():
-        """检测更新（菜单调用，异步线程）"""
-        from rctcore.update import check_update_async, run_auto_update, open_download_page
+        """检测更新（菜单调用）— 启动 update.py --check"""
         from rctcore.config import ConfigManager
-        import tkinter as tk
-
         config = ConfigManager()
         source = config.get("update_source", "github")
-        dl_source = config.get("download_source", "github")
 
-        # 弹窗让用户选择更新源
-        choice = messagebox.askquestion(
+        if not messagebox.askyesno(
             "检测更新",
-            f"将从 {source.upper()} 获取版本信息\n"
+            f"将从 {source.upper()} 检测新版本\n"
             f"当前版本: v{rct_version}\n\n"
-            f"是否继续？",
-            icon="info",
-        )
-        if choice != "yes":
+            f"是否打开更新程序？",
+        ):
             return
 
-        # 获取顶层窗口用于异步回调
-        root = tk._default_root
-
-        def _on_success(result):
-            if not result["success"]:
-                messagebox.showerror(
-                    "检测失败",
-                    f"无法获取版本信息\n\n原因: {result.get('error', '未知错误')}\n"
-                    f"请检查网络连接或尝试切换更新源。"
-                )
-                return
-            if result["has_update"]:
-                reply = messagebox.askyesnocancel(
-                    "发现新版本",
-                    f"发现新版本！\n\n"
-                    f"当前版本: v{result['local_version']}\n"
-                    f"最新版本: v{result['remote_version']} ({result['remote_date']})\n"
-                    f"更新源: {result['source_name']}\n\n"
-                    f"是否自动更新？\n"
-                    f"「是」自动下载安装  |  「否」前往下载页面  |  「取消」稍后"
-                )
-                if reply is None:
-                    return  # 取消
-                if reply:
-                    success = run_auto_update(source=dl_source)
-                    if not success:
-                        messagebox.showwarning("启动失败", "自动更新程序启动失败，将打开下载页面。")
-                        open_download_page(dl_source,
-                                           lanzou_url=result.get("lanzou_download_url", ""),
-                                           lanzou_password=result.get("lanzou_password", ""))
-                else:
-                    open_download_page(dl_source,
-                                       lanzou_url=result.get("lanzou_download_url", ""),
-                                       lanzou_password=result.get("lanzou_password", ""))
-            else:
-                messagebox.showinfo(
-                    "已是最新版本",
-                    f"当前已是最新版本\n\n"
-                    f"版本: v{result['local_version']} (vercode: {result['local_vercode']})\n"
-                    f"远程版本: v{result['remote_version']} (vercode: {result['remote_vercode']})\n"
-                    f"更新源: {result['source_name']}\n"
-                    f"远程发布日期: {result['remote_date']}"
-                )
-
-        def _on_error(err):
-            messagebox.showerror("检测失败", f"网络请求失败:\n{err}")
-
-        if root:
-            check_update_async(
-                root, source=source, timeout=10,
-                on_success=_on_success, on_error=_on_error,
-            )
+        from rctcore.update import run_auto_update
+        success = run_auto_update(source=source, mode="--check")
+        if not success:
+            messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载。")
 
     @staticmethod
     def show_about(root):

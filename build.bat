@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 
-del /Q "dist"
+rmdir /S /Q "dist"
 
 echo Starting compilation of rctool...
 pyinstaller --icon=./src/res/icon/rctool.ico -w .\src\rctool.py
