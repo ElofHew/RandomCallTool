@@ -2,9 +2,5 @@
     "rct": {
         "title": "随机抽取工具",
         "description": "一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。"
-    },
-    "enc": {
-        "title": "随机抽人名单编码工具",
-        "description": "一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。"
     }
 }
