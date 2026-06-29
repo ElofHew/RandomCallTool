@@ -39,20 +39,6 @@ rct_desktop_result_path = os.path.join(desktop_path, "随机抽取结果")
 rct_rcplist_path = os.path.join(rct_prog_data_path, "rcplist")
 rct_cache_path = os.path.join(rct_prog_data_path, "cache")
 
-# ── 编码工具 EncodeTool ──
-enc_appname = "EncodeTool"
-enc_version = "1.4"
-enc_vercode = 1400
-enc_author = "Dan_Evan"
-enc_date = "2026-06-21"
-enc_description = "一个为随机抽取工具-随机抽人生成配套RCP编码名单文件的工具。"
-enc_prog_data_path = os.path.join(app_prog_data_path, "EncodeTool")
-enc_log_path = os.path.join(enc_prog_data_path, "log")
-enc_output_path = os.path.join(enc_prog_data_path, "encoded_files")
-enc_config_path = os.path.join(enc_prog_data_path, "config.json")
-enc_desktop_output_path = os.path.join(desktop_path, "编码名单")
-
 # ── 程序图标路径 ──
 rct_icon_path = os.path.join(res_path, "icon", "rctool.ico")
-enc_icon_path = os.path.join(res_path, "icon", "encode.ico")
 rem_icon_path = os.path.join(res_path, "icon", "remove.ico")

@@ -6,12 +6,12 @@ import webbrowser
 from time import strftime
 import tkinter as tk
 from tkinter import ttk, messagebox
-from rctcore.more import run_process
+from core.more import run_process
 from core.dialog import load_about_info
 from core.info import work_path, rct_log_path, rct_appname, rct_version, official_website, rct_icon_path
 from core.logman import rctlog
-from rctcore.fileman import FileManager, SampleLibrary
-from rctcore.window import HomeTab, RandomCallTab, ConfigWindow, AboutWindow
+from core.fileman import FileManager, SampleLibrary
+from core.window import HomeTab, RandomCallTab, ConfigWindow, AboutWindow
 
 class MainApplication:
     def __init__(self, root):
@@ -63,8 +63,6 @@ class MainApplication:
                 ("随机抽取 (Ctrl+T)", lambda: self.notebook.select(self.call_tab.frame)),
                 ("-", None),
                 ("检测更新", ApplicationFunctions.check_update),
-                ("-", None),
-                ("编码工具", ApplicationFunctions.create_rcp_file),
                 ("-", None),
                 ("卸载工具", ApplicationFunctions.run_uninstall),
             ],
@@ -164,12 +162,6 @@ class ApplicationFunctions:
         """打开在线帮助文档"""
         webbrowser.open("https://rct.danevan.top/docs/")
         rctlog.info("打开在线帮助文档")
-    
-    @staticmethod
-    def create_rcp_file():
-        """打开RCP编码工具GUI"""
-        rcp_tool_path = os.path.join(work_path, "encode.exe")
-        run_process(rcp_tool_path)
 
     @staticmethod
     def run_uninstall():
@@ -180,7 +172,7 @@ class ApplicationFunctions:
     @staticmethod
     def check_update():
         """检测更新（菜单调用）— 启动 update.py --check"""
-        from rctcore.config import ConfigManager
+        from core.config import ConfigManager
         config = ConfigManager()
         source = config.get("update_source", "github")
 
@@ -192,7 +184,7 @@ class ApplicationFunctions:
         ):
             return
 
-        from rctcore.update import run_auto_update
+        from core.update import run_auto_update
         success = run_auto_update(source=source, mode="--check")
         if not success:
             messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载。")

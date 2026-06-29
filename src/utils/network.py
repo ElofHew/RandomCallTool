@@ -3,8 +3,7 @@
 """
 import json
 from urllib.request import urlopen, Request
-from updcore.config import GITHUB_META, GITEE_META, GITHUB_RELEASE, GITEE_RELEASE
-from updcore.config import VERSION, VERCODE, SOURCE_NAMES
+from utils import config
 
 
 def fetch_json(url, timeout=15):
@@ -14,16 +13,16 @@ def fetch_json(url, timeout=15):
 
 
 def fetch_remote_metadata(source="github", timeout=15):
-    url = GITHUB_META if source == "github" else GITEE_META
+    url = config.GITHUB_META if source == "github" else config.GITEE_META
     return fetch_json(url, timeout)
 
 
 def check_remote_version(source="github", timeout=10):
     """检查远程是否有新版本，返回 dict"""
     result = {"success": False, "has_update": False,
-              "local_version": VERSION, "local_vercode": VERCODE,
+              "local_version": config.VERSION, "local_vercode": config.VERCODE,
               "remote_version": "", "remote_vercode": 0,
-              "remote_date": "", "source_name": SOURCE_NAMES.get(source, source),
+              "remote_date": "", "source_name": config.SOURCE_NAMES.get(source, source),
               "error": None}
     try:
         meta = fetch_remote_metadata(source, timeout)
@@ -31,7 +30,7 @@ def check_remote_version(source="github", timeout=10):
         result["remote_version"] = ver.get("version", "?")
         result["remote_vercode"] = ver.get("vercode", 0)
         result["remote_date"] = ver.get("date", "?")
-        result["has_update"] = ver.get("vercode", 0) > VERCODE
+        result["has_update"] = ver.get("vercode", 0) > config.VERCODE
         result["success"] = True
     except Exception as e:
         result["error"] = str(e)
@@ -42,6 +41,6 @@ def get_download_url(metadata, source="github", version=""):
     """从 metadata 构造下载 URL"""
     ver = version or metadata.get("version", {}).get("version", "")
     filename = "RandomCallTool_Setup_V" + ver + ".exe"
-    base = GITHUB_RELEASE if source == "github" else GITEE_RELEASE
+    base = config.GITHUB_RELEASE if source == "github" else config.GITEE_RELEASE
     dl_url = base + "/download/V" + ver + "/" + filename
     return dl_url, filename

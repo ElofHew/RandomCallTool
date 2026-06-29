@@ -8,11 +8,10 @@ import threading
 import webbrowser
 import tkinter as tk
 from tkinter import ttk
-from updcore.config import VERSION, PROGRAM_ROOT, CACHE_DIR, RES_PATH, SOURCE_NAMES
-from updcore.config import get_config_source, save_config_source, OFFICIAL_URL
-from updcore.network import check_remote_version, get_download_url
-from updcore.downloader import DownloadWorker
-from updcore.installer import run_remove_with_setup
+from utils import config
+from utils import network
+from utils import downloader
+from utils import installer
 
 
 class UpdateApp:
@@ -20,11 +19,11 @@ class UpdateApp:
 
     def __init__(self, root, source=None, auto_check=False):
         self.root = root
-        self.source = source or get_config_source()
+        self.source = source or config.get_config_source()
         self.auto_check = auto_check
         self.result = None
         self.worker = None
-        self.root.title("RandomCallTool 更新程序")
+        self.root.title("随机抽取工具 更新程序")
         self.root.geometry("460x400+100+100")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f4ff")
@@ -35,7 +34,7 @@ class UpdateApp:
 
     def _set_icon(self):
         try:
-            p = os.path.join(RES_PATH, "update.ico")
+            p = os.path.join(config.RES_PATH, "update.ico")
             if os.path.isfile(p):
                 self.root.iconbitmap(p)
         except Exception:
@@ -53,15 +52,15 @@ class UpdateApp:
         self._clear()
         main = tk.Frame(self.root, bg="#f0f4ff")
         main.pack(fill="both", expand=True)
-        tk.Label(main, text="RandomCallTool 更新程序",
+        tk.Label(main, text="随机抽取工具 更新程序",
                  font=("Microsoft YaHei", 16, "bold"),
                  fg="#2b5b84", bg="#f0f4ff").pack(pady=(15, 8))
         card = tk.Frame(main, relief="groove", bd=1, bg="#ffffff", padx=20, pady=12)
         card.pack(padx=40, pady=(0, 10), fill="x")
         for label, value in [
-            ("当前版本", "v" + VERSION if VERSION else "未知"),
-            ("程序目录", PROGRAM_ROOT),
-            ("缓存目录", CACHE_DIR),
+            ("当前版本", "v" + config.VERSION if config.VERSION else "未知"),
+            ("程序目录", config.PROGRAM_ROOT),
+            ("缓存目录", config.CACHE_DIR),
         ]:
             r = tk.Frame(card, bg="#ffffff")
             r.pack(fill="x", pady=2)
@@ -90,7 +89,7 @@ class UpdateApp:
 
     def _on_source_changed(self):
         self.source = self._src_var.get()
-        save_config_source(self.source)
+        config.save_config_source(self.source)
 
     # ==============================
     #  检测中
@@ -103,7 +102,7 @@ class UpdateApp:
         tk.Label(main, text="正在检测更新...",
                  font=("Microsoft YaHei", 14, "bold"),
                  fg="#2b5b84", bg="#f0f4ff").pack(pady=(30, 10))
-        tk.Label(main, text="正在从 " + SOURCE_NAMES.get(self.source, self.source) + " 获取版本信息\u2026",
+        tk.Label(main, text="正在从 " + config.SOURCE_NAMES.get(self.source, self.source) + " 获取版本信息\u2026",
                  font=("", 10), fg="#555", bg="#f0f4ff").pack(pady=5)
         self._progress = ttk.Progressbar(main, mode="indeterminate", length=300)
         self._progress.pack(pady=10)
@@ -116,7 +115,7 @@ class UpdateApp:
     def _start_check(self):
         self._build_checking()
         def worker():
-            result = check_remote_version(self.source, timeout=10)
+            result = network.check_remote_version(self.source, timeout=10)
             self.root.after(0, self._show_result, result)
         threading.Thread(target=worker, daemon=True).start()
 
@@ -148,7 +147,7 @@ class UpdateApp:
             bf.pack(pady=10)
             for text, cmd, bg in [
                 ("  直接下载(推荐)  ", self._start_download, "#4a90d9"),
-                ("  前往官网下载  ", lambda: webbrowser.open(OFFICIAL_URL), "#28a745"),
+                ("  前往官网下载  ", lambda: webbrowser.open(config.OFFICIAL_URL), "#28a745"),
             ]:
                 tk.Button(bf, text=text, command=cmd, font=("", 10), bg=bg, fg="white",
                           activebackground=self._darken(bg), activeforeground="white",
@@ -171,15 +170,15 @@ class UpdateApp:
         self._build_download()
         ver = self.result.get("remote_version", "")
         meta = {"version": {"version": ver}}
-        dl_url, filename = get_download_url(meta, self.source, ver)
-        dest_path = os.path.join(CACHE_DIR, filename)
+        dl_url, filename = network.get_download_url(meta, self.source, ver)
+        dest_path = os.path.join(config.CACHE_DIR, filename)
         self._dl_info.config(text="正在下载: " + filename)
         # 通过 after(0) 将 tkinter 操作调度到主线程，避免后台线程竞争
         def on_progress(downloaded, total, pct):
             self.root.after(0, self._on_dl_progress, downloaded, total, pct)
         def on_done(success, size, error):
             self.root.after(0, self._on_dl_done, success, size, error, dest_path)
-        self.worker = DownloadWorker(dl_url, dest_path, on_progress, on_done)
+        self.worker = downloader.DownloadWorker(dl_url, dest_path, on_progress, on_done)
         self.worker.start(timeout=180)
 
     def _on_dl_progress(self, downloaded, total, pct):
@@ -244,7 +243,7 @@ class UpdateApp:
             time.sleep(2)
 
             # 启动 remove.exe；它会建 bat 链式完成：杀进程→删文件→运行安装包→自删
-            ok = run_remove_with_setup(exe_path)
+            ok = installer.run_remove_with_setup(exe_path)
             if not ok:
                 self._dl_info.config(text="启动卸载程序失败，请手动运行安装包。", fg="red")
                 self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",

@@ -7,8 +7,8 @@ from base64 import b64decode, b64encode
 from time import strftime
 from tkinter import messagebox
 from core.logman import rctlog
-from core.utils import open_file_or_dir
-from rctcore.config import ConfigManager
+from core.platutils import open_file_or_dir
+from core.config import ConfigManager
 from core.info import rct_result_path, rct_desktop_result_path, rct_log_path, rct_appname, rct_rcplist_path, github, gitee, res_path, official_website, rct_version
 
 class FileManager:

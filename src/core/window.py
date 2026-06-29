@@ -7,14 +7,14 @@ import tkinter as tk
 import tkinter.font as tkFont
 from tkinter import ttk, messagebox, filedialog, simpledialog
 from core.logman import rctlog
-from rctcore.config import ConfigManager
+from core.config import ConfigManager
 from core.info import rct_rcplist_path, rct_version, document_path
-from rctcore.fileman import SampleLibrary, SaveResult, base64decode
-from rctcore.sampler import SmartSampler
-from core.utils import open_file_or_dir
+from core.fileman import SampleLibrary, SaveResult, base64decode
+from core.sampler import SmartSampler
+from core.platutils import open_file_or_dir
 from core.dialog import AboutWindow, load_about_info
 from core.info import rct_icon_path
-from core.utils import set_window_icon
+from core.platutils import set_window_icon
 
 
 class ConfigWindow:
@@ -202,7 +202,7 @@ class ConfigWindow:
 
     def _open_advanced_config(self):
         """从配置窗口打开高级抽取配置"""
-        from rctcore.sampler import SmartSampler
+        from core.sampler import SmartSampler
         sampler = SmartSampler(mode=self.config.get("sampler_mode", 1),
                                smart_window=self.config.get("smart_window", 3))
         # 加载当前配置到临时 sampler
@@ -464,7 +464,7 @@ class ConfigWindow:
     def _check_update_now(self):
         """立即检查更新 — 启动 update.py --check"""
         update_source = self.update_source_var.get()
-        from rctcore.update import run_auto_update
+        from core.update import run_auto_update
         success = run_auto_update(source=update_source, mode="--check")
         if not success:
             messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载。")
@@ -526,7 +526,7 @@ class ConfigWindow:
 
 
 # ══════════════════════════════════════════════════════════
-#  便捷引用 — 将公共对话框暴露在 rctcore.window 命名空间
+#  便捷引用 — 将公共对话框暴露在 core.window 命名空间
 #  实际实现在 core.dialog
 # ══════════════════════════════════════════════════════════
 

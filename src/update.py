@@ -1,6 +1,6 @@
 """
 RandomCallTool 独立更新程序 — 入口
-实现在 updcore/ 模块
+实现在 utils/ 模块
 
 参数:
   无参数          → 打开主界面
@@ -14,10 +14,9 @@ import argparse
 import os
 import tkinter as tk
 
-from updcore.config import VERSION, CACHE_DIR
-from updcore.config import get_config_source
-from updcore.network import check_remote_version
-from updcore.gui import UpdateApp
+from utils import config
+from utils import network
+from utils import gui
 
 
 def parse_args():
@@ -34,27 +33,27 @@ def main():
     args = parse_args()
 
     if args.version:
-        print("RandomCallTool Update Tool v" + VERSION)
+        print("RandomCallTool Update Tool v" + config.VERSION)
         return
 
     # 静默检测（无 GUI）
     if args.check_silent:
-        src = get_config_source() if args.source == "github" else args.source
-        result = check_remote_version(src, timeout=8)
+        src = config.get_config_source() if args.source == "github" else args.source
+        result = network.check_remote_version(src, timeout=8)
         if result["success"] and result["has_update"]:
             sys.exit(1)
         sys.exit(0)
 
-    os.makedirs(CACHE_DIR, exist_ok=True)
+    os.makedirs(config.CACHE_DIR, exist_ok=True)
 
     # 确定更新源
-    src = get_config_source()
+    src = config.get_config_source()
     if any(a.startswith("--source") or a.startswith("-s") for a in sys.argv[1:]):
         src = args.source
 
     # 单窗口，注入 auto_check 参数决定是否启动即检测
     root = tk.Tk()
-    UpdateApp(root, source=src, auto_check=args.check)
+    gui.UpdateApp(root, source=src, auto_check=args.check)
     root.mainloop()
 
 

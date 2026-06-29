@@ -8,9 +8,9 @@ import tkinter as tk
 from tkinter import messagebox
 from core.logman import rctlog
 from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path, rct_icon_path
-from core.utils import set_window_icon
-from rctcore.config import ConfigManager
-from rctcore.appfunc import MainApplication
+from core.platutils import set_window_icon
+from core.config import ConfigManager
+from core.appfunc import MainApplication
 
 class Main:
     def __init__(self):
@@ -34,7 +34,7 @@ class Main:
             if not self.config.get("auto_check_update", True):
                 return
             source = self.config.get("update_source", "github")
-            from rctcore.update import run_auto_update
+            from core.update import run_auto_update
 
             def _check():
                 has_update = run_auto_update(source=source, mode="--check-silent", timeout=8)
@@ -57,7 +57,7 @@ class Main:
                 "「是」打开更新程序  |  「否」稍后手动更新"
             )
             if reply:
-                from rctcore.update import run_auto_update
+                from core.update import run_auto_update
                 run_auto_update(source=source, mode="--check")
         except Exception:
             pass

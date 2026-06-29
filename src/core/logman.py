@@ -5,7 +5,7 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from time import strftime
-from core.info import rct_log_path, enc_log_path, rct_appname, enc_appname
+from core.info import rct_log_path, rct_appname
 
 default_log_path = "logs"
 default_appname = "Unknown"
@@ -48,5 +48,4 @@ def setup_logging(appname=default_appname, logpath=default_log_path):
     return logger
 
 rctlog = setup_logging(appname=rct_appname, logpath=rct_log_path)
-enclog = setup_logging(appname=enc_appname, logpath=enc_log_path)
 updlog = setup_logging(appname="UpdateTool", logpath=rct_log_path)

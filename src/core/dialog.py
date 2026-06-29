@@ -16,7 +16,7 @@ class AboutWindow:
     """美观的关于窗口（通用版，信息从参数字典传入）"""
 
     def __init__(self, parent, info, icon_path=None):
-        from core.utils import set_window_icon
+        from core.platutils import set_window_icon
         """
         info: dict 包含以下键
             - title: 应用名称
@@ -166,7 +166,6 @@ def load_about_info(app_key):
     import json
     from core.info import (
         rct_version, rct_date, rct_author, rct_appname,
-        enc_version, enc_date, enc_author, enc_appname,
     )
 
     # 从 JSON 获取标题和描述
@@ -184,14 +183,5 @@ def load_about_info(app_key):
         info.setdefault("date", rct_date)
         info.setdefault("author", rct_author)
         info.setdefault("title", rct_appname)
-        info.setdefault("extra_lines",
-                        [f"编码工具版本：v{enc_version}（{enc_date}）"])
-    elif app_key == "enc":
-        info.setdefault("version", enc_version)
-        info.setdefault("date", enc_date)
-        info.setdefault("author", enc_author)
-        info.setdefault("title", enc_appname)
-        info.setdefault("extra_lines",
-                        [f"抽取工具版本：v{rct_version}（{rct_date}）"])
 
     return info
