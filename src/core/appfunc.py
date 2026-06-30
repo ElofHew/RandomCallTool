@@ -65,6 +65,8 @@ class MainApplication:
                 ("检测更新", ApplicationFunctions.check_update),
                 ("-", None),
                 ("卸载工具", ApplicationFunctions.run_uninstall),
+                ("-", None),
+                ("获取RCP名单处理工具", lambda: webbrowser.open("https://rct.danevan.top/")),
             ],
             "帮助": [
                 ("使用说明", ApplicationFunctions.show_help),

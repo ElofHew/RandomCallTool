@@ -21,9 +21,10 @@ RES_PATH = os.path.join(PROGRAM_ROOT, "res", "icon") if getattr(sys, "frozen", F
 VERSION = ""
 VERCODE = 0
 try:
-    from core.info import rct_version, rct_vercode, rct_date, rct_appname
+    from core.info import rct_version, rct_vercode, rct_date
     VERSION = rct_version
     VERCODE = rct_vercode
+    VERDATE = rct_date
 except Exception:
     pass
 

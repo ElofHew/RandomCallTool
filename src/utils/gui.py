@@ -59,8 +59,8 @@ class UpdateApp:
         card.pack(padx=40, pady=(0, 10), fill="x")
         for label, value in [
             ("当前版本", "v" + config.VERSION if config.VERSION else "未知"),
-            ("程序目录", config.PROGRAM_ROOT),
-            ("缓存目录", config.CACHE_DIR),
+            ("版本代码", config.VERCODE if config.VERCODE else "未知"),
+            ("发行日期", config.VERDATE if config.VERDATE else "未知"),
         ]:
             r = tk.Frame(card, bg="#ffffff")
             r.pack(fill="x", pady=2)

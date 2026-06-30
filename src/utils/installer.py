@@ -128,7 +128,7 @@ def run_uninstall(mode, setup_path=None):
     script = build_remove_script(mode, setup_path)
 
     print("[Uninstall] Starting cleanup in background...")
-    subprocess.Popen(["cmd.exe", "/c", "start", "", "/MIN", script])
+    subprocess.Popen([script], creationflags=subprocess.CREATE_NO_WINDOW)
 
     print("[Uninstall] Uninstaller exiting...")
     time.sleep(0.5)
