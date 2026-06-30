@@ -33,7 +33,7 @@ GITHUB_META = "https://raw.githubusercontent.com/ElofHew/RandomCallTool/refs/hea
 GITEE_META = "https://raw.giteeusercontent.com/ElofHew/RandomCallTool/raw/main/metadata.json"
 GITHUB_RELEASE = "https://github.com/ElofHew/RandomCallTool/releases"
 GITEE_RELEASE = "https://gitee.com/ElofHew/RandomCallTool/releases"
-OFFICIAL_URL = "https://rct.danevan.top/#download"
+OFFICIAL_URL = "https://rct.danevan.top/download"
 
 SOURCE_NAMES = {"github": "GitHub", "gitee": "Gitee"}
 
