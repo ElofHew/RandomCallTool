@@ -64,9 +64,7 @@ class MainApplication:
                 ("-", None),
                 ("检测更新", ApplicationFunctions.check_update),
                 ("-", None),
-                ("卸载工具", ApplicationFunctions.run_uninstall),
-                ("-", None),
-                ("获取RCP名单处理工具", lambda: webbrowser.open("https://rct.danevan.top/")),
+                ("卸载", ApplicationFunctions.run_uninstall),
             ],
             "帮助": [
                 ("使用说明", ApplicationFunctions.show_help),
@@ -194,7 +192,7 @@ class ApplicationFunctions:
     @staticmethod
     def show_about(root):
         """显示关于信息"""
-        info = load_about_info("rct")
+        info = load_about_info()
         AboutWindow(root, info, rct_icon_path)
     
     @staticmethod

@@ -265,7 +265,11 @@ class SmartSampler:
             return result
 
         # 6) 加权模式（自定义权重 / 智能降权）
-        if cfg.get("custom_weights") and self.weights:
+        # 同时认 advanced_config["custom_weights"]（高级配置窗口）
+        # 和 self.use_fixed_weights（权重对话框/智能模式）
+        _use_custom = cfg.get("custom_weights") or self.use_fixed_weights
+
+        if _use_custom and self.weights:
             return self._weighted_select(
                 pop, k, [self.weights.get(item, 1.0) for item in pop]
             )
@@ -273,7 +277,7 @@ class SmartSampler:
         if cfg.get("smart_reduce_weight", True):
             # 智能降权
             smart_weights = [self.get_smart_effective_weight(item) for item in pop]
-            if self.weights and cfg.get("custom_weights"):
+            if self.weights and _use_custom:
                 smart_weights = [
                     smart_weights[i] * self.weights.get(item, 1.0)
                     for i, item in enumerate(pop)

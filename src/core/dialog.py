@@ -24,10 +24,9 @@ class AboutWindow:
             - version: 版本号
             - date: 日期
             - author: 作者
-            - extra_lines: 可选，额外信息列表
         """
         self.win = tk.Toplevel(parent)
-        self.win.title(f"关于 {info['title']}")
+        self.win.title(f"关于随机抽取工具")
         self.win.geometry("460x380")
         self.win.minsize(420, 340)
         self.win.resizable(False, False)
@@ -43,7 +42,7 @@ class AboutWindow:
         title_frame.pack_propagate(False)
 
         tk.Label(
-            title_frame, text=info["title"],
+            title_frame, text="随机抽取工具",
             font=("Microsoft YaHei", 20, "bold"),
             fg="white", bg="#4a7db4",
         ).pack(pady=(12, 0))
@@ -61,8 +60,6 @@ class AboutWindow:
             ("版本", f"v{info['version']}  ({info['date']})"),
             ("作者", info["author"]),
         ]
-        for extra in info.get("extra_lines", []):
-            info_items.append(("", extra))
 
         for label, value in info_items:
             row = tk.Frame(info_frame, bg="#f0f4ff")
@@ -151,37 +148,25 @@ def _lighten(color):
         return color
 
 
-def load_about_info(app_key):
+def load_about_info():
     """从 about.resd（JSON）+ info.py 加载关于信息
-
-    Args:
-        app_key: "rct" 或 "enc"，对应约应用标识
 
     Returns:
         dict: {
-            "title", "description", "version", "date", "author",
-            "extra_lines": []
+            "title", "description", "version", "date", "author"
         }
     """
-    import json
     from core.info import (
-        rct_version, rct_date, rct_author, rct_appname,
+        rct_version, rct_date, rct_author, rct_appname, rct_description
     )
 
     # 从 JSON 获取标题和描述
-    info = {"title": "", "description": "", "extra_lines": []}
-    about_file = os.path.join(res_path, "about.resd")
-    if os.path.isfile(about_file):
-        with open(about_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        entry = data.get(app_key, {})
-        info.update(entry)
-
-    # 版本信息从 info.py 获取
-    if app_key == "rct":
-        info.setdefault("version", rct_version)
-        info.setdefault("date", rct_date)
-        info.setdefault("author", rct_author)
-        info.setdefault("title", rct_appname)
+    info = {
+        "title": rct_appname,
+        "description": rct_description,
+        "version": rct_version,
+        "date": rct_date,
+        "author": rct_author
+    }
 
     return info

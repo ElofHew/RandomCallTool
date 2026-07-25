@@ -32,7 +32,9 @@ class ConfigWindow:
         self.window.transient(parent)
         self.window.grab_set()
         set_window_icon(self.window, rct_icon_path)
+        self._applied = False
         self._create_widgets()
+        self._init_config = self._collect_config()
 
     def _make_tab(self, notebook, title):
         """创建标签页容器"""
@@ -57,12 +59,13 @@ class ConfigWindow:
         self._create_sample_mgr_tab(notebook)
         self._create_update_tab(notebook)
 
+        self.window.protocol("WM_DELETE_WINDOW", self._prompt_close)
         btn_frame = tk.Frame(self.window)
         btn_frame.pack(pady=10)
         for text, cmd in [
             ("确定", self._ok),
             ("应用", self._apply),
-            ("关闭", self.window.destroy),
+            ("关闭", self._prompt_close),
         ]:
             tk.Button(btn_frame, text=text, command=cmd, width=12, height=1
                       ).pack(side="left", padx=5)
@@ -471,36 +474,37 @@ class ConfigWindow:
 
     # ── 保存（纯逻辑，不涉及 UI 弹窗）──────────────
 
+    def _collect_config(self):
+        """收集当前 UI 配置到字典（不写入文件）"""
+        updates = {
+            "save_result": self.save_result_var.get(),
+            "result_path": 1 if self.result_path_var.get() == "桌面" else 0,
+            "auto_load_sample": self.auto_load_var.get(),
+            "rct_merge_names": self.merge_names_var.get(),
+            "max_history_items": int(self.history_var.get()),
+            "sampler_mode": self.sampler_mode_var.get(),
+            "smart_use_fixed_weights": self.smart_fixed_weights_var.get(),
+            "rct_default_sample": self.sample_combo.get(),
+            "update_source": self.update_source_var.get(),
+            "auto_check_update": self.auto_check_var.get(),
+        }
+        if updates["rct_default_sample"] in ("（无）", "（样本库为空）"):
+            updates["rct_default_sample"] = ""
+        updates["rct_default_mode"] = self.default_mode_var.get()
+        for key in ("rct_group_total", "rct_choice_default"):
+            updates[key] = int(self._default_vars[key].get())
+        return updates
+
     def _collect_and_save(self):
         """收集所有配置项并写入配置文件
         Returns: True 成功 / False 失败
         """
         try:
-            updates = {
-                "save_result": self.save_result_var.get(),
-                "result_path": 1 if self.result_path_var.get() == "桌面" else 0,
-                "auto_load_sample": self.auto_load_var.get(),
-                "rct_merge_names": self.merge_names_var.get(),
-                "max_history_items": int(self.history_var.get()),
-                "sampler_mode": self.sampler_mode_var.get(),
-                "smart_use_fixed_weights": self.smart_fixed_weights_var.get(),
-                "rct_default_sample": self.sample_combo.get(),
-                "update_source": self.update_source_var.get(),
-                "auto_check_update": self.auto_check_var.get(),
-            }
-            # 防止保存占位文本
-            if updates["rct_default_sample"] in ("（无）", "（样本库为空）"):
-                updates["rct_default_sample"] = ""
-            updates["rct_default_mode"] = self.default_mode_var.get()
-            for key in ("rct_group_total", "rct_choice_default"):
-                updates[key] = int(self._default_vars[key].get())
-
+            updates = self._collect_config()
             for key, value in updates.items():
                 self.config.set(key, value)
-
             rctlog.info("配置已保存")
             return True
-
         except Exception as e:
             rctlog.error(f"保存配置失败: {e}")
             messagebox.showerror("错误", f"保存配置失败: {e}")
@@ -508,15 +512,25 @@ class ConfigWindow:
 
     # ── 按钮回调 ──────────────────────────────────────
 
+    def _prompt_close(self):
+        """关闭前检查是否有未应用的更改"""
+        if self._collect_config() != self._init_config and not self._applied:
+            if messagebox.askyesno("配置已更改", "配置已更改，是否应用？"):
+                self._ok()
+                return
+        self.window.destroy()
+
     def _ok(self):
         """确定：应用更改并关闭窗口"""
         if self._collect_and_save():
+            self._applied = True
             messagebox.showinfo("成功", "配置已保存")
             self.window.destroy()
 
     def _apply(self):
         """应用：仅应用更改，不关闭窗口"""
         if self._collect_and_save():
+            self._applied = True
             messagebox.showinfo("成功", "配置已应用")
 
     # ── 旧的 _save 方法保留兼容引用 ──────────────────
@@ -682,7 +696,7 @@ class HomeTab(BaseTab):
     def show_about(self):
         """显示关于信息"""
         rctlog.info("打开关于窗口")
-        info = load_about_info("rct")
+        info = load_about_info()
         AboutWindow(self.frame.winfo_toplevel(), info, rct_icon_path)
 
     def quit_program(self):
@@ -1019,15 +1033,8 @@ class RandomCallTab(BaseTab):
         tk.Label(top_frame, text="权重越高，被抽中的概率越大",
                  font=("", 9), fg="gray").pack(anchor="w")
 
-        # "使用固定权重" 勾选项
+        # "使用固定权重" 勾选项（use_fixed_var 变量先创建，控件在下方函数定义后创建）
         use_fixed_var = tk.BooleanVar(value=self.sampler.use_fixed_weights)
-        fixed_cb = tk.Checkbutton(
-            top_frame, text="使用固定权重（勾选后可修改，不勾选仅查看智能权重）",
-            variable=use_fixed_var,
-            command=lambda: self._toggle_weight_entries(weight_entries, use_fixed_var),
-            font=("", 9),
-        )
-        fixed_cb.pack(anchor="w", pady=(5, 5))
 
         # 可滚动区域
         body_frame = tk.Frame(win)
@@ -1055,11 +1062,12 @@ class RandomCallTab(BaseTab):
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        win.protocol("WM_DELETE_WINDOW", lambda: (canvas.unbind_all("<MouseWheel>"), win.destroy()))
+        # WM_DELETE_WINDOW 在下方 _prompt_and_close 中设置
 
         # 为每个项目创建权重输入框
         weight_vars = {}
-        weight_entries = {}  # 存储 Entry widget 引用
+        weight_entries = {}
+        weight_labels = {}  # 存储权重状态 Label 引用
         for item in items:
             row = tk.Frame(inner)
             row.pack(fill="x", pady=2, padx=5)
@@ -1070,15 +1078,52 @@ class RandomCallTab(BaseTab):
             entry.pack(side="left", padx=5)
             weight_vars[item] = var
             weight_entries[item] = entry
-            # 显示智能有效权重
-            smart_w = self.sampler.get_smart_effective_weight(item)
-            tk.Label(row, text=f"(智能: {smart_w:.1f}  |  固定: {self.sampler.get_weight(item):.1f})",
-                     fg="gray", font=("", 8)).pack(side="left")
+            weight_labels[item] = tk.Label(row, text="", fg="gray", font=("", 8))
+            weight_labels[item].pack(side="left")
 
-        # 根据 use_fixed_weights 设置输入框初始状态
-        self._toggle_weight_entries(weight_entries, use_fixed_var)
+        def _update_weight_display():
+            """根据固定权重勾选状态，切换显示智能权重或固定权重"""
+            fixed_on = use_fixed_var.get()
+            for item in items:
+                if fixed_on:
+                    weight_labels[item].config(
+                        text=f"固定: {self.sampler.get_weight(item):.1f}")
+                else:
+                    smart_w = self.sampler.get_smart_effective_weight(item)
+                    weight_labels[item].config(
+                        text=f"智能: {smart_w:.1f}")
+            # 同步切换输入框可编辑状态
+            state = "normal" if fixed_on else "readonly"
+            for entry in weight_entries.values():
+                entry.config(state=state)
+
+        # 创建复选框（必须在 _update_weight_display 定义之后）
+        fixed_cb = tk.Checkbutton(
+            top_frame, text="使用固定权重（勾选后可修改，不勾选仅查看智能权重）",
+            variable=use_fixed_var,
+            command=_update_weight_display,
+            font=("", 9),
+        )
+        fixed_cb.pack(anchor="w", pady=(5, 5))
+
+        # 初始显示
+        _update_weight_display()
+
+        # 记录初始状态，用于检测改动
+        _init_use_fixed = use_fixed_var.get()
+        _init_weights = {item: var.get() for item, var in weight_vars.items()}
+        _applied = False
+
+        def _has_weight_changes():
+            if use_fixed_var.get() != _init_use_fixed:
+                return True
+            for item, var in weight_vars.items():
+                if var.get() != _init_weights.get(item):
+                    return True
+            return False
 
         def save_weights():
+            nonlocal _applied
             self.sampler.use_fixed_weights = use_fixed_var.get()
             for item, var in weight_vars.items():
                 try:
@@ -1087,8 +1132,19 @@ class RandomCallTab(BaseTab):
                 except ValueError:
                     messagebox.showwarning("无效输入", f"'{item}' 的权重值无效，已跳过")
                     continue
+            # 同步高级模式的自定义权重开关
+            self.sampler.advanced_config["custom_weights"] = self.sampler.use_fixed_weights
+            _applied = True
             rctlog.info(f"权重已更新 ({len(weight_vars)} 项), 固定权重={self.sampler.use_fixed_weights}")
             messagebox.showinfo("成功", "权重已保存")
+            canvas.unbind_all("<MouseWheel>")
+            win.destroy()
+
+        def _prompt_and_close():
+            if _has_weight_changes() and not _applied:
+                if messagebox.askyesno("配置已更改", "权重配置已更改，是否应用？"):
+                    save_weights()
+                    return
             canvas.unbind_all("<MouseWheel>")
             win.destroy()
 
@@ -1098,16 +1154,9 @@ class RandomCallTab(BaseTab):
         tk.Button(btn_frame, text="重置",
                   command=lambda: [var.set("1.0") for var in weight_vars.values()],
                   width=15).pack(side="left", padx=3)
-        tk.Button(btn_frame, text="取消",
-                  command=lambda: (canvas.unbind_all("<MouseWheel>"), win.destroy()),
-                  width=8).pack(side="left", padx=3)
-
-    @staticmethod
-    def _toggle_weight_entries(weight_entries, use_fixed_var):
-        """切换权重输入框的可编辑状态"""
-        state = "normal" if use_fixed_var.get() else "readonly"
-        for entry in weight_entries.values():
-            entry.config(state=state)
+        tk.Button(btn_frame, text="取消", command=_prompt_and_close, width=8).pack(side="left", padx=3)
+        # 窗口关闭也触发提醒
+        win.protocol("WM_DELETE_WINDOW", _prompt_and_close)
 
     def _open_advanced_config(self):
         """打开高级抽取配置窗口"""
@@ -1623,6 +1672,8 @@ class AdvancedConfigWindow:
 
         self.win = tk.Toplevel(parent)
         self.win.title("高级抽取配置")
+        self._applied = False
+        # 创建控件后再收集初始快照（控件在后续流程创建）
         self.win.geometry("450x550+80+80")
         self.win.minsize(450, 550)
         self.win.maxsize(550, 650)
@@ -1675,8 +1726,14 @@ class AdvancedConfigWindow:
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        self.win.protocol("WM_DELETE_WINDOW",
-                          lambda: (canvas.unbind_all("<MouseWheel>"), self.win.destroy()))
+        def _prompt_close():
+            if self._collect_config() != self._init_config and not self._applied:
+                if messagebox.askyesno("配置已更改", "高级抽取配置已更改，是否应用？"):
+                    self._apply()
+                    return
+            canvas.unbind_all("<MouseWheel>")
+            self.win.destroy()
+        self.win.protocol("WM_DELETE_WINDOW", _prompt_close)
 
         # ═══ 1. 抽取方式 ═══
         sec1 = self._make_section(scroll_inner, "抽取方式")
@@ -1842,11 +1899,10 @@ class AdvancedConfigWindow:
         )
         self.custw_cb.pack(side="left")
         self.custw_btn = tk.Button(
-            f_custw, text="打开权重设置",
+            f_custw, text="查看权重设置",
             command=self._open_weight_from_advanced,
-            state="disabled", width=12,
-            relief="flat", bd=0, bg="#e8e8e8",
-            activebackground="#d0d0d0",
+            width=12,
+            relief="groove", bd=1,
         )
         self.custw_btn.pack(side="left", padx=5)
 
@@ -1862,8 +1918,7 @@ class AdvancedConfigWindow:
                   width=12).pack(side="left", padx=5)
         tk.Button(btn_frame, text="恢复默认", command=self._reset_defaults,
                   width=12).pack(side="left", padx=5)
-        tk.Button(btn_frame, text="取消",
-                  command=lambda: (canvas.unbind_all("<MouseWheel>"), self.win.destroy()),
+        tk.Button(btn_frame, text="取消", command=_prompt_close,
                   width=8).pack(side="left", padx=5)
 
         # 存储控件引用（用于冲突禁用）
@@ -1873,6 +1928,8 @@ class AdvancedConfigWindow:
 
         # 初始状态
         self._on_replacement_change()
+        # 记录初始配置快照
+        self._init_config = self._collect_config()
 
     # ── 冲突处理 ──────────────────────────────────────────
 
@@ -1998,10 +2055,10 @@ class AdvancedConfigWindow:
             self.smart_reduce_cb.config(state="normal")
             self.custw_cb.config(state="normal")
 
-        # 自定义权重按钮：勾选时启用，否则禁用
-        self.custw_btn.config(
-            state="normal" if (custw_on and is_replacement) else "disabled",
-        )
+        # 不放回时强制禁用权重相关控件
+        if not is_replacement:
+            self.custw_cb.config(state="disabled")
+            self.custw_btn.config(state="disabled")
 
     # ── 收集与保存 ────────────────────────────────────────
 
@@ -2098,6 +2155,7 @@ class AdvancedConfigWindow:
         """应用配置"""
         self._save_to_sampler()
         self._save_to_global_config()
+        self._applied = True
         rctlog.info("高级抽取配置已应用")
         messagebox.showinfo("成功", "高级抽取配置已应用")
         if self.on_apply:
@@ -2107,6 +2165,7 @@ class AdvancedConfigWindow:
         """确定并关闭"""
         self._save_to_sampler()
         self._save_to_global_config()
+        self._applied = True
         rctlog.info("高级抽取配置已保存")
         if self.on_apply:
             self.on_apply()
@@ -2163,16 +2222,14 @@ class AdvancedConfigWindow:
         messagebox.showinfo("成功", "已恢复默认配置")
 
     def _open_weight_from_advanced(self):
-        """从高级窗口打开权重设置（先看是否有回调）"""
+        """从高级窗口打开权重设置"""
         if self.on_open_weights:
+            # 继承"自定义权重"勾选状态到权重窗口
+            self.sampler.use_fixed_weights = self.custw_var.get()
             self.on_open_weights()
         else:
             messagebox.showinfo(
                 "提示",
                 "请先在主界面中加载样本，\n"
-                "然后在高级窗口中勾选「自定义权重」\n"
-                "再点击此按钮设置。\n\n"
-                "或者关闭高级窗口后，\n"
-                "将抽样模式切换到「智能」或「高级」，\n"
-                "点击主界面的「权重」按钮设置。"
+                "再点击此按钮设置。"
             )
