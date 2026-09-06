@@ -12,6 +12,7 @@ from core.info import work_path, rct_log_path, rct_appname, rct_version, officia
 from core.logman import rctlog
 from core.fileman import FileManager, SampleLibrary
 from core.window import HomeTab, RandomCallTab, ConfigWindow, AboutWindow
+from core.rollcall import RollCallTab
 
 class MainApplication:
     def __init__(self, root):
@@ -28,9 +29,11 @@ class MainApplication:
 
         self.home_tab = HomeTab(self.notebook)
         self.call_tab = RandomCallTab(self.notebook)
+        self.roll_tab = RollCallTab(self.notebook)
 
         self.notebook.add(self.home_tab.frame, text="主页")
         self.notebook.add(self.call_tab.frame, text="随机抽取")
+        self.notebook.add(self.roll_tab.frame, text="随机点名")
 
     def create_menu(self):
         """创建菜单栏"""
