@@ -26,10 +26,10 @@ official_website = "https://rct.danevan.top"
 
 # ── 主程序 RandomCallTool ──
 rct_appname = "RandomCallTool"
-rct_version = "2.5.3-beta"
-rct_vercode = 253001
+rct_version = "2.5.3"
+rct_vercode = 253000
 rct_author = "Dan_Evan"
-rct_date = "2026-07-25"
+rct_date = "2026-09-06"
 rct_description = "一个基于Python + tkinter的随机抽取工具，支持随机抽组和随机抽人。"
 rct_prog_data_path = app_prog_data_path
 rct_log_path = os.path.join(rct_prog_data_path, "log")
