@@ -63,8 +63,9 @@ class ConfigManager:
             "adv_custom_weights": False,         # 高级模式自定义权重
 
             # ── 更新设置 ──
-            "update_source": "gitee",      # 版本更新源: github/gitee
-            "auto_check_update": True,     # 启动时自动检测更新
+            "update_source": "gitee",           # 版本更新源: github/gitee
+            "auto_check_update": True,          # 启动时自动检测更新
+            "accept_preview_update": False,     # 是否接收测试版更新
         }
 
         if os.path.exists(rct_config_path):

@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import subprocess
-from utils import config
+from core import updconf
 
 
 # ==============================
@@ -32,17 +32,17 @@ def kill_processes():
 def get_files_to_delete(mode):
     """获取要删除的文件/目录列表"""
     if mode == "reset":
-        return [os.path.join(config.PROGRAM_ROOT, "data")], config.PROGRAM_ROOT
+        return [os.path.join(updconf.PROGRAM_ROOT, "data")], updconf.PROGRAM_ROOT
 
     all_items = []
-    for name in os.listdir(config.PROGRAM_ROOT):
-        path = os.path.join(config.PROGRAM_ROOT, name)
+    for name in os.listdir(updconf.PROGRAM_ROOT):
+        path = os.path.join(updconf.PROGRAM_ROOT, name)
         if name in ("remove.exe", "remove.py"):
             continue
         all_items.append(path)
 
     if mode == "keep-data":
-        data_dir = os.path.join(config.PROGRAM_ROOT, "data")
+        data_dir = os.path.join(updconf.PROGRAM_ROOT, "data")
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         keep = {data_dir,
                 os.path.join(desktop, "\u968f\u673a\u62bd\u53d6\u7ed3\u679c"),
@@ -61,7 +61,7 @@ def get_files_to_delete(mode):
                 filtered.append(p)
         all_items = filtered
 
-    return all_items, config.PROGRAM_ROOT
+    return all_items, updconf.PROGRAM_ROOT
 
 
 def build_remove_script(mode, setup_path=None):
@@ -119,7 +119,7 @@ def run_uninstall(mode, setup_path=None):
     print("=" * 50)
     print("  Random Call Tool - Uninstaller")
     print("  Mode: " + label)
-    print("  Directory: " + config.PROGRAM_ROOT)
+    print("  Directory: " + updconf.PROGRAM_ROOT)
     if setup_path:
         print("  Setup: " + setup_path)
     print("=" * 50)
@@ -140,11 +140,11 @@ def run_uninstall(mode, setup_path=None):
 # ==============================
 
 def get_remove_path():
-    candidates = [config.REMOVE_EXE, os.path.join(config.PROGRAM_ROOT, "src", "remove.py")]
+    candidates = [updconf.REMOVE_EXE, os.path.join(updconf.PROGRAM_ROOT, "src", "remove.py")]
     for p in candidates:
         if os.path.isfile(p):
             return p
-    return config.REMOVE_EXE
+    return updconf.REMOVE_EXE
 
 
 def run_remove_with_setup(setup_path):

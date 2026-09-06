@@ -34,12 +34,14 @@ class Main:
             if not self.config.get("auto_check_update", True):
                 return
             source = self.config.get("update_source", "github")
+            accept_preview = self.config.get("accept_preview_update", False)
             from core.update import run_auto_update
 
             def _check():
-                has_update = run_auto_update(source=source, mode="--check-silent", timeout=8)
+                has_update = run_auto_update(source=source, mode="--check-silent",
+                                              timeout=8, accept_preview=accept_preview)
                 if has_update:
-                    self.root.after(0, self._show_update_prompt, source)
+                    self.root.after(0, self._show_update_prompt, source, accept_preview)
 
             import threading
             t = threading.Thread(target=_check, daemon=True)
@@ -47,7 +49,7 @@ class Main:
         except Exception as e:
             rctlog.warning(f"自动检测更新失败（静默）: {e}")
 
-    def _show_update_prompt(self, source):
+    def _show_update_prompt(self, source, accept_preview=False):
         """检测到新版本时弹窗"""
         try:
             reply = messagebox.askyesno(
@@ -58,7 +60,7 @@ class Main:
             )
             if reply:
                 from core.update import run_auto_update
-                run_auto_update(source=source, mode="--check")
+                run_auto_update(source=source, mode="--check", accept_preview=accept_preview)
         except Exception:
             pass
 

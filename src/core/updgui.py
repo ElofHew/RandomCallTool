@@ -8,23 +8,24 @@ import threading
 import webbrowser
 import tkinter as tk
 from tkinter import ttk
-from utils import config
-from utils import network
-from utils import downloader
-from utils import installer
+from core import updconf
+from core import network
+from core import downloader
+from core import installer
 
 
 class UpdateApp:
     """单窗口多页面更新程序"""
 
-    def __init__(self, root, source=None, auto_check=False):
+    def __init__(self, root, source=None, auto_check=False, accept_preview=False):
         self.root = root
-        self.source = source or config.get_config_source()
+        self.source = source or updconf.get_config_source()
         self.auto_check = auto_check
+        self.accept_preview = accept_preview
         self.result = None
         self.worker = None
         self.root.title("随机抽取工具 更新程序")
-        self.root.geometry("460x400+100+100")
+        self.root.geometry("460x420+100+100")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f4ff")
         self._set_icon()
@@ -34,7 +35,7 @@ class UpdateApp:
 
     def _set_icon(self):
         try:
-            p = os.path.join(config.RES_PATH, "update.ico")
+            p = os.path.join(updconf.RES_PATH, "update.ico")
             if os.path.isfile(p):
                 self.root.iconbitmap(p)
         except Exception:
@@ -58,9 +59,9 @@ class UpdateApp:
         card = tk.Frame(main, relief="groove", bd=1, bg="#ffffff", padx=20, pady=12)
         card.pack(padx=40, pady=(0, 10), fill="x")
         for label, value in [
-            ("当前版本", "v" + config.VERSION if config.VERSION else "未知"),
-            ("版本代码", config.VERCODE if config.VERCODE else "未知"),
-            ("发行日期", config.VERDATE if config.VERDATE else "未知"),
+            ("当前版本", "v" + updconf.VERSION if updconf.VERSION else "未知"),
+            ("版本代码", updconf.VERCODE if updconf.VERCODE else "未知"),
+            ("发行日期", updconf.VERDATE if updconf.VERDATE else "未知"),
         ]:
             r = tk.Frame(card, bg="#ffffff")
             r.pack(fill="x", pady=2)
@@ -76,6 +77,15 @@ class UpdateApp:
         for val, name in [("github", "GitHub"), ("gitee", "Gitee")]:
             tk.Radiobutton(sf, text=name, variable=self._src_var, value=val,
                            bg="#f0f4ff", command=self._on_source_changed).pack(side="left", padx=8)
+
+        # 测试版更新选项
+        pf = tk.Frame(main, bg="#f0f4ff")
+        pf.pack(pady=2)
+        self._preview_var = tk.BooleanVar(value=self.accept_preview)
+        tk.Checkbutton(pf, text="接收测试版更新",
+                       variable=self._preview_var, bg="#f0f4ff",
+                       command=self._on_preview_changed).pack()
+
         bf = tk.Frame(main, bg="#f0f4ff")
         bf.pack(pady=12)
         tk.Button(bf, text="  检测更新  ", command=self._start_check,
@@ -89,7 +99,11 @@ class UpdateApp:
 
     def _on_source_changed(self):
         self.source = self._src_var.get()
-        config.save_config_source(self.source)
+        updconf.save_config_source(self.source)
+
+    def _on_preview_changed(self):
+        self.accept_preview = self._preview_var.get()
+        updconf.save_config_accept_preview(self.accept_preview)
 
     # ==============================
     #  检测中
@@ -102,7 +116,7 @@ class UpdateApp:
         tk.Label(main, text="正在检测更新...",
                  font=("Microsoft YaHei", 14, "bold"),
                  fg="#2b5b84", bg="#f0f4ff").pack(pady=(30, 10))
-        tk.Label(main, text="正在从 " + config.SOURCE_NAMES.get(self.source, self.source) + " 获取版本信息\u2026",
+        tk.Label(main, text="正在从 " + updconf.SOURCE_NAMES.get(self.source, self.source) + " 获取版本信息\u2026",
                  font=("", 10), fg="#555", bg="#f0f4ff").pack(pady=5)
         self._progress = ttk.Progressbar(main, mode="indeterminate", length=300)
         self._progress.pack(pady=10)
@@ -115,7 +129,7 @@ class UpdateApp:
     def _start_check(self):
         self._build_checking()
         def worker():
-            result = network.check_remote_version(self.source, timeout=10)
+            result = network.check_remote_version(self.source, timeout=10, accept_preview=self.accept_preview)
             self.root.after(0, self._show_result, result)
         threading.Thread(target=worker, daemon=True).start()
 
@@ -137,21 +151,46 @@ class UpdateApp:
             self._back_or_close().pack(pady=15)
             return
         if result["has_update"]:
-            tk.Label(main, text="发现新版本", font=("", 16, "bold"),
+            label_text = "发现新版本"
+            if self.accept_preview:
+                label_text = "发现新版本（含测试版）"
+            tk.Label(main, text=label_text, font=("", 16, "bold"),
                      fg="green", bg="#f0f4ff").pack(pady=(20, 5))
-            tk.Label(main, text="当前版本: v" + result["local_version"] + "\n"
-                                "最新版本: v" + result["remote_version"] + " (" + result["remote_date"] + ")\n"
-                                "更新源: " + result["source_name"],
+            info_text = ("当前版本: v" + result["local_version"] + "\n"
+                         "最新版本: v" + result["remote_version"] + " (" + result["remote_date"] + ")\n"
+                         "更新源: " + result["source_name"])
+            if self.accept_preview:
+                info_text += "\n类型: 含测试版更新"
+            tk.Label(main, text=info_text,
                      font=("", 10), fg="#333", bg="#f0f4ff", justify="center").pack(pady=10)
             bf = tk.Frame(main, bg="#f0f4ff")
             bf.pack(pady=10)
             for text, cmd, bg in [
                 ("  直接下载(推荐)  ", self._start_download, "#4a90d9"),
-                ("  前往官网下载  ", lambda: webbrowser.open(config.OFFICIAL_URL), "#28a745"),
+                ("  前往官网下载  ", lambda: webbrowser.open(updconf.OFFICIAL_URL), "#28a745"),
             ]:
                 tk.Button(bf, text=text, command=cmd, font=("", 10), bg=bg, fg="white",
                           activebackground=self._darken(bg), activeforeground="white",
                           relief="flat", bd=0, padx=14, pady=4, cursor="hand2").pack(side="left", padx=5)
+
+            # 备用网盘下载（metadata 提供时显示）
+            netdisks = []
+            if result.get("quark_url"):
+                netdisks.append(("夸克网盘", result["quark_url"]))
+            if result.get("lanzou_url"):
+                netdisks.append(("蓝奏云", result["lanzou_url"]))
+            if netdisks:
+                nf = tk.Frame(main, bg="#f0f4ff")
+                nf.pack(pady=(4, 0))
+                tk.Label(nf, text="备用下载:", font=("", 9), fg="#777",
+                         bg="#f0f4ff").pack(side="left")
+                for name, url in netdisks:
+                    tk.Button(nf, text=name, font=("", 9), cursor="hand2",
+                              relief="groove", bd=1,
+                              command=lambda u=url: webbrowser.open(u)).pack(side="left", padx=4)
+                if result.get("lanzou_url") and result.get("lanzou_password"):
+                    tk.Label(main, text="蓝奏云访问码: " + result["lanzou_password"],
+                             font=("", 8), fg="#999", bg="#f0f4ff").pack(pady=(0, 2))
             self._back_or_close().pack(pady=8)
         else:
             tk.Label(main, text="已是最新版本", font=("", 16, "bold"),
@@ -171,7 +210,7 @@ class UpdateApp:
         ver = self.result.get("remote_version", "")
         meta = {"version": {"version": ver}}
         dl_url, filename = network.get_download_url(meta, self.source, ver)
-        dest_path = os.path.join(config.CACHE_DIR, filename)
+        dest_path = os.path.join(updconf.CACHE_DIR, filename)
         self._dl_info.config(text="正在下载: " + filename)
         # 通过 after(0) 将 tkinter 操作调度到主线程，避免后台线程竞争
         def on_progress(downloaded, total, pct):

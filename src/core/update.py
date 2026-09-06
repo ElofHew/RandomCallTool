@@ -7,7 +7,6 @@ import os
 import sys
 import subprocess
 from urllib.request import urlopen, Request
-from urllib.error import URLError, HTTPError
 from core.info import rct_vercode, rct_version, rct_appname
 from core.logman import rctlog
 
@@ -34,11 +33,21 @@ def fetch_remote_metadata(source="github", timeout=10):
     return metadata, source_name
 
 
-def compare_version(remote_metadata):
+def compare_version(remote_metadata, accept_preview=False):
     ver_info = remote_metadata.get("version", {})
     remote_vercode = ver_info.get("vercode", 0)
     remote_version = ver_info.get("version", "?")
     remote_date = ver_info.get("date", "?")
+
+    # 如果允许测试版更新，检查 preview 段的版本号
+    if accept_preview:
+        prev_info = remote_metadata.get("preview", {})
+        prev_vercode = prev_info.get("vercode", 0)
+        if prev_vercode > remote_vercode:
+            remote_vercode = prev_vercode
+            remote_version = prev_info.get("version", remote_version)
+            remote_date = prev_info.get("date", remote_date)
+
     return {
         "has_update": remote_vercode > rct_vercode,
         "local_vercode": rct_vercode,
@@ -49,17 +58,20 @@ def compare_version(remote_metadata):
     }
 
 
-def check_update(source="github", timeout=10):
+def check_update(source="github", timeout=10, accept_preview=False):
     result = {"success": False, "error": None, "has_update": False,
-              "source_name": "", "lanzou_download_url": "", "lanzou_password": ""}
+              "source_name": "", "lanzou_download_url": "", "lanzou_password": "",
+              "quark_download_url": ""}
     try:
         metadata, source_name = fetch_remote_metadata(source, timeout)
         result["source_name"] = source_name
-        cmp = compare_version(metadata)
+        cmp = compare_version(metadata, accept_preview)
         result.update(cmp)
         lz = metadata.get("lanzou", {})
         result["lanzou_download_url"] = lz.get("download", "")
         result["lanzou_password"] = lz.get("password", "")
+        qk = metadata.get("quark", {})
+        result["quark_download_url"] = qk.get("download", "")
         result["success"] = True
     except Exception as e:
         result["error"] = str(e)
@@ -67,9 +79,10 @@ def check_update(source="github", timeout=10):
     return result
 
 
-def run_auto_update(source="github", timeout=120, mode="--check"):
+def run_auto_update(source="github", timeout=120, mode="--check", accept_preview=False):
     """启动独立更新程序（update.py / update.exe）
     mode: "--check" 打开检测界面 | "--check-silent" 静默检测
+    accept_preview: 是否接收测试版更新
     """
     try:
         upd_py = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "update.py")
@@ -83,6 +96,8 @@ def run_auto_update(source="github", timeout=120, mode="--check"):
             return False
 
         args = [upd_path, "--source", source, mode]
+        if accept_preview:
+            args.append("--accept-preview")
         if upd_path.endswith(".py"):
             python = sys.executable or "python"
             args = [python] + args

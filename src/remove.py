@@ -1,9 +1,9 @@
 """
 RemoveTool for RandomCallTool - 随机抽取工具配套卸载工具
-卸载工具入口 — 解析参数 + GUI 交互，核心逻辑委派到 utils/installer
+卸载工具入口 — 解析参数 + GUI 交互，核心逻辑委派到 core/installer
 
 流程:
-  1. 本地构建 remove.bat 脚本（utils/installer）
+  1. 本地构建 remove.bat 脚本（core/installer）
   2. 写入系统临时目录 (%TEMP%)
   3. 结束正在运行的套件程序 (rctool/update)
   4. 非阻塞并行运行 bat
@@ -15,8 +15,8 @@ import argparse
 import tkinter as tk
 from tkinter import messagebox
 
-from utils import installer
-from utils import config
+from core import installer
+from core import updconf
 
 
 def parse_args():
@@ -37,7 +37,7 @@ def gui_main():
     root.geometry("460x320+200+200")
     root.resizable(False, False)
     try:
-        icon_path = os.path.join(config.PROGRAM_ROOT, "res", "icon", "remove.ico")
+        icon_path = os.path.join(updconf.PROGRAM_ROOT, "res", "icon", "remove.ico")
         if os.path.isfile(icon_path):
             root.iconbitmap(icon_path)
     except Exception:
@@ -51,7 +51,7 @@ def gui_main():
     ).pack(pady=(15, 5))
 
     tk.Label(
-        root, text="目录: " + config.PROGRAM_ROOT,
+        root, text="目录: " + updconf.PROGRAM_ROOT,
         font=("", 9), fg="gray", wraplength=420
     ).pack(pady=(0, 10))
 
@@ -96,7 +96,7 @@ def gui_main():
         ok = messagebox.askyesno(
             "确认",
             "即将执行: " + label + "\n\n"
-            "目标目录: " + config.PROGRAM_ROOT + "\n\n"
+            "目标目录: " + updconf.PROGRAM_ROOT + "\n\n"
             "确定要继续吗？\n(此操作不可撤销！)"
         )
         if ok:
@@ -139,7 +139,7 @@ def main():
         labels = {"keep-data": "Keep Data", "reset": "Reset", "full": "Full Uninstall"}
         label = labels.get(mode, mode)
         print("\nAbout to: " + label)
-        print("Target: " + config.PROGRAM_ROOT)
+        print("Target: " + updconf.PROGRAM_ROOT)
         if args.setup_path:
             print("Setup: " + args.setup_path)
         try:

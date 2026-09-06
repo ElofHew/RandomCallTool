@@ -64,3 +64,30 @@ def save_config_source(source):
             json.dump(cfg, f, ensure_ascii=False, indent=4)
     except Exception:
         pass
+
+
+def get_config_accept_preview():
+    """从 config.json 读取 accept_preview_update，默认 False"""
+    try:
+        if os.path.isfile(CONFIG_PATH):
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            return cfg.get("accept_preview_update", False)
+    except Exception:
+        pass
+    return False
+
+
+def save_config_accept_preview(accept):
+    """将 accept_preview_update 写回 config.json"""
+    try:
+        cfg = {}
+        if os.path.isfile(CONFIG_PATH):
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+        cfg["accept_preview_update"] = bool(accept)
+        os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=4)
+    except Exception:
+        pass

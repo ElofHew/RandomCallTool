@@ -438,6 +438,15 @@ class ConfigWindow:
         tk.Label(tab, text="启用后，每次启动程序会自动检查是否有新版本",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
 
+        # 测试版更新
+        self.accept_preview_var = tk.BooleanVar(
+            value=self.config.get("accept_preview_update", False))
+        tk.Checkbutton(tab, text="接收测试版更新",
+                       variable=self.accept_preview_var).pack(anchor="w", **pad)
+
+        tk.Label(tab, text="启用后，版本检测将同时检查测试版更新",
+                 fg="gray", font=("", 9)).pack(anchor="w", **pad)
+
         # 分隔线
         ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=12)
 
@@ -467,8 +476,9 @@ class ConfigWindow:
     def _check_update_now(self):
         """立即检查更新 — 启动 update.py --check"""
         update_source = self.update_source_var.get()
+        accept_preview = self.accept_preview_var.get()
         from core.update import run_auto_update
-        success = run_auto_update(source=update_source, mode="--check")
+        success = run_auto_update(source=update_source, mode="--check", accept_preview=accept_preview)
         if not success:
             messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载。")
 
@@ -487,6 +497,7 @@ class ConfigWindow:
             "rct_default_sample": self.sample_combo.get(),
             "update_source": self.update_source_var.get(),
             "auto_check_update": self.auto_check_var.get(),
+            "accept_preview_update": self.accept_preview_var.get(),
         }
         if updates["rct_default_sample"] in ("（无）", "（样本库为空）"):
             updates["rct_default_sample"] = ""
