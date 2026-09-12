@@ -3,13 +3,14 @@
     "version": {
         "version": "2.5.3",
         "date": "2026-09-06",
+        "lastver": 252031,
         "vercode": 253000
     },
     "preview": {
-        "version": "2.5.3.1-beta",
-        "date": "2026-09-06",
-        "lastver": 253000,
-        "vercode": 253031
+        "version": "2.5.3.1-beta2",
+        "date": "2026-09-12",
+        "lastver": 253031,
+        "vercode": 253032
     },
     "lanzou":{
         "download": "https://lzofevan.lanzn.com/b00egtiwyf?pwd=bcc8",
