@@ -12,7 +12,7 @@ from core.info import rct_rcplist_path, rct_version, document_path
 from core.fileman import SampleLibrary, SaveResult, base64decode
 from core.sampler import SmartSampler
 from core.platutils import open_file_or_dir
-from core.dialog import AboutWindow, load_about_info
+from core.dialog import AboutWindow, load_about_info, ask_string
 from core.info import rct_icon_path
 from core.platutils import set_window_icon
 
@@ -370,10 +370,12 @@ class ConfigWindow:
             messagebox.showwarning("警告", "样本库已达上限（50个），请删除一些后再导入")
             return
 
-        name = simpledialog.askstring(
+        default_name = os.path.splitext(os.path.basename(fp))[0]
+        name = ask_string(
             "导入样本",
             "请输入样本名称（将作为文件名，不含扩展名）：\n"
             "不能包含字符: \\ / : * ? \" < > |",
+            initialvalue=default_name,
             parent=self.window)
         if not name:
             return
@@ -1447,6 +1449,25 @@ class RandomCallTab(BaseTab):
             if extra:
                 msg += "\n" + "\n".join(extra)
             messagebox.showinfo("成功", msg)
+            # 样本库为空时，询问是否将该文件导入到样本库
+            if not SampleLibrary.get_samples():
+                self._prompt_import_to_library(self.current_file)
+
+    def _prompt_import_to_library(self, file_path):
+        """样本库为空时，提示把刚打开的文件导入到样本库"""
+        if not file_path or not os.path.isfile(file_path):
+            return
+        if not messagebox.askyesno(
+                "提示",
+                "当前样本库为空。\n是否将此文件导入到样本库？"):
+            return
+        try:
+            from core.appfunc import ApplicationFunctions
+            ApplicationFunctions.import_sample(
+                parent=self.frame.winfo_toplevel(), source_path=file_path)
+        except Exception as e:
+            rctlog.error(f"[随机抽取] 导入到样本库失败: {e}")
+            messagebox.showerror("错误", f"导入到样本库失败: {e}")
 
     def reload_current_file(self):
         """重新加载当前文件"""

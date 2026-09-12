@@ -4,8 +4,34 @@
 import os
 import webbrowser
 import tkinter as tk
+from tkinter import simpledialog
 from core.logman import rctlog
 from core.info import github, gitee, official_website, res_path
+
+
+# ══════════════════════════════════════════════════════════
+#  文本输入对话框（预填但不高亮全选）
+# ══════════════════════════════════════════════════════════
+
+class _QueryStringNoSelect(simpledialog._QueryString):
+    """与 tkinter 原生 askstring 完全相同的样式，
+    仅在预填文本后取消自动全选（光标移到末尾），保持原有观感。"""
+
+    def body(self, master):
+        entry = super().body(master)
+        if self.initialvalue is not None:
+            entry.select_clear()
+            entry.icursor(tk.END)
+        return entry
+
+
+def ask_string(title, prompt, initialvalue=None, parent=None):
+    """替代 simpledialog.askstring：支持预填内容，但不会自动全选高亮"""
+    # 必须用关键字传参：_QueryDialog 的参数顺序为
+    # (title, prompt, initialvalue, minvalue, maxvalue, parent)
+    dlg = _QueryStringNoSelect(title, prompt,
+                               initialvalue=initialvalue, parent=parent)
+    return dlg.result
 
 
 # ══════════════════════════════════════════════════════════

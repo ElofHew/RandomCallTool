@@ -100,6 +100,9 @@ class RollCallTab(BaseTab):
         tk.Button(src, text="加载", command=self._load_selected,
                   bg="#4a90d9", fg="white", relief="flat", padx=10,
                   cursor="hand2").pack(side="left", padx=2)
+        tk.Button(src, text="刷新", command=self.refresh_state,
+                  bg="#16a085", fg="white", relief="flat", padx=10,
+                  cursor="hand2").pack(side="left", padx=2)
         tk.Button(src, text="点名设置", command=self._open_config,
                   relief="groove", padx=8,
                   cursor="hand2").pack(side="left", padx=2)
@@ -162,6 +165,38 @@ class RollCallTab(BaseTab):
             self.sample_var.set(samples[0])
         if not samples:
             self.sample_var.set("")
+
+    def refresh_state(self):
+        """刷新样本库列表与当前名单状态
+
+        适用场景：样本库增删样本、或名单相关配置发生变化后，
+        重新扫描样本库；若当前名单仍在库中则重新读取以同步文件内容。
+        """
+        prev = self.sample_combo.get()
+        self._refresh_samples()
+        values = list(self.sample_combo["values"])
+        # 尽量保持原选择
+        if prev in values:
+            self.sample_var.set(prev)
+
+        reloaded = False
+        if self.sample_name and self.sample_name in values:
+            names = SampleLibrary.load_names(self.sample_name)
+            if names:
+                names, _ = self._truncate_names(names)
+                names, _ = self._merge_duplicates(names)
+                self._set_names(self.sample_name, names)
+                reloaded = True
+
+        if not values:
+            self.info_var.set("样本库为空")
+        elif self.sample_name and self.sample_name not in values:
+            self.info_var.set(f"当前名单: {self.sample_name}（已不在样本库中）")
+        elif not self.sample_name:
+            self.info_var.set("尚未加载名单")
+
+        rctlog.info(f"[随机点名] 刷新状态: 样本库 {len(values)} 个样本, "
+                    f"重新加载名单={reloaded}")
 
     def _auto_load_default(self):
         """自动加载点名名单（由「自启动加载点名名单」独立控制）"""

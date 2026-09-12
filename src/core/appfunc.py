@@ -7,7 +7,7 @@ from time import strftime
 import tkinter as tk
 from tkinter import ttk, messagebox
 from core.more import run_process
-from core.dialog import load_about_info
+from core.dialog import load_about_info, ask_string
 from core.info import work_path, rct_log_path, rct_appname, rct_version, official_website, rct_icon_path
 from core.logman import rctlog
 from core.fileman import FileManager, SampleLibrary
@@ -47,7 +47,7 @@ class MainApplication:
                 ("重新加载当前文件 (Ctrl+R)", lambda: self.call_tab.reload_current_file() if self.call_tab else None),
                 ("自动加载默认样本 (Ctrl+D)", lambda: self.call_tab.auto_load_file() if self.call_tab else None),
                 ("-", None),
-                ("导入样本到库 (Ctrl+I)", ApplicationFunctions.import_sample),
+                ("导入样本到库 (Ctrl+I)", lambda: ApplicationFunctions.import_sample(self.root)),
                 ("打开结果目录", self.open_result_dir),
                 ("-", None),
                 ("退出", self.quit_app),
@@ -106,7 +106,7 @@ class MainApplication:
         self.root.bind("<Control-w>", lambda e: ct.clear_all_history() if ct else None)
         self.root.bind("<Control-Shift-R>", lambda e: ct.reset_sampler_history() if ct else None)
         self.root.bind("<Control-comma>", lambda e: self.open_config_window())
-        self.root.bind("<Control-i>", lambda e: ApplicationFunctions.import_sample())
+        self.root.bind("<Control-i>", lambda e: ApplicationFunctions.import_sample(self.root))
         self.root.bind("<Control-t>", lambda e: self.notebook.select(ct.frame) if ct else None)
         self.root.bind("<Control-p>", lambda e: self.notebook.select(self.roll_tab.frame) if self.roll_tab else None)
         self.root.bind("<Control-l>", lambda e: FileManager.open_log_file())
@@ -130,22 +130,34 @@ class ApplicationFunctions:
     """应用程序通用功能类"""
 
     @staticmethod
-    def import_sample():
-        """导入样本到样本库"""
-        from tkinter import simpledialog, filedialog as fd
-        fp = fd.askopenfilename(
-            title="选择要导入的名单文件",
-            filetypes=[("可用文件", "*.txt;*.csv;*.rcp"),
-                       ("文本文件", "*.txt"),
-                       ("CSV文件", "*.csv"),
-                       ("编码文件", "*.rcp"),
-                       ("所有文件", "*.*")])
-        if not fp:
-            return
+    def import_sample(parent=None, source_path=None):
+        """导入样本到样本库
+
+        source_path: 已选好的源文件路径；为空则弹出文件选择对话框
+        """
+        from tkinter import filedialog as fd
+        if source_path:
+            fp = source_path
+        else:
+            fp = fd.askopenfilename(
+                title="选择要导入的名单文件",
+                filetypes=[("可用文件", "*.txt;*.csv;*.rcp"),
+                           ("文本文件", "*.txt"),
+                           ("CSV文件", "*.csv"),
+                           ("编码文件", "*.rcp"),
+                           ("所有文件", "*.*")])
+            if not fp:
+                return
         if len(SampleLibrary.get_samples()) >= 50:
-            messagebox.showwarning("警告", "样本库已达上限（50个）")
+            messagebox.showwarning("警告", "样本库已达上限（50个），请删除一些后再导入")
             return
-        name = simpledialog.askstring("导入样本", "请输入样本名称：")
+        default_name = os.path.splitext(os.path.basename(fp))[0]
+        name = ask_string(
+            "导入样本",
+            "请输入样本名称（将作为文件名，不含扩展名）：\n"
+            "不能包含字符: \\ / : * ? \" < > |",
+            initialvalue=default_name,
+            parent=parent)
         if not name:
             return
         name = name.strip()
