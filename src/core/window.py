@@ -92,11 +92,17 @@ class ConfigWindow:
             tk.Radiobutton(f1, text=v, variable=self.result_path_var,
                            value=v).pack(side="left", padx=2)
 
-        # 自动加载样本
+        # 自动加载随机抽人样本
         self.auto_load_var = tk.BooleanVar(
             value=self.config.get("auto_load_sample", True))
-        tk.Checkbutton(tab, text="启动时自动加载默认样本",
+        tk.Checkbutton(tab, text="启动时自动加载样本（随机抽人）",
                        variable=self.auto_load_var).pack(anchor="w", **pad)
+
+        # 自动加载点名名单（独立于抽样）
+        self.rollcall_auto_load_var = tk.BooleanVar(
+            value=self.config.get("rollcall_auto_load_sample", True))
+        tk.Checkbutton(tab, text="启动时自动加载名单（随机点名）",
+                       variable=self.rollcall_auto_load_var).pack(anchor="w", **pad)
 
         # 合并重复名字
         self.merge_names_var = tk.BooleanVar(
@@ -172,6 +178,19 @@ class ConfigWindow:
         tk.Label(tab, text="放回/不放回、抽取优化、加权等详细配置",
                  fg="gray", font=("", 8)).pack(anchor="w", **pad, pady=(0, 6))
 
+        # ── 随机点名配置入口 ──
+        roll_btn_frame = tk.Frame(tab)
+        roll_btn_frame.pack(fill="x", **pad, pady=2)
+        tk.Label(roll_btn_frame, text="随机点名配置：", width=15, anchor="w").pack(side="left")
+        tk.Button(roll_btn_frame, text="打开随机点名配置",
+                  command=self._open_rollcall_config,
+                  bg="#8e44ad", fg="white",
+                  activebackground="#7d3c98", activeforeground="white",
+                  relief="flat", bd=0, padx=10, cursor="hand2",
+                  width=18).pack(side="left", padx=5)
+        tk.Label(tab, text="点名速率、打乱名单、放回/不放回、重置限度等",
+                 fg="gray", font=("", 8)).pack(anchor="w", **pad, pady=(0, 6))
+
         ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=6)
 
         # ── 默认值 ──
@@ -235,6 +254,19 @@ class ConfigWindow:
             )
         AdvancedConfigWindow(self.window, sampler)
         rctlog.info("从配置窗口打开高级抽取配置")
+
+    def _open_rollcall_config(self):
+        """从配置窗口打开随机点名配置（与高级抽取配置入口类似）"""
+        from core.rollcall import RollCallConfigWindow
+        options = {
+            "speed": self.config.get("rollcall_speed", 1.0),
+            "shuffle": self.config.get("rollcall_shuffle", False),
+            "with_replacement": self.config.get("rollcall_with_replacement", True),
+            "reset_limit": self.config.get("rollcall_reset_limit", "full"),
+            "reset_custom": self.config.get("rollcall_reset_custom", 1),
+        }
+        RollCallConfigWindow(self.window, options)
+        rctlog.info("从配置窗口打开随机点名配置")
 
     def _refresh_sample_list(self):
         """刷新样本库下拉列表"""
@@ -490,6 +522,7 @@ class ConfigWindow:
             "save_result": self.save_result_var.get(),
             "result_path": 1 if self.result_path_var.get() == "桌面" else 0,
             "auto_load_sample": self.auto_load_var.get(),
+            "rollcall_auto_load_sample": self.rollcall_auto_load_var.get(),
             "rct_merge_names": self.merge_names_var.get(),
             "max_history_items": int(self.history_var.get()),
             "sampler_mode": self.sampler_mode_var.get(),

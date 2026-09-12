@@ -66,6 +66,14 @@ class ConfigManager:
             "update_source": "gitee",           # 版本更新源: github/gitee
             "auto_check_update": True,          # 启动时自动检测更新
             "accept_preview_update": False,     # 是否接收测试版更新
+
+            # ── 随机点名设置 ──
+            "rollcall_speed": 1.0,              # 名字轮换速率倍数 (0.5~5.0, 1.0 为基准)
+            "rollcall_shuffle": False,          # 点名前打乱名单顺序
+            "rollcall_with_replacement": True,  # 放回式(True)/不放回式(False)
+            "rollcall_reset_limit": "full",     # 重置限度: full/half/custom
+            "rollcall_reset_custom": 1,         # 自定义重置阈值(剩多少人时重置)
+            "rollcall_auto_load_sample": True,  # 启动时自动加载点名名单(独立于抽样)
         }
 
         if os.path.exists(rct_config_path):
