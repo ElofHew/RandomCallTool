@@ -700,37 +700,99 @@ class HomeTab(BaseTab):
         version_label = tk.Label(
             self.frame,
             text=f"当前版本：{rct_version}",
-            font=("Helvetica", 12),
-            fg="purple"
+            font=("Microsoft YaHei", 12),
+            fg="purple",
         )
-        version_label.pack(pady=5)
+        version_label.pack(pady=(0, 12))
 
-        button_configs = [
-            ("随机抽取", self.open_random_call),
-            ("软件配置", self.open_config_window),
-            ("关于应用", self.show_about),
-            ("退出程序", self.quit_program)
+        # ── 2 列 × 3 行按钮区 ──
+        btn_frame = tk.Frame(self.frame)
+        btn_frame.pack(expand=True)
+
+        buttons = [
+            ("抽取", self.open_random_call, "#4a90d9"),
+            ("点名", self.open_rollcall, "#8e44ad"),
+            ("设置", self.open_config_window, "#16a085"),
+            ("更新", self.open_update, "#e67e22"),
+            ("关于", self.show_about, "#7f8c8d"),
+            ("退出", self.quit_program, "#c0392b"),
         ]
-
-        for text, command in button_configs:
-            button = self.create_button(self.frame, text, command)
-            button.pack(pady=5)
+        for i, (text, command, color) in enumerate(buttons):
+            btn = self._make_home_button(btn_frame, text, command, color)
+            btn.grid(row=i // 2, column=i % 2, padx=12, pady=8)
 
         start_time = strftime("%Y-%m-%d %H:%M:%S")
         start_label = tk.Label(
             self.frame,
             text=f"启动时间：{start_time}",
-            font=("Helvetica", 12),
-            fg="gray"
+            font=("Microsoft YaHei", 12),
+            fg="gray",
         )
-        start_label.pack(side=tk.BOTTOM, anchor=tk.CENTER, pady=5)
+        start_label.pack(side=tk.BOTTOM, anchor=tk.CENTER, pady=8)
     
+    def _make_home_button(self, parent, text, command, color):
+        """主页美化按钮：扁平色块 + 悬停变色 + 手型光标（无焦点高亮边框）"""
+        return tk.Button(
+            parent, text=text, command=command,
+            font=("Microsoft YaHei", 12, "bold"),
+            bg=color, fg="white",
+            activebackground=self._darken(color),
+            activeforeground="white",
+            relief="flat", bd=0, cursor="hand2",
+            highlightthickness=0, takefocus=False,
+            width=12, height=2,
+        )
+
+    @staticmethod
+    def _darken(color, amount=32):
+        """将颜色调暗，用于按钮悬停态"""
+        try:
+            c = color.lstrip("#")
+            r, g, b = (int(c[i:i + 2], 16) for i in (0, 2, 4))
+            r = max(0, r - amount)
+            g = max(0, g - amount)
+            b = max(0, b - amount)
+            return "#%02x%02x%02x" % (r, g, b)
+        except Exception:
+            return color
+
+    def _select_tab(self, title):
+        """按选项卡标题切换到对应页"""
+        notebook = self.frame.master
+        try:
+            for i, tab_id in enumerate(notebook.tabs()):
+                if notebook.tab(tab_id, "text") == title:
+                    notebook.select(i)
+                    return True
+        except Exception as e:
+            rctlog.warning(f"切换选项卡失败: {e}")
+        return False
+
     def open_random_call(self):
         """打开随机抽取界面"""
         rctlog.info("打开随机抽取界面")
-        notebook = self.frame.master
-        if hasattr(notebook, "select"):
-            notebook.select(1)
+        self._select_tab("随机抽取")
+
+    def open_rollcall(self):
+        """打开随机点名界面"""
+        rctlog.info("打开随机点名界面")
+        self._select_tab("随机点名")
+
+    def open_update(self):
+        """打开更新程序"""
+        rctlog.info("打开更新程序")
+        try:
+            config = ConfigManager()
+            source = config.get("update_source", "github")
+            accept_preview = config.get("accept_preview_update", False)
+            from core.update import run_auto_update
+            ok = run_auto_update(source=source, mode="--check",
+                                 accept_preview=accept_preview)
+            if not ok:
+                messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载。")
+        except Exception as e:
+            rctlog.error(f"打开更新程序失败: {e}")
+            messagebox.showerror("错误", f"无法启动更新程序: {e}")
 
     def open_config_window(self):
         """打开配置窗口"""
@@ -829,30 +891,43 @@ class RandomCallTab(BaseTab):
         self.control_frame.pack(side="left", fill="both", expand=True)
 
         # ----- 抽人控件（LabelFrame，固定最小高度）-----
-        self.person_frame = tk.LabelFrame(self.control_frame, text="样本列表", height=130)
+        self.person_frame = tk.LabelFrame(self.control_frame, text="样本列表", height=120)
         self.person_frame.pack_propagate(False)
+
+        # 样本信息行：名称（紫色）+ 数量（绿色），合并为一行
+        info_row = tk.Frame(self.person_frame)
+        info_row.pack(pady=5, padx=5)
         self.file_path_label = tk.Label(
-            self.person_frame, text="未选择文件", fg="gray", wraplength=250,
+            info_row, text="未选择文件", fg="gray", wraplength=220,
+            font=("Microsoft YaHei", 12),
         )
-        self.file_path_label.pack(pady=5, padx=5)
+        self.file_path_label.pack(side="left")
+        self.sample_count_label = tk.Label(info_row, text="", fg="green",
+                                           font=("Microsoft YaHei", 12))
+        self.sample_count_label.pack(side="left")
 
         btn_row = tk.Frame(self.person_frame)
         btn_row.pack(pady=5)
-        for text, cmd in [
-            ("选择文件", self.load_names),
-            ("从样本库", self.load_from_library),
-            ("重新加载", self.reload_current_file),
-            ("自动加载", self.auto_load_file),
-        ]:
-            self.create_button(btn_row, text, cmd, width=9, height=1).pack(side="left", padx=2)
+        load_actions = [
+            ("选择文件", self.load_names, "#6a1b9a", "#4a148c"),
+            ("从样本库", self.load_from_library, "#2e7d32", "#1b5e20"),
+            ("重新加载", self.reload_current_file, "#5d4037", "#3e2723"),
+            ("自动加载", self.auto_load_file, "#c2185b", "#880e4f"),
+        ]
+        for text, cmd, color, active in load_actions:
+            tk.Button(
+                btn_row, text=text, command=cmd,
+                font=("Microsoft YaHei", 10, "bold"),
+                bg=color, fg="white",
+                activebackground=active, activeforeground="white",
+                relief="flat", bd=0, cursor="hand2",
+                highlightthickness=0, takefocus=False,
+                padx=10, pady=5,
+            ).pack(side="left", padx=3)
 
-        self.sample_count_label = tk.Label(
-            self.person_frame, text="样本数量: 0", fg="green",
-        )
-        self.sample_count_label.pack(pady=(0, 5))
 
-        # ----- 抽组控件（LabelFrame，固定最小高度）-----
-        self.group_frame = tk.LabelFrame(self.control_frame, text="抽组设置", height=130)
+        # ----- 抽组控件（LabelFrame，固定最小高度，与样本列表统一）-----
+        self.group_frame = tk.LabelFrame(self.control_frame, text="抽组设置", height=120)
         self.group_frame.pack_propagate(False)
 
         order_row = tk.Frame(self.group_frame)
@@ -875,6 +950,9 @@ class RandomCallTab(BaseTab):
         self.total_entry.set(str(rcg_total))
 
         self.total_entry.bind("<<ComboboxSelected>>", self._on_total_change)
+
+        tk.Label(self.group_frame, text="最多支持26个组，触屏设备可以在选择框上滑动选择",
+                 fg="gray", font=("", 8)).pack(pady=(0, 4))
 
         # ----- 右侧历史记录 -----
         self._create_history_area(main_frame)
@@ -920,17 +998,37 @@ class RandomCallTab(BaseTab):
 
         inner_btns = tk.Frame(self.action_frame)
         inner_btns.pack(fill="x", padx=8, pady=(2, 6))
-        actions = [
-            ("抽取", self.draw),
-            ("保存当前结果", self.save_current_result),
-            ("清空历史记录", self.clear_all_history),
-            ("重置抽样历史", self.reset_sampler_history),
+
+        # ── 抽取：醒目主按钮（居中，适当加高） ──
+        self.draw_btn = tk.Button(
+            inner_btns, text="抽  取", command=self.draw,
+            font=("Microsoft YaHei", 16, "bold"),
+            bg="#4a90d9", fg="white",
+            activebackground="#357abd", activeforeground="white",
+            relief="flat", bd=0, cursor="hand2",
+            highlightthickness=0, takefocus=False,
+            width=10, height=1,
+        )
+        self.draw_btn.grid(row=0, column=0, columnspan=3, padx=4, pady=(2, 6))
+
+        # ── 次要操作：一行三个彩色按钮 ──
+        sub_actions = [
+            ("保存当前结果", self.save_current_result, "#16a085", "#11806a"),
+            ("清空历史记录", self.clear_all_history, "#7f8c8d", "#616a6b"),
+            ("重置抽样历史", self.reset_sampler_history, "#e67e22", "#cf6d17"),
         ]
-        for i, (text, cmd) in enumerate(actions):
-            btn = self.create_button(inner_btns, text, cmd, width=11, height=1)
-            btn.grid(row=i // 2, column=i % 2, padx=4, pady=2)
-        inner_btns.grid_columnconfigure(0, weight=1)
-        inner_btns.grid_columnconfigure(1, weight=1)
+        for j, (text, cmd, color, active) in enumerate(sub_actions):
+            btn = tk.Button(
+                inner_btns, text=text, command=cmd,
+                font=("Microsoft YaHei", 10, "bold"),
+                bg=color, fg="white",
+                activebackground=active, activeforeground="white",
+                relief="flat", bd=0, cursor="hand2", height=1,
+                highlightthickness=0, takefocus=False,
+            )
+            btn.grid(row=1, column=j, sticky="ew", padx=4, pady=2)
+        for j in range(3):
+            inner_btns.grid_columnconfigure(j, weight=1)
 
         # 初始模式
         self._switch_mode()
@@ -1219,6 +1317,14 @@ class RandomCallTab(BaseTab):
     #  自动加载样本（抽人）
     # ══════════════════════════════════════════════════════════
 
+    def _set_sample_info(self, name_text, count=None):
+        """更新样本信息行：名称紫色，数量用 (绿色) 紧随其后"""
+        self.file_path_label.config(text=name_text, fg="purple")
+        if count is None:
+            self.sample_count_label.config(text="")
+        else:
+            self.sample_count_label.config(text=f" ({count})", fg="green")
+
     def _auto_load_sample(self):
         """自动加载默认样本（从样本库）"""
         config = ConfigManager()
@@ -1232,8 +1338,7 @@ class RandomCallTab(BaseTab):
             self.names = names
             self.sampler.reset_no_replace_pool()
             self.current_file = os.path.join(rct_rcplist_path, f"{default_name}.rcp")
-            self.file_path_label.config(text=f"样本库: {default_name}", fg="purple")
-            self.sample_count_label.config(text=f"样本数量: {len(names)}", fg="green")
+            self._set_sample_info(f"样本库：{default_name}", len(names))
             mx = len(names)
             self.choice_entry["values"] = list(range(1, mx + 1))
             rctlog.info(f"[随机抽取] 自动加载样本库: {default_name}, 共 {len(names)} 个名字")
@@ -1295,11 +1400,11 @@ class RandomCallTab(BaseTab):
                 messagebox.showwarning("警告", "文件中没有有效的数据")
                 return [], extra
 
-            self.file_path_label.config(
-                text="默认样本" if file_path == self.auto_file else os.path.basename(file_path),
-                fg="purple",
+            self._set_sample_info(
+                ("默认样本：" if file_path == self.auto_file else "样本文件：")
+                + os.path.basename(file_path),
+                len(names),
             )
-            self.sample_count_label.config(text=f"样本数量: {len(names)}", fg="green")
 
             mx = len(names)
             self.choice_entry["values"] = list(range(1, mx + 1))
@@ -1313,8 +1418,7 @@ class RandomCallTab(BaseTab):
                 with open(file_path, "r", encoding="gbk") as f:
                     lines = [line.strip() for line in f if line.strip()]
                 if lines:
-                    self.file_path_label.config(text=os.path.basename(file_path), fg="purple")
-                    self.sample_count_label.config(text=f"样本数量: {len(lines)}", fg="green")
+                    self._set_sample_info("样本文件：" + os.path.basename(file_path), len(lines))
                     mx = len(lines)
                     self.choice_entry["values"] = list(range(1, mx + 1))
                     self.current_file = file_path
@@ -1411,8 +1515,7 @@ class RandomCallTab(BaseTab):
             self.names = names
             self.sampler.reset_no_replace_pool()
             self.current_file = os.path.join(rct_rcplist_path, f"{name}.rcp")
-            self.file_path_label.config(text=f"样本库: {name}", fg="purple")
-            self.sample_count_label.config(text=f"样本数量: {len(names)}", fg="green")
+            self._set_sample_info(f"样本库：{name}", len(names))
             mx = len(names)
             self.choice_entry["values"] = list(range(1, mx + 1))
             rctlog.info(f"[随机抽取] 从样本库加载: {name}, 共 {len(names)} 个名字")
@@ -1433,8 +1536,7 @@ class RandomCallTab(BaseTab):
             self.names = names
             self.sampler.reset_no_replace_pool()
             self.current_file = os.path.join(rct_rcplist_path, f"{default_name}.rcp")
-            self.file_path_label.config(text=f"样本库: {default_name}", fg="purple")
-            self.sample_count_label.config(text=f"样本数量: {len(names)}", fg="green")
+            self._set_sample_info(f"样本库：{default_name}", len(names))
             mx = len(names)
             self.choice_entry["values"] = list(range(1, mx + 1))
             rctlog.info(f"[随机抽取] 自动加载样本库: {default_name}, 共 {len(names)} 个名字")
