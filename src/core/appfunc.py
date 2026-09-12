@@ -64,6 +64,7 @@ class MainApplication:
             ],
             "工具": [
                 ("随机抽取 (Ctrl+T)", lambda: self.notebook.select(self.call_tab.frame)),
+                ("随机点名 (Ctrl+P)", lambda: self.notebook.select(self.roll_tab.frame)),
                 ("-", None),
                 ("检测更新", ApplicationFunctions.check_update),
                 ("-", None),
@@ -107,6 +108,7 @@ class MainApplication:
         self.root.bind("<Control-comma>", lambda e: self.open_config_window())
         self.root.bind("<Control-i>", lambda e: ApplicationFunctions.import_sample())
         self.root.bind("<Control-t>", lambda e: self.notebook.select(ct.frame) if ct else None)
+        self.root.bind("<Control-p>", lambda e: self.notebook.select(self.roll_tab.frame) if self.roll_tab else None)
         self.root.bind("<Control-l>", lambda e: FileManager.open_log_file())
 
     def open_config_window(self):
