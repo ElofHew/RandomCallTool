@@ -29,6 +29,42 @@ def kill_processes():
     time.sleep(0.5)
 
 
+def get_extra_uninstall_targets():
+    """卸载额外清理项：开始菜单文件夹 + 桌面快捷方式
+
+    为避免遗漏，开始菜单与桌面的「公用」与「当前用户」两个位置都尝试删除：
+      - 开始菜单文件夹: 「随机抽取工具」或「随机抽取工具套件」
+        * 当前用户: %APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs
+        * 公用:     %ProgramData%\\Microsoft\\Windows\\Start Menu\\Programs
+      - 桌面快捷方式: 「随机抽取工具.lnk」
+        * 当前用户: %USERPROFILE%\\Desktop
+        * 公用:     %PUBLIC%\\Desktop
+    返回路径列表（不管是否存在，由 remove.bat 用 if exist 判断）
+    """
+    home = os.path.expanduser("~")
+    appdata = os.environ.get("APPDATA") or os.path.join(home, "AppData", "Roaming")
+    programdata = os.environ.get("ProgramData") or r"C:\ProgramData"
+    public = os.environ.get("PUBLIC") or r"C:\Users\Public"
+
+    targets = []
+    start_menu_bases = [
+        os.path.join(appdata, "Microsoft", "Windows", "Start Menu", "Programs"),
+        os.path.join(programdata, "Microsoft", "Windows", "Start Menu", "Programs"),
+    ]
+    for base in start_menu_bases:
+        for name in ("随机抽取工具", "随机抽取工具套件"):
+            targets.append(os.path.join(base, name))
+
+    desktop_dirs = [
+        os.path.join(home, "Desktop"),
+        os.path.join(public, "Desktop"),
+    ]
+    for desktop in desktop_dirs:
+        targets.append(os.path.join(desktop, "随机抽取工具.lnk"))
+
+    return targets
+
+
 def get_files_to_delete(mode):
     """获取要删除的文件/目录列表"""
     if mode == "reset":
@@ -60,6 +96,10 @@ def get_files_to_delete(mode):
             if not skip:
                 filtered.append(p)
         all_items = filtered
+
+    # 保留数据卸载 / 完全卸载：额外清理开始菜单与桌面快捷方式
+    if mode in ("keep-data", "full"):
+        all_items.extend(get_extra_uninstall_targets())
 
     return all_items, updconf.PROGRAM_ROOT
 
