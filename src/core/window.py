@@ -1719,12 +1719,11 @@ class RandomCallTab(BaseTab):
         entry = self._get_entry(eid)
         if not entry:
             return
-        title = "抽人记录" if entry["mode"] == "person" else "抽组记录"
-        text = f"[{entry['timestamp']}] {title}\n\n" + "\n".join(entry["items"])
 
         win = tk.Toplevel(self.frame.winfo_toplevel())
         win.title(f"历史记录 #{entry['id']}")
-        win.geometry("400x300")
+        # 固定窗口位置：距屏幕上方、左侧各 100 像素
+        win.geometry("400x300+100+100")
         win.transient(self.frame.winfo_toplevel())
         win.grab_set()
 

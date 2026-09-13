@@ -1,15 +1,17 @@
 """
-随机点名模块 — 跑马灯式手动点名（第一版草稿）
+随机点名模块 — 跑马灯式点名
 
 功能说明：
   与「随机抽取/随机抽人」不同，点名采用类似跑马灯的形式：
   点「开始点名」后名单里的名字快速跳动，点「停止」则定格显示当前名字。
+  另有「自动点名」：在 1.0x~3.0x 速率与 2~3 秒时长范围内各随机取一个值，
+  到时自动停止并定格结果。
 
 名单来源：
   与随机抽人一致，使用样本库中的 RCP 名单（data/rcplist/）。
 
-当前版本仅提供手动点名；后续计划参照随机抽人扩展：
-  自动点名、点名优化等高级功能。
+点名优化（见 RollCallConfigWindow）：
+  名字轮换速率、点名前打乱名单、放回式/不放回式、重置限度。
 """
 import random
 import tkinter as tk
@@ -24,15 +26,18 @@ from core.info import rct_icon_path
 
 
 class RollCallTab(BaseTab):
-    """随机点名选项卡 — 第一版仅手动点名"""
+    """随机点名选项卡 — 手动点名 + 自动点名"""
 
     ROLL_INTERVAL_MS = 70   # 滚动时名字切换间隔（毫秒）
     NAME_FONT_SIZE = 40    # 名字显示字号（固定，避免点名时 UI 跳变）
     MAX_NAME_LEN = 10      # 名字最大字符数，超出部分自动截断
     ROLL_TIMEOUT_MS = 10000  # 手动点名超时（毫秒），超时未停止则强制停止
-    AUTO_ROLL_MS = 3000      # 自动点名时长（毫秒），到时自动停止
-    SPEED_MIN = 0.5          # 速率范围下限
-    SPEED_MAX = 5.0          # 速率范围上限
+    AUTO_SPEED_MIN = 1.0     # 自动点名速率范围下限（倍）
+    AUTO_SPEED_MAX = 3.0     # 自动点名速率范围上限（倍）
+    AUTO_SEC_MIN = 2.0       # 自动点名时长范围下限（秒）
+    AUTO_SEC_MAX = 3.0       # 自动点名时长范围上限（秒）
+    SPEED_MIN = 0.5          # 手动点名速率下限（设置窗口滑杆用）
+    SPEED_MAX = 5.0          # 手动点名速率上限（设置窗口滑杆用）
 
     def __init__(self, parent):
         super().__init__(parent, "随机点名")
@@ -284,7 +289,7 @@ class RollCallTab(BaseTab):
         self.stop_btn.config(state="disabled")
 
     # ══════════════════════════════════════════════════════════
-    #  点名逻辑（手动）
+    #  点名逻辑（手动 / 自动）
     # ══════════════════════════════════════════════════════════
 
     def start(self, timeout_ms=None, speed=None):
@@ -309,17 +314,18 @@ class RollCallTab(BaseTab):
         self._timeout_id = self.frame.after(duration, self._on_timeout)
 
     def auto_start(self):
-        """自动点名：在速率范围内随机选一个值，固定时长后自动停止"""
+        """自动点名：在速率与时长范围内各随机取一个值，到时自动停止"""
         if not self.names:
             messagebox.showwarning("警告", "请先加载名单")
             return
         if self.rolling:
             return
-        # 随机选取本次速率（仅本次生效，不改动用户配置）
-        speed = round(random.uniform(self.SPEED_MIN, self.SPEED_MAX), 1)
+        # 随机选取本次速率与时长（仅本次生效，不改动用户配置）
+        speed = round(random.uniform(self.AUTO_SPEED_MIN, self.AUTO_SPEED_MAX), 1)
+        duration = round(random.uniform(self.AUTO_SEC_MIN, self.AUTO_SEC_MAX), 1)
         rctlog.info(f"[随机点名] 自动点名开始，本次速率 {speed:.1f}x，"
-                    f"{self.AUTO_ROLL_MS // 1000} 秒后自动停止")
-        self.start(timeout_ms=self.AUTO_ROLL_MS, speed=speed)
+                    f"{duration:g} 秒后自动停止")
+        self.start(timeout_ms=int(duration * 1000), speed=speed)
 
     def _tick(self):
         """滚动一步 — 随机切换显示一个名字"""
