@@ -1,10 +1,10 @@
 {
     "name": "RandomCallTool",
     "version": {
-        "version": "2.5.3",
-        "date": "2026-09-06",
-        "lastver": 252031,
-        "vercode": 253000
+        "version": "2.6",
+        "date": "2026-09-13",
+        "lastver": 253032,
+        "vercode": 260000
     },
     "preview": {
         "version": "2.5.3.1-beta2",
