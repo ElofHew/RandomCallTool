@@ -16,16 +16,9 @@ class Main:
     def __init__(self):
         self.config = ConfigManager()
         self._force_quit = False
-        # 需要后台驻留启动时，必须在创建窗口前就隐藏，否则会先闪出主界面
-        from core import tray as tray_mod
-        self._start_minimized = (
-            self.config.get("tray_start_minimized", False)
-            and self.config.get("tray_enabled", True)
-            and tray_mod.is_available()
-        )
         self.root = tk.Tk()
-        if self._start_minimized:
-            self.root.withdraw()
+        # 先隐藏，等界面全部构建完成后再决定是否显示，避免启动时闪一下
+        self.root.withdraw()
         self.root.title("随机抽取工具")
         self.root.geometry("600x460+50+50")
         self.root.minsize(560, 460)
@@ -54,13 +47,14 @@ class Main:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         # 启动后延迟执行自动检测更新
         self.root.after(1500, self._auto_check_update)
-        if self._start_minimized:
-            if self._tray_ok:
-                rctlog.info("已按配置在启动后驻留系统托盘，主界面保持隐藏")
-            else:
-                # 托盘启动失败时若继续隐藏，用户将无法唤出界面
-                self.root.deiconify()
-                rctlog.warning("托盘启动失败，已改为显示主界面")
+        # 决定是否显示主界面：只有托盘已就绪且配置为后台启动才保持隐藏
+        want_hidden = bool(self.config.get("tray_start_minimized", False))
+        if want_hidden and self._tray_ok:
+            rctlog.info("已按配置在启动后驻留系统托盘，主界面保持隐藏")
+        else:
+            self.root.deiconify()
+            if want_hidden:
+                rctlog.warning("托盘未就绪，已改为显示主界面")
         self.root.mainloop()
 
     def _tray_available(self):

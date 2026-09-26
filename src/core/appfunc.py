@@ -35,7 +35,7 @@ class MainApplication:
 
     def create_menu(self):
         """创建菜单栏"""
-        menu_bar = tk.Menu(self.root)
+        menu_bar = tk.Menu(self.root, tearoff=0)
         self.root.config(menu=menu_bar)
 
         menus = {
@@ -57,7 +57,6 @@ class MainApplication:
                 ("保存结果 (Ctrl+S)", lambda: self.call_tab.save_current_result() if self.call_tab else None),
                 ("批量保存所有 (Ctrl+Shift+S)", lambda: self.call_tab.batch_save_all() if self.call_tab else None),
                 ("-", None),
-                ("清除历史 (Ctrl+W)", lambda: ApplicationFunctions.clear_all_history(self.call_tab)),
                 ("重置抽样历史 (Ctrl+Shift+R)", lambda: self.call_tab.reset_sampler_history() if self.call_tab else None),
             ],
             "工具": [
@@ -68,14 +67,17 @@ class MainApplication:
                 ("-", None),
                 ("卸载", ApplicationFunctions.run_uninstall),
             ],
+            "日志": [
+                ("打开今日历史记录", FileManager.open_history_file),
+                ("清除全部历史记录 (Ctrl+W)", lambda: self.call_tab.clear_all_history() if self.call_tab else None),
+                ("-", None),
+                ("查看日志 (Ctrl+L)", FileManager.open_log_file),
+                ("清除日志", ApplicationFunctions.clear_log),
+            ],
             "帮助": [
                 ("使用说明", ApplicationFunctions.show_help),
                 ("访问官网", ApplicationFunctions.open_website),
                 ("关于", lambda: ApplicationFunctions.show_about(self.root)),
-            ],
-            "日志": [
-                ("查看日志 (Ctrl+L)", FileManager.open_log_file),
-                ("清除日志", ApplicationFunctions.clear_log),
             ],
         }
 
@@ -213,19 +215,6 @@ class ApplicationFunctions:
         """显示关于信息"""
         info = load_about_info()
         AboutWindow(root, info, rct_icon_path)
-    
-    @staticmethod
-    def clear_all_history(call_tab):
-        """清除所有历史记录"""
-        if messagebox.askyesno("清除历史记录",
-                               "确定要清除全部历史记录吗？\n\n清除后无法恢复。"):
-            if hasattr(call_tab, "history") and hasattr(call_tab, "_rebuild_history_ui"):
-                call_tab.history.clear()
-                call_tab._rebuild_history_ui()
-            rctlog.info("所有历史记录已清除")
-            messagebox.showinfo("清除成功", "历史记录已清除。")
-            return True
-        return False
     
     @staticmethod
     def clear_log():

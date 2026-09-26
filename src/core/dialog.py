@@ -41,7 +41,8 @@ class AboutWindow:
         """info: 含 title / description / version / date / author 的字典"""
         self.win = tk.Toplevel(parent)
         self.win.title(f"关于随机抽取工具")
-        self.win.geometry("460x380")
+        # 先隐藏，等控件建好并算好居中位置后再显示，避免“先弹出再跳到中间”
+        self.win.withdraw()
         self.win.minsize(420, 340)
         self.win.resizable(False, False)
         self.win.transient(parent)
@@ -125,21 +126,24 @@ class AboutWindow:
 
         self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
 
-        # 等所有控件构建完后，再处理模态和居中（避免 update_idletasks 卡死）
+        # 全部就绪后：先算好居中位置，再一次性显示并设为模态
+        self._center_window(parent)
+        self.win.deiconify()
         self.win.grab_set()
-        self.win.after(10, self._center_window, parent)
 
         rctlog.info("打开关于窗口")
 
     def _center_window(self, parent):
-        """将窗口居中于父窗口"""
+        """计算并应用相对父窗口的居中位置"""
+        ww, wh = 460, 380
         try:
             self.win.update_idletasks()
             pw, ph = parent.winfo_width(), parent.winfo_height()
             px, py = parent.winfo_x(), parent.winfo_y()
+            if pw <= 1 or ph <= 1:      # 父窗口尚未完成布局
+                raise ValueError("父窗口尺寸未知")
         except Exception:
-            pw, ph, px, py = 600, 400, 100, 100
-        ww, wh = 460, 380
+            pw, ph, px, py = 600, 460, 50, 50
         x = px + (pw - ww) // 2
         y = py + (ph - wh) // 2
         self.win.geometry(f"{ww}x{wh}+{x}+{y}")

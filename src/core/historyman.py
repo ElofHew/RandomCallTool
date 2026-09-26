@@ -48,3 +48,22 @@ def append(mode, items, time_text=None):
     except Exception as e:
         rctlog.error(f"[历史记录] 写入失败: {e}")
         return None
+
+
+def clear_files():
+    """删除全部记录文件
+
+    Returns: 成功删除的文件数量
+    """
+    if not os.path.isdir(rct_history_path):
+        return 0
+    removed = 0
+    for name in os.listdir(rct_history_path):
+        if not name.endswith(".txt"):
+            continue
+        try:
+            os.remove(os.path.join(rct_history_path, name))
+            removed += 1
+        except Exception as e:
+            rctlog.error(f"[历史记录] 删除 {name} 失败: {e}")
+    return removed

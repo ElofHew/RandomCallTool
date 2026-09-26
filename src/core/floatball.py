@@ -66,6 +66,8 @@ class FloatBall:
 
     # 让圆形之外区域透明的键色（Windows 上通过 -transparentcolor 生效）
     KEY_COLOR = "#ff00ff"
+    # 右键菜单可选的最大抽取数量
+    MAX_QUICK_COUNT = 9
     # 窗口整体不透明度；越高则白字越亮，同时球体越实
     ALPHA = 0.92
     # 判定为「单击」而非「拖动」的位移阈值（像素）
@@ -164,12 +166,9 @@ class FloatBall:
             self._menu.add_command(
                 label=label,
                 command=lambda k=kind: self._set_kind(k))
-        count_menu = tk.Menu(self._menu, tearoff=0)
-        for k in range(1, 9):
-            count_menu.add_command(
-                label=f"抽 {k} 个",
-                command=lambda n=k: self._set_count(n))
-        self._menu.add_cascade(label="抽取数量", menu=count_menu)
+        self._count_menu = tk.Menu(self._menu, tearoff=0)
+        self._menu.add_cascade(label="抽取数量", menu=self._count_menu)
+        self._sync_count_menu()
         # 尺寸快捷切换（单选，当前档位带勾选标记）
         self._size_var = tk.StringVar(value=self._size_key())
         size_menu = tk.Menu(self._menu, tearoff=0)
@@ -184,13 +183,36 @@ class FloatBall:
         key = str(ConfigManager().get("floatball_size", DEFAULT_SIZE_KEY) or "").lower()
         return key if key in SIZE_PRESETS else DEFAULT_SIZE_KEY
 
+    def _available_count(self):
+        """当前选定类型下可抽的最大数量"""
+        if self._quick_kind == "person":
+            tab = self.app.call_tab if self.app else None
+            return len(tab.names) if tab else 0
+        return self._group_total()
+
+    def _max_quick_count(self):
+        """菜单允许选择的数量上限：不超过实际可抽数量"""
+        return max(1, min(self.MAX_QUICK_COUNT, self._available_count()))
+
+    def _sync_count_menu(self):
+        """按当前可抽数量重建「抽取数量」子菜单，避免选到不够的数量"""
+        self._count_menu.delete(0, "end")
+        for k in range(1, self._max_quick_count() + 1):
+            self._count_menu.add_command(
+                label=f"抽 {k} 个",
+                command=lambda n=k: self._set_count(n))
+        if self._quick_count > self._max_quick_count():
+            self._quick_count = self._max_quick_count()
+
     def _set_kind(self, kind):
         self._quick_kind = kind
-        rctlog.info(f"[悬浮球] 下一次左键操作类型改为: {kind}")
+        # 切换类型后可抽数量可能变小，先把已选数量收窄
+        self._quick_count = min(self._quick_count, self._max_quick_count())
+        rctlog.info(f"[悬浮球] 下一次左键操作类型改为: {kind}（数量 {self._quick_count}）")
 
     def _set_count(self, n):
-        self._quick_count = n
-        rctlog.info(f"[悬浮球] 下一次左键抽取数量改为: {n}")
+        self._quick_count = max(1, min(int(n), self._max_quick_count()))
+        rctlog.info(f"[悬浮球] 下一次左键抽取数量改为: {self._quick_count}")
 
     def _set_size(self, key):
         """快捷切换悬浮球大小"""
@@ -222,8 +244,9 @@ class FloatBall:
             self._do_quick(self._quick_kind, self._quick_count)
 
     def _on_right_click(self, event):
-        # 同步勾选状态（配置窗口中可能刚改过尺寸）
+        # 同步勾选状态与可选数量（配置窗口、主界面加载名单后都可能变化）
         self._size_var.set(self._size_key())
+        self._sync_count_menu()
         self._menu.tk_popup(event.x_root, event.y_root)
 
     def show(self):

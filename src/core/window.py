@@ -11,7 +11,7 @@ from core import tray
 from core.notify import notify_result
 from core.info import rct_rcplist_path, rct_version, document_path, rct_history_path
 from core.fileman import SampleLibrary, SaveResult, base64decode
-from core.historyman import append as history_append
+from core.historyman import append as history_append, clear_files as history_clear_files
 from core.sampler import SmartSampler
 from core.platutils import open_file_or_dir
 from core.dialog import AboutWindow, load_about_info, ask_string
@@ -671,7 +671,7 @@ class ConfigWindow:
         tk.Label(tip_frame, justify="left", font=("", 9),
                  text="• 拖拽圆形按钮可调整位置\n"
                       "• 右键菜单选择下一次左键要执行的操作：字母组 / 数字组 / 抽人\n"
-                      "• 「抽取数量」子菜单选择每次抽取 1~8 个\n"
+                      "• 「抽取数量」子菜单选择每次抽取 1~9 个\n"
                       "• 组数取自「抽样设置 → 抽组默认总数」",
                  fg="#333").pack(anchor="w", padx=10, pady=8)
 
@@ -1087,8 +1087,7 @@ class HomeTab(BaseTab):
         ConfigWindow(self.frame)
 
     def show_about(self):
-        """显示关于信息"""
-        rctlog.info("打开关于窗口")
+        """显示关于信息（日志由 AboutWindow 统一记录）"""
         info = load_about_info()
         AboutWindow(self.frame.winfo_toplevel(), info, rct_icon_path)
 
@@ -2117,13 +2116,17 @@ class RandomCallTab(BaseTab):
         )
 
     def clear_all_history(self):
-        """清空所有历史记录"""
-        if messagebox.askyesno("清除历史记录",
-                               "确定要清除全部历史记录吗？\n\n清除后无法恢复。"):
-            self.history.clear()
-            self._rebuild_history_ui()
-            rctlog.info("所有历史记录已清除")
-            messagebox.showinfo("清除成功", "历史记录已清除。")
+        """清空历史面板，同时删除本地记录文件"""
+        if not messagebox.askyesno(
+                "清除历史记录",
+                "确定要清除全部历史记录吗？\n\n"
+                "将同时删除 data/history 下的全部记录文件，清除后无法恢复。"):
+            return
+        self.history.clear()
+        self._rebuild_history_ui()
+        removed = history_clear_files()
+        rctlog.info(f"历史记录已清除，删除记录文件 {removed} 个")
+        messagebox.showinfo("清除成功", f"历史记录已清除，同时删除 {removed} 个记录文件。")
 
     # ══════════════════════════════════════════════════════════
     #  重置抽样历史

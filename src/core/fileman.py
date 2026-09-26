@@ -7,6 +7,7 @@ from tkinter import messagebox
 from core.logman import rctlog
 from core.platutils import open_file_or_dir
 from core.config import ConfigManager
+from core.historyman import history_file_path
 from core.info import rct_result_path, rct_desktop_result_path, rct_log_path, rct_appname, rct_rcplist_path, github, gitee, res_path, official_website, rct_version
 
 class FileManager:
@@ -55,6 +56,22 @@ class FileManager:
         except Exception as e:
             rctlog.error(f"打开日志文件失败: {e}")
             messagebox.showerror("无法打开日志", f"打开日志文件时出错：\n{e}")
+            return False
+
+    @staticmethod
+    def open_history_file():
+        """打开今日历史记录文件"""
+        try:
+            path = history_file_path()
+            if os.path.exists(path):
+                open_file_or_dir(path)
+                rctlog.info(f"打开历史记录文件: {path}")
+                return True
+            messagebox.showinfo("暂无记录", "今天的抽取历史记录文件不存在。")
+            return False
+        except Exception as e:
+            rctlog.error(f"打开历史记录文件失败: {e}")
+            messagebox.showerror("无法打开记录", f"打开历史记录文件时出错：\n{e}")
             return False
 
 
