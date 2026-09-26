@@ -23,6 +23,7 @@ class ConfigManager:
             "save_result": False,          # 是否自动保存抽取结果
             "auto_load_sample": True,      # 启动时自动加载默认样本
             "max_history_items": 10,       # 历史记录最大条数
+            "history_file_enabled": True,   # 是否把抽取历史实时写入本地文件
 
             # ── 抽组默认值 ──
             "rct_group_total": 9,          # 抽取 - 默认总组数

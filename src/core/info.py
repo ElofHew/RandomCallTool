@@ -38,6 +38,7 @@ rct_config_path = os.path.join(rct_prog_data_path, "config.json")
 rct_desktop_result_path = os.path.join(desktop_path, "随机抽取结果")
 rct_rcplist_path = os.path.join(rct_prog_data_path, "rcplist")
 rct_cache_path = os.path.join(rct_prog_data_path, "cache")
+rct_history_path = os.path.join(rct_prog_data_path, "history")
 
 # ── 程序图标路径 ──
 rct_icon_path = os.path.join(res_path, "icon", "rctool.ico")

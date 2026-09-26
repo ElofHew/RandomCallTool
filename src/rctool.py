@@ -7,7 +7,7 @@ import os
 import tkinter as tk
 from tkinter import messagebox
 from core.logman import rctlog
-from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path, rct_icon_path
+from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path, rct_history_path, rct_icon_path
 from core.platutils import set_window_icon
 from core.config import ConfigManager
 from core.appfunc import MainApplication
@@ -27,7 +27,7 @@ class Main:
         if self._start_minimized:
             self.root.withdraw()
         self.root.title("随机抽取工具")
-        self.root.geometry("600x480+50+50")
+        self.root.geometry("600x460+50+50")
         self.root.minsize(560, 460)
         self.root.maxsize(1280, 1280)
         self.root.resizable(True, True)
@@ -136,7 +136,7 @@ class Main:
             self._quit_app()
 
 def init_dir():
-    for path in [rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path]:
+    for path in [rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path, rct_history_path]:
         os.makedirs(path, exist_ok=True)
 
 def main():

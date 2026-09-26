@@ -9,8 +9,9 @@ from core.config import ConfigManager
 from core import islandmq
 from core import tray
 from core.notify import notify_result
-from core.info import rct_rcplist_path, rct_version, document_path
+from core.info import rct_rcplist_path, rct_version, document_path, rct_history_path
 from core.fileman import SampleLibrary, SaveResult, base64decode
+from core.historyman import append as history_append
 from core.sampler import SmartSampler
 from core.platutils import open_file_or_dir
 from core.dialog import AboutWindow, load_about_info, ask_string
@@ -121,6 +122,15 @@ class ConfigWindow:
             value=str(self.config.get("max_history_items", 10)))
         tk.Spinbox(f2, textvariable=self.history_var, from_=5, to=30,
                    increment=5, state="readonly", width=8).pack(side="left")
+
+        # 抽取历史实时写入本地文件
+        self.history_file_var = tk.BooleanVar(
+            value=bool(self.config.get("history_file_enabled", True)))
+        tk.Checkbutton(tab, text="把抽取历史实时写入本地文件",
+                       variable=self.history_file_var).pack(anchor="w", **pad)
+        tk.Button(tab, text="打开记录目录",
+                  command=lambda: open_file_or_dir(rct_history_path),
+                  width=14).pack(anchor="w", **pad)
 
         # ── 默认样本 ──
         ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=8)
@@ -777,6 +787,7 @@ class ConfigWindow:
             "rollcall_auto_load_sample": self.rollcall_auto_load_var.get(),
             "rct_merge_names": self.merge_names_var.get(),
             "max_history_items": int(self.history_var.get()),
+            "history_file_enabled": self.history_file_var.get(),
             "sampler_mode": self.sampler_mode_var.get(),
             "smart_use_fixed_weights": self.smart_fixed_weights_var.get(),
             "rct_default_sample": self.sample_combo.get(),
@@ -1962,6 +1973,11 @@ class RandomCallTab(BaseTab):
             "preview": preview,
         }
         self.history.insert(0, entry)
+        # 同步追加到 data/history/YYYY-MM-DD.txt，失败不影响抽取主流程
+        try:
+            history_append(mode, items, entry["ts_short"])
+        except Exception as e:
+            rctlog.warning(f"[随机抽取] 写入历史记录文件失败: {e}")
 
         max_items = ConfigManager().get("max_history_items", 10)
         if len(self.history) > max_items:
