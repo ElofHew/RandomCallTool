@@ -10,9 +10,73 @@ from core.config import ConfigManager
 from core.historyman import history_file_path
 from core.info import rct_result_path, rct_desktop_result_path, rct_log_path, rct_appname, rct_rcplist_path, github, gitee, res_path, official_website, rct_version
 
+# ── 名单读取限制 ──
+MAX_FILE_BYTES = 8 * 1024 * 1024   # 源文件最多读取 8MB
+MAX_NAMES = 1000                   # 单次最多读取 1000 个名字
+MAX_NAME_LEN = 20                  # 单个名字最多 20 个字符
+
+# 尝试解码源文件时的候选编码
+TEXT_ENCODINGS = ("utf-8", "utf-8-sig", "gbk", "gb2312", "gb18030")
+
+
+def normalize_name(name, limit=MAX_NAME_LEN):
+    """去掉首尾空白，并把过长的名字截断到 limit 个字符"""
+    text = str(name).strip()
+    return text[:limit] if len(text) > limit else text
+
+
+def read_text_file(path, max_bytes=MAX_FILE_BYTES):
+    """读取文本文件（自动尝试多种编码），最多读取 max_bytes 字节
+
+    Returns:
+        (文本, 是否因超过 max_bytes 而被截断)
+    """
+    with open(path, "rb") as f:
+        raw = f.read(max_bytes + 1)
+    truncated = len(raw) > max_bytes
+    if truncated:
+        raw = raw[:max_bytes]
+
+    # 先严格解码，保证按真实编码解析；截断切断多字节字符时再忽略残字节重试
+    for errors in ("strict", "ignore"):
+        for enc in TEXT_ENCODINGS:
+            try:
+                return raw.decode(enc, errors=errors), truncated
+            except (UnicodeDecodeError, UnicodeError):
+                continue
+    raise UnicodeDecodeError("无法解码源文件", path, 0, 0, "")
+
+
+def parse_names(text, limit=MAX_NAMES):
+    """把名单文本解析为名字列表
+
+    按行切分，行内再按逗号 / 分号 / 制表符切分；去空白与空项，名字统一截断到
+    MAX_NAME_LEN，最多返回 limit 个名字。
+    """
+    names = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = None
+        for sep in (",", ";", "\t"):
+            if sep in line:
+                parts = line.split(sep)
+                break
+        if parts is None:
+            parts = [line]
+        for part in parts:
+            name = normalize_name(part)
+            if not name:
+                continue
+            names.append(name)
+            if len(names) >= limit:
+                return names
+    return names
+
+
 class FileManager:
-    """文件与目录相关的通用工具。"""
-    
+    """文件与目录相关的通用工具。"""    
     @staticmethod
     def get_result_path():
         """获取结果保存路径"""
@@ -206,39 +270,49 @@ class SampleLibrary:
 
     @classmethod
     def import_sample(cls, source_path, sample_name):
-        """读取源文件 → 编码为 Base64 → 保存到 rcplist/{name}.rcp"""
+        """读取源文件 → 规范化名字 → 编码为 Base64 → 保存到 rcplist/{name}.rcp
+
+        Returns:
+            (目标路径, 提示信息列表)
+        """
         cls.ensure_dir()
         ok, err = cls.validate_name(sample_name)
         if not ok:
             raise ValueError(err)
 
-        # 读取源文件（尝试多种编码）
-        content = None
-        for enc in ("utf-8", "utf-8-sig", "gbk", "gb2312", "gb18030"):
-            try:
-                with open(source_path, "r", encoding=enc) as f:
-                    content = f.read()
-                break
-            except (UnicodeDecodeError, UnicodeError):
-                continue
-        if content is None:
-            raise UnicodeDecodeError("无法解码源文件", source_path, 0, 0, "")
-
-        # 如果已经是 .rcp 则不解码，直接复制
         dest = os.path.join(rct_rcplist_path, f"{sample_name}.rcp")
+
+        # 已经是 .rcp 则不解码，直接复制（读取时会再按限制解析）
         if source_path.endswith(".rcp"):
             import shutil
             shutil.copy2(source_path, dest)
             rctlog.info(f"样本已复制导入: {source_path} -> {dest}")
-            return dest
+            return dest, []
+
+        content, truncated = read_text_file(source_path)
+        names = parse_names(content)
+        if not names:
+            raise ValueError("文件中没有可用的名单数据")
+
+        notes = []
+        if truncated:
+            mb = MAX_FILE_BYTES // (1024 * 1024)
+            notes.append(f"文件超过 {mb}MB，只读取了前 {mb}MB 内容。")
+        if len(names) >= MAX_NAMES:
+            notes.append(f"名单过长，只读取了前 {MAX_NAMES} 个名字。")
+        if any(len(n) == MAX_NAME_LEN for n in names):
+            notes.append(f"超长名字已截断至 {MAX_NAME_LEN} 个字符。")
 
         # 编码为 Base64 保存
-        raw = content.encode("utf-8")
+        raw = "\n".join(names).encode("utf-8")
         encoded = b64encode(raw).decode("utf-8")
         with open(dest, "w", encoding="utf-8") as f:
             f.write(encoded)
-        rctlog.info(f"样本已导入: {source_path} -> {dest}")
-        return dest
+        if notes:
+            rctlog.warning(f"样本已导入（含限制调整）: {source_path} -> {dest}; " + " ".join(notes))
+        else:
+            rctlog.info(f"样本已导入: {source_path} -> {dest}")
+        return dest, notes
 
     @classmethod
     def export_rcp(cls, sample_name, dest_dir):
@@ -296,16 +370,10 @@ class SampleLibrary:
 
     @classmethod
     def load_names(cls, sample_name):
-        """加载指定样本的名字列表"""
+        """加载指定样本的名字列表（统一规范化，最多 1000 个）"""
         fp = os.path.join(rct_rcplist_path, f"{sample_name}.rcp")
         if not os.path.exists(fp):
             return []
         with open(fp, "r", encoding="utf-8") as f:
             encoded = f.read()
-        decoded = base64decode(encoded)
-        names = []
-        for line in decoded.splitlines():
-            line = line.strip()
-            if line:
-                names.append(line)
-        return names
+        return parse_names(base64decode(encoded))

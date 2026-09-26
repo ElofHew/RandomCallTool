@@ -10,7 +10,8 @@ from core import islandmq
 from core import tray
 from core.notify import notify_result
 from core.info import rct_rcplist_path, rct_version, document_path, rct_history_path
-from core.fileman import SampleLibrary, SaveResult, base64decode
+from core.fileman import (SampleLibrary, SaveResult, base64decode,
+                          read_text_file, parse_names, MAX_FILE_BYTES, MAX_NAMES)
 from core.historyman import append as history_append, clear_files as history_clear_files
 from core.sampler import SmartSampler
 from core.platutils import open_file_or_dir
@@ -396,11 +397,16 @@ class ConfigWindow:
         name = name.strip()
 
         try:
-            SampleLibrary.import_sample(fp, name)
+            _dest, notes = SampleLibrary.import_sample(fp, name)
             rctlog.info(f"样本已导入: {name}")
             self._rebuild_mgr_list()
             self._refresh_sample_list()
-            messagebox.showinfo("导入成功", f"样本「{name}」已导入样本库。")
+            msg = f"样本「{name}」已导入样本库。"
+            if notes:
+                msg += "\n\n" + "\n".join(notes)
+                messagebox.showwarning("导入成功（已调整）", msg)
+            else:
+                messagebox.showinfo("导入成功", msg)
         except Exception as e:
             messagebox.showerror("导入失败", f"导入样本时出错：\n{e}")
 
@@ -1663,23 +1669,20 @@ class RandomCallTab(BaseTab):
         extra = []
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-
             if file_path.endswith(".rcp"):
-                content = self._decode_rcp(content)
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = self._decode_rcp(f.read())
+                truncated = False
+            else:
+                content, truncated = read_text_file(file_path)
 
-            names = []
-            for line in content.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                for sep in [",", ";", "\t"]:
-                    if sep in line:
-                        names.extend(n.strip() for n in line.split(sep) if n.strip())
-                        break
-                else:
-                    names.append(line)
+            names = parse_names(content)
+
+            if truncated:
+                mb = MAX_FILE_BYTES // (1024 * 1024)
+                extra.append(f"文件超过 {mb}MB，只读取了前 {mb}MB 内容")
+            if len(names) >= MAX_NAMES:
+                extra.append(f"名单过长，只读取了前 {MAX_NAMES} 个名字")
 
             config = ConfigManager()
             if config.get("rct_merge_names", True):
@@ -1707,20 +1710,6 @@ class RandomCallTab(BaseTab):
             rctlog.info(f"[随机抽取] 成功加载 {len(names)} 个名字")
             return names, extra
 
-        except UnicodeDecodeError:
-            try:
-                with open(file_path, "r", encoding="gbk") as f:
-                    lines = [line.strip() for line in f if line.strip()]
-                if lines:
-                    self._set_sample_info("样本文件：" + os.path.basename(file_path), len(lines))
-                    mx = len(lines)
-                    self.choice_entry["values"] = list(range(1, mx + 1))
-                    self.current_file = file_path
-                    return lines, extra
-            except Exception as e:
-                rctlog.error(f"[随机抽取] 读取文件失败: {e}")
-                messagebox.showerror("读取失败", f"读取文件时出错：\n{e}")
-                return [], extra
         except Exception as e:
             rctlog.error(f"[随机抽取] 读取文件失败: {e}")
             messagebox.showerror("读取失败", f"读取文件时出错：\n{e}")

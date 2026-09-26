@@ -166,9 +166,14 @@ class ApplicationFunctions:
             return
         name = name.strip()
         try:
-            SampleLibrary.import_sample(fp, name)
+            _dest, notes = SampleLibrary.import_sample(fp, name)
             rctlog.info(f"样本已导入: {name}")
-            messagebox.showinfo("导入成功", f"样本「{name}」已导入样本库。")
+            msg = f"样本「{name}」已导入样本库。"
+            if notes:
+                msg += "\n\n" + "\n".join(notes)
+                messagebox.showwarning("导入成功（已调整）", msg)
+            else:
+                messagebox.showinfo("导入成功", msg)
         except Exception as e:
             messagebox.showerror("导入失败", f"导入样本时出错：\n{e}")
 
