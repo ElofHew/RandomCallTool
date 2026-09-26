@@ -85,6 +85,7 @@ class ConfigManager:
 
             # ── 桌面悬浮球 ──
             "floatball_enabled": True,          # 是否显示桌面悬浮球
+            "floatball_size": "medium",        # 悬浮球尺寸: small/medium/large
             "floatball_x": None,                # 悬浮球 X 坐标（None 时用默认位置）
             "floatball_y": None,                # 悬浮球 Y 坐标（None 时用默认位置）
 

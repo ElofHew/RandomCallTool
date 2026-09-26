@@ -9,6 +9,16 @@ from core import notify
 
 _ball_ref = {"instance": None}
 
+# 三档尺寸（像素）；medium 为默认
+SIZE_PRESETS = {"small": 55, "medium": 70, "large": 90}
+DEFAULT_SIZE_KEY = "medium"
+
+
+def size_from_config():
+    """从配置读取悬浮球尺寸，非法值回退到默认"""
+    key = str(ConfigManager().get("floatball_size", DEFAULT_SIZE_KEY) or "").lower()
+    return SIZE_PRESETS.get(key, SIZE_PRESETS[DEFAULT_SIZE_KEY])
+
 
 def create_ball(root, app):
     """创建悬浮球（带单例持有，供配置窗口刷新可见性）"""
@@ -19,13 +29,13 @@ def create_ball(root, app):
     return _ball_ref["instance"]
 
 
-def refresh_visibility():
-    """按配置显示/隐藏悬浮球（配置保存后调用）"""
+def refresh():
+    """按配置刷新悬浮球的尺寸与显示状态（配置保存后调用）"""
     ball = _ball_ref["instance"]
     if ball is None:
         return
-    enabled = ConfigManager().get("floatball_enabled", True)
-    if enabled:
+    ball.apply_size()
+    if ConfigManager().get("floatball_enabled", True):
         ball.show()
     else:
         ball.hide()
@@ -54,14 +64,16 @@ def sync_position(x, y):
 class FloatBall:
     """置顶悬浮球：无边框 Toplevel，可拖动；右键弹出快速抽取菜单。"""
 
-    SIZE = 76
     # 让圆形之外区域透明的键色（Windows 上通过 -transparentcolor 生效）
     KEY_COLOR = "#ff00ff"
+    # 窗口整体不透明度；越高则白字越亮，同时球体越实
+    ALPHA = 0.92
     # 判定为「单击」而非「拖动」的位移阈值（像素）
     CLICK_THRESHOLD = 4
 
     def __init__(self, root, app):
         self.app = app
+        self.size = size_from_config()
         self._offset_x = 0
         self._offset_y = 0
         self._moved = False
@@ -93,18 +105,18 @@ class FloatBall:
         self.win.configure(bg=bg_color)
         # 整体半透明，配合黑色球体呈现「透明黑」效果
         try:
-            self.win.attributes("-alpha", 0.82)
+            self.win.attributes("-alpha", self.ALPHA)
         except tk.TclError:
             pass
         # 默认位置：屏幕右上角
         x = cfg.get("floatball_x")
         y = cfg.get("floatball_y")
         if x is None or y is None:
-            x = self.win.winfo_screenwidth() - self.SIZE - 40
+            x = self.win.winfo_screenwidth() - self.size - 40
             y = 80
-        self.win.geometry(f"{self.SIZE}x{self.SIZE}+{int(x)}+{int(y)}")
+        self.win.geometry(f"{self.size}x{self.size}+{int(x)}+{int(y)}")
 
-        self.canvas = tk.Canvas(self.win, width=self.SIZE, height=self.SIZE,
+        self.canvas = tk.Canvas(self.win, width=self.size, height=self.size,
                                 highlightthickness=0, bg=bg_color)
         self.canvas.pack()
         self._draw_ball()
@@ -117,13 +129,27 @@ class FloatBall:
 
     def _draw_ball(self):
         """绘制半透明黑色圆形悬浮球"""
-        size = self.SIZE
-        pad = 3
+        size = self.size
+        pad = max(2, round(size * 0.04))
+        self.canvas.delete("all")
         self.canvas.create_oval(pad, pad, size - pad, size - pad,
                                 fill="#000000", outline="#444444", width=1)
         self.canvas.create_text(size // 2, size // 2,
                                 text="抽", fill="#ffffff",
-                                font=("Microsoft YaHei", 16, "bold"))
+                                font=("Microsoft YaHei", max(10, round(size * 0.21)), "bold"))
+
+    def apply_size(self):
+        """按配置应用悬浮球尺寸（保持当前位置）"""
+        new_size = size_from_config()
+        if new_size == self.size:
+            return
+        self.size = new_size
+        x = self.win.winfo_x()
+        y = self.win.winfo_y()
+        self.canvas.configure(width=new_size, height=new_size)
+        self.win.geometry(f"{new_size}x{new_size}+{x}+{y}")
+        self._draw_ball()
+        rctlog.info(f"[悬浮球] 尺寸已调整为 {new_size}px")
 
     # ── 菜单 ──
 
@@ -144,6 +170,19 @@ class FloatBall:
                 label=f"抽 {k} 个",
                 command=lambda n=k: self._set_count(n))
         self._menu.add_cascade(label="抽取数量", menu=count_menu)
+        # 尺寸快捷切换（单选，当前档位带勾选标记）
+        self._size_var = tk.StringVar(value=self._size_key())
+        size_menu = tk.Menu(self._menu, tearoff=0)
+        for key, label in [("small", "小"), ("medium", "中"), ("large", "大")]:
+            size_menu.add_radiobutton(
+                label=label, variable=self._size_var, value=key,
+                command=lambda k=key: self._set_size(k))
+        self._menu.add_cascade(label="悬浮球大小", menu=size_menu)
+
+    def _size_key(self):
+        """当前尺寸档位键，用于菜单勾选状态"""
+        key = str(ConfigManager().get("floatball_size", DEFAULT_SIZE_KEY) or "").lower()
+        return key if key in SIZE_PRESETS else DEFAULT_SIZE_KEY
 
     def _set_kind(self, kind):
         self._quick_kind = kind
@@ -152,6 +191,13 @@ class FloatBall:
     def _set_count(self, n):
         self._quick_count = n
         rctlog.info(f"[悬浮球] 下一次左键抽取数量改为: {n}")
+
+    def _set_size(self, key):
+        """快捷切换悬浮球大小"""
+        ConfigManager().set("floatball_size", key)
+        self._size_var.set(key)
+        self.apply_size()
+        rctlog.info(f"[悬浮球] 大小已切换为: {key}")
 
     # ── 交互 ──
 
@@ -176,6 +222,8 @@ class FloatBall:
             self._do_quick(self._quick_kind, self._quick_count)
 
     def _on_right_click(self, event):
+        # 同步勾选状态（配置窗口中可能刚改过尺寸）
+        self._size_var.set(self._size_key())
         self._menu.tk_popup(event.x_root, event.y_root)
 
     def show(self):

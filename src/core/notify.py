@@ -7,7 +7,7 @@ from core import islandmq
 
 
 def notify_result(popup_title, items, default_mask_title=None):
-    """按配置提醒抽取 / 点名结果
+    """按配置提醒抽取结果
 
     popup_title: 弹窗标题（弹窗正文为「标题：\n每行一项」）
     items:       结果列表

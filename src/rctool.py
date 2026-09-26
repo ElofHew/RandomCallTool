@@ -37,7 +37,7 @@ class Main:
         try:
             from core import floatball
             floatball.create_ball(self.root, self.app)
-            floatball.refresh_visibility()
+            floatball.refresh()
         except Exception as e:
             rctlog.warning(f"创建桌面悬浮球失败: {e}")
         # 创建系统托盘（默认启用，可配置关闭）

@@ -1,4 +1,4 @@
-"""随机点名模块：跑马灯式点名、自动点名和结果通知。"""
+"""随机点名模块：跑马灯式点名、自动点名和点名优化。"""
 import random
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -7,13 +7,12 @@ from core.logman import rctlog
 from core.config import ConfigManager
 from core.fileman import SampleLibrary
 from core.window import BaseTab
-from core.notify import notify_result
 from core.platutils import set_window_icon
 from core.info import rct_icon_path
 
 
 class RollCallTab(BaseTab):
-    """随机点名选项卡：手动点名、自动点名和通知提醒。"""
+    """随机点名选项卡：手动点名、自动点名和点名优化。"""
 
     ROLL_INTERVAL_MS = 70   # 滚动时名字切换间隔（毫秒）
     NAME_FONT_SIZE = 40    # 名字显示字号（固定，避免点名时 UI 跳变）
@@ -411,9 +410,6 @@ class RollCallTab(BaseTab):
         self.stop_btn.config(state="disabled")
         if result:
             rctlog.info(f"[随机点名] 点中: {result}")
-            # 按配置提醒：弹窗 或 ClassIsland 通知
-            notify_result("点名结果", [result],
-                          default_mask_title="随机点名结果")
 
     def _stop_rolling(self):
         """停止内部滚动定时器"""

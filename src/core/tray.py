@@ -175,7 +175,7 @@ class TrayIcon:
         config = ConfigManager()
         enabled = not bool(config.get("floatball_enabled", True))
         config.set("floatball_enabled", enabled)
-        floatball.refresh_visibility()
+        floatball.refresh()
         self.sync_menu()
         rctlog.info(f"[托盘] 悬浮球已{'显示' if enabled else '隐藏'}")
 

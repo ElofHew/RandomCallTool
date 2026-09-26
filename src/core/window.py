@@ -473,8 +473,8 @@ class ConfigWindow:
             value="island", command=self._on_notify_mode_change)
         self.island_radio.pack(side="left", padx=2)
 
-        tk.Label(tab, text="弹窗提醒：抽取 / 点名完成后弹出结果窗口（默认）\n"
-                           "ClassIsland 通知：通过 IslandMQ 插件把结果推送到教室电脑",
+        tk.Label(tab, text="弹窗提醒：抽取完成后弹出结果窗口（默认）\n"
+                           "ClassIsland 通知：通过 IslandMQ 插件把抽取结果推送到教室电脑",
                  fg="gray", font=("", 8), justify="left").pack(anchor="w", **pad)
 
         # ── ClassIsland 通知设置 ──
@@ -507,7 +507,7 @@ class ConfigWindow:
         self._island_widgets.append(w)
 
         tk.Label(self.island_box,
-                 text="标题留空时，抽取自动用「随机抽取结果」、点名自动用「随机点名结果」",
+                 text="标题留空时自动使用「随机抽取结果」",
                  fg="gray", font=("", 8)).pack(anchor="w", padx=8)
 
         row = tk.Frame(self.island_box)
@@ -556,7 +556,7 @@ class ConfigWindow:
 
         tk.Label(self.island_box,
                  text="需要教室电脑运行 ClassIsland 并安装 IslandMQ 插件；\n"
-                      "抽取 / 点名的结果会以「标题（遮罩）+ 名单（正文）」的形式推送。",
+                      "抽取结果会以「标题（遮罩）+ 名单（正文）」的形式推送。",
                  fg="gray", font=("", 8), justify="left"
                  ).pack(anchor="w", padx=8, pady=(0, 6))
 
@@ -646,6 +646,15 @@ class ConfigWindow:
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
         tk.Label(tab, text="左键单击执行抽取；右键选择抽取类型与数量。",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
+
+        size_row = tk.Frame(tab)
+        size_row.pack(fill="x", **pad)
+        tk.Label(size_row, text="悬浮球大小：", width=15, anchor="w").pack(side="left")
+        self.floatball_size_var = tk.StringVar(
+            value=self.config.get("floatball_size", "medium"))
+        for val, label in [("small", "小"), ("medium", "中"), ("large", "大")]:
+            tk.Radiobutton(size_row, text=label, variable=self.floatball_size_var,
+                           value=val).pack(side="left", padx=3)
 
         tip_frame = tk.Frame(tab, relief="groove", bd=1)
         tip_frame.pack(fill="x", padx=15, pady=4)
@@ -784,6 +793,7 @@ class ConfigWindow:
                 self.ci_overlay_var.get(), islandmq.DEFAULT_OVERLAY_DURATION),
             "ci_fallback_popup": self.ci_fallback_var.get(),
             "floatball_enabled": self.floatball_var.get(),
+            "floatball_size": self.floatball_size_var.get(),
             "tray_enabled": self.tray_var.get(),
             "tray_start_minimized": self.tray_min_var.get(),
         }
@@ -806,7 +816,7 @@ class ConfigWindow:
             # 按悬浮窗开关刷新其显示状态
             try:
                 from core import floatball
-                floatball.refresh_visibility()
+                floatball.refresh()
             except Exception as e:
                 rctlog.warning(f"刷新悬浮球可见性失败: {e}")
             # 按托盘开关启用 / 停用托盘
