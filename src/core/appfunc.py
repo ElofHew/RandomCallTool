@@ -120,7 +120,12 @@ class MainApplication:
         """退出应用程序"""
         if messagebox.askyesno("退出程序", "确定要退出随机抽取工具吗？"):
             rctlog.info("用户确认退出程序")
-            self.root.quit()
+            from core import tray
+            t = tray.get()
+            if t is not None and t.active:
+                t.quit_app()
+            else:
+                self.root.destroy()
 
 class ApplicationFunctions:
     """应用程序通用功能类"""

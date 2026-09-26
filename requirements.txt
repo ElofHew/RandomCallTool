@@ -1,2 +1,4 @@
 pyzmq
+pystray
+Pillow
 pyinstaller

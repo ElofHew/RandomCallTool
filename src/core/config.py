@@ -82,6 +82,15 @@ class ConfigManager:
             "ci_overlay_duration": 3.0,         # 正文显示时长（秒）
             "ci_timeout_ms": 1000,              # 通知请求超时（毫秒，上限 1 秒）
             "ci_fallback_popup": True,          # ClassIsland 通知失败时回退为弹窗
+
+            # ── 桌面悬浮球 ──
+            "floatball_enabled": True,          # 是否显示桌面悬浮球
+            "floatball_x": None,                # 悬浮球 X 坐标（None 时用默认位置）
+            "floatball_y": None,                # 悬浮球 Y 坐标（None 时用默认位置）
+
+            # ── 系统托盘 ──
+            "tray_enabled": True,               # 关闭窗口后保留系统托盘
+            "tray_start_minimized": False,      # 启动后直接后台驻留托盘
         }
 
         if os.path.exists(rct_config_path):

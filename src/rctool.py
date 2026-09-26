@@ -15,7 +15,17 @@ from core.appfunc import MainApplication
 class Main:
     def __init__(self):
         self.config = ConfigManager()
+        self._force_quit = False
+        # 需要后台驻留启动时，必须在创建窗口前就隐藏，否则会先闪出主界面
+        from core import tray as tray_mod
+        self._start_minimized = (
+            self.config.get("tray_start_minimized", False)
+            and self.config.get("tray_enabled", True)
+            and tray_mod.is_available()
+        )
         self.root = tk.Tk()
+        if self._start_minimized:
+            self.root.withdraw()
         self.root.title("随机抽取工具")
         self.root.geometry("600x480+50+50")
         self.root.minsize(560, 460)
@@ -23,10 +33,56 @@ class Main:
         self.root.resizable(True, True)
         set_window_icon(self.root, rct_icon_path)
         self.app = MainApplication(self.root)
+        # 创建桌面悬浮球（默认显示，可在配置中关闭）
+        try:
+            from core import floatball
+            floatball.create_ball(self.root, self.app)
+            floatball.refresh_visibility()
+        except Exception as e:
+            rctlog.warning(f"创建桌面悬浮球失败: {e}")
+        # 创建系统托盘（默认启用，可配置关闭）
+        self.tray = None
+        self._tray_ok = False
+        try:
+            from core import tray as tray_mod
+            self.tray = tray_mod.setup(self.root, self.app)
+            self._tray_ok = tray_mod.is_available() and self.tray.active
+            if not tray_mod.is_available():
+                rctlog.warning(f"系统托盘不可用: {tray_mod.unavailable_reason()}")
+        except Exception as e:
+            rctlog.warning(f"创建系统托盘失败: {e}")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         # 启动后延迟执行自动检测更新
         self.root.after(1500, self._auto_check_update)
+        if self._start_minimized:
+            if self._tray_ok:
+                rctlog.info("已按配置在启动后驻留系统托盘，主界面保持隐藏")
+            else:
+                # 托盘启动失败时若继续隐藏，用户将无法唤出界面
+                self.root.deiconify()
+                rctlog.warning("托盘启动失败，已改为显示主界面")
         self.root.mainloop()
+
+    def _tray_available(self):
+        """托盘当前是否可用于驻留：需图标在运行且配置未关闭"""
+        return (self.tray is not None
+                and self.tray.active
+                and self.config.get("tray_enabled", True))
+
+    def _quit_app(self):
+        """真正退出程序"""
+        self._force_quit = True
+        try:
+            from core import floatball
+            floatball.destroy()
+        except Exception as e:
+            rctlog.warning(f"关闭悬浮球失败: {e}")
+        if self.tray is not None:
+            try:
+                self.tray.stop()
+            except Exception as e:
+                rctlog.warning(f"停止托盘失败: {e}")
+        self.root.destroy()
 
     def _auto_check_update(self):
         """启动时静默检测更新 — 调用 update.py --check-silent"""
@@ -65,11 +121,19 @@ class Main:
             pass
 
     def on_closing(self):
-        """窗口关闭时询问确认"""
-        rctlog.info("用户关闭窗口，准备退出程序")
+        """窗口关闭时：托盘可驻留则隐藏，否则一律按完全退出处理"""
+        if self._force_quit:
+            self._quit_app()
+            return
+        rctlog.info("用户关闭窗口")
+        if self._tray_available():
+            self.root.withdraw()
+            rctlog.info("已隐藏到系统托盘，程序继续在后台运行")
+            return
+        # 托盘已关闭时若只隐藏窗口，用户将无法再唤出界面，因此直接走完全退出
         if messagebox.askyesno("退出程序", "确定要退出随机抽取工具吗？"):
             rctlog.info("程序正常退出")
-            self.root.destroy()
+            self._quit_app()
 
 def init_dir():
     for path in [rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path]:

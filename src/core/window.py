@@ -7,6 +7,7 @@ from tkinter import ttk, messagebox, filedialog
 from core.logman import rctlog
 from core.config import ConfigManager
 from core import islandmq
+from core import tray
 from core.notify import notify_result
 from core.info import rct_rcplist_path, rct_version, document_path
 from core.fileman import SampleLibrary, SaveResult, base64decode
@@ -58,6 +59,7 @@ class ConfigWindow:
         self._create_sampling_tab(notebook)
         self._create_sample_mgr_tab(notebook)
         self._create_notify_tab(notebook)
+        self._create_floatball_tab(notebook)
         self._create_update_tab(notebook)
 
         self.window.protocol("WM_DELETE_WINDOW", self._prompt_close)
@@ -626,6 +628,57 @@ class ConfigWindow:
         else:
             messagebox.showerror("测试通知发送失败", msg)
 
+    # 桌面集成（悬浮球 + 系统托盘）
+
+    def _create_floatball_tab(self, notebook):
+        tab = self._make_tab(notebook, "桌面集成")
+        pad = {"padx": 15, "pady": 4}
+
+        tk.Label(tab, text="桌面悬浮球",
+                 font=("", 10, "bold"), fg="#2b5b84").pack(anchor="w", **pad)
+
+        self.floatball_var = tk.BooleanVar(
+            value=self.config.get("floatball_enabled", True))
+        tk.Checkbutton(tab, text="显示桌面悬浮球",
+                       variable=self.floatball_var).pack(anchor="w", **pad)
+
+        tk.Label(tab, text="启用后，桌面会出现一个可拖动的置顶圆形按钮。",
+                 fg="gray", font=("", 9)).pack(anchor="w", **pad)
+        tk.Label(tab, text="左键单击执行抽取；右键选择抽取类型与数量。",
+                 fg="gray", font=("", 9)).pack(anchor="w", **pad)
+
+        tip_frame = tk.Frame(tab, relief="groove", bd=1)
+        tip_frame.pack(fill="x", padx=15, pady=4)
+        tk.Label(tip_frame, justify="left", font=("", 9),
+                 text="• 拖拽圆形按钮可调整位置\n"
+                      "• 右键菜单选择下一次左键要执行的操作：字母组 / 数字组 / 抽人\n"
+                      "• 「抽取数量」子菜单选择每次抽取 1~8 个\n"
+                      "• 组数取自「抽样设置 → 抽组默认总数」",
+                 fg="#333").pack(anchor="w", padx=10, pady=8)
+
+        # ── 系统托盘 ──
+        ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=8)
+
+        tk.Label(tab, text="系统托盘",
+                 font=("", 10, "bold"), fg="#2b5b84").pack(anchor="w", **pad)
+
+        self.tray_var = tk.BooleanVar(
+            value=self.config.get("tray_enabled", True))
+        tk.Checkbutton(tab, text="关闭窗口后保留系统托盘",
+                       variable=self.tray_var).pack(anchor="w", **pad)
+
+        self.tray_min_var = tk.BooleanVar(
+            value=self.config.get("tray_start_minimized", False))
+        tk.Checkbutton(tab, text="启动后直接后台驻留托盘（不显示主界面）",
+                       variable=self.tray_min_var).pack(anchor="w", **pad)
+
+        if not tray.is_available():
+            tk.Label(tab, text=f"当前不可用：{tray.unavailable_reason()}",
+                     fg="#c0392b", font=("", 9)).pack(anchor="w", **pad)
+        else:
+            tk.Label(tab, text="托盘右键菜单：显示主界面 / 软件配置 / 检测更新 / 悬浮球 / 退出",
+                     fg="gray", font=("", 9)).pack(anchor="w", **pad)
+
     # 更新设置
 
     def _create_update_tab(self, notebook):
@@ -730,6 +783,9 @@ class ConfigWindow:
             "ci_overlay_duration": self._parse_duration(
                 self.ci_overlay_var.get(), islandmq.DEFAULT_OVERLAY_DURATION),
             "ci_fallback_popup": self.ci_fallback_var.get(),
+            "floatball_enabled": self.floatball_var.get(),
+            "tray_enabled": self.tray_var.get(),
+            "tray_start_minimized": self.tray_min_var.get(),
         }
         if updates["rct_default_sample"] in ("（无）", "（样本库为空）"):
             updates["rct_default_sample"] = ""
@@ -747,6 +803,17 @@ class ConfigWindow:
             for key, value in updates.items():
                 self.config.set(key, value)
             rctlog.info("配置已保存")
+            # 按悬浮窗开关刷新其显示状态
+            try:
+                from core import floatball
+                floatball.refresh_visibility()
+            except Exception as e:
+                rctlog.warning(f"刷新悬浮球可见性失败: {e}")
+            # 按托盘开关启用 / 停用托盘
+            try:
+                tray.refresh()
+            except Exception as e:
+                rctlog.warning(f"刷新托盘状态失败: {e}")
             return True
         except Exception as e:
             rctlog.error(f"保存配置失败: {e}")
@@ -1005,9 +1072,15 @@ class HomeTab(BaseTab):
         AboutWindow(self.frame.winfo_toplevel(), info, rct_icon_path)
 
     def quit_program(self):
-        """退出程序"""
+        """退出程序：该按钮为整体关闭，需二次确认"""
+        if not messagebox.askyesno("退出程序", "确定要退出随机抽取工具吗？"):
+            return
         rctlog.info("程序正常退出")
-        self.frame.winfo_toplevel().destroy()
+        t = tray.get()
+        if t is not None and t.active:
+            t.quit_app()
+        else:
+            self.frame.winfo_toplevel().destroy()
 
 class RandomCallTab(BaseTab):
     """随机抽取选项卡：支持抽人、抽组和历史记录管理。"""
