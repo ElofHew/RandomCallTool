@@ -1,18 +1,10 @@
-"""
-底层随机抽取逻辑 — 三档抽样模式（基本/智能/高级）
-"""
+"""随机抽样核心逻辑：支持基本、智能和高级三种模式。"""
 from random import sample, shuffle, choices, random, uniform
 from collections import defaultdict, Counter
 
 
 class SmartSampler:
-    """智能抽样器 — 三档抽样模式
-
-    模式 0 - 基本抽样 (BASIC) : random.sample，简单随机
-    模式 1 - 智能抽样 (SMART) : 跟踪近期抽取历史，自动降低刚被选中项的权重；
-                               支持"使用固定权重"子选项，整合原加权功能
-    模式 2 - 高级抽样 (ADVANCED) : 开放全部高级抽取选项（放回/不放回、抽取优化等）
-    """
+    """三档抽样器：基础随机、智能加权和高级策略。"""
 
     MODE_BASIC = 0
     MODE_SMART = 1
@@ -20,7 +12,7 @@ class SmartSampler:
 
     MODE_NAMES = {0: "基本抽样", 1: "智能抽样", 2: "高级抽样"}
 
-    # ── 高级模式：不放回调整方法 ──
+    # 高级模式：不放回调整方法
     NO_REPLACE_METHOD_CONTINUOUS = 0   # 连续循环样本
     NO_REPLACE_METHOD_DIVISIBLE = 1    # 整除式重载
     NO_REPLACE_METHOD_RATIO = 2        # 比率式调整
@@ -89,7 +81,7 @@ class SmartSampler:
         self._shuffle_done_once = False     # "仅启动时"打乱是否已执行
         self._pre_draw_done_once = False    # "仅启动时"预抽取是否已执行
 
-    # ── 模式切换 ──────────────────────────────────────────
+    # 模式切换
 
     def set_mode(self, mode):
         if mode in (self.MODE_BASIC, self.MODE_SMART, self.MODE_ADVANCED):
@@ -100,7 +92,7 @@ class SmartSampler:
                 self._shuffle_done_once = False
                 self._pre_draw_done_once = False
 
-    # ── 权重设置 ──────────────────────────────────────────
+    # 权重设置
 
     def set_weight(self, item, weight):
         """设置单个样本的权重（智能模式固定权重 / 高级模式自定义权重）"""
@@ -131,7 +123,7 @@ class SmartSampler:
         """重置所有权重"""
         self.weights.clear()
 
-    # ── 核心抽样入口 ──────────────────────────────────────
+    # 核心抽样入口
 
     def smart_sample(self, population, k):
         """
@@ -166,7 +158,7 @@ class SmartSampler:
         self._update_history(result)
         return result
 
-    # ── 各模式实现 ────────────────────────────────────────
+    # 各模式实现
 
     def _basic_sample(self, population, k):
         """模式 0：纯随机抽样"""

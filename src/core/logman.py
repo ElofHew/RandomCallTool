@@ -1,6 +1,4 @@
-"""
-日志处理模块 - 为各应用提供 RotatingFileHandler 日志记录
-"""
+"""日志工具：按日期滚动写入日志文件。"""
 import os
 import logging
 from logging.handlers import RotatingFileHandler

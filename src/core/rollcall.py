@@ -1,18 +1,4 @@
-"""
-随机点名模块 — 跑马灯式点名
-
-功能说明：
-  与「随机抽取/随机抽人」不同，点名采用类似跑马灯的形式：
-  点「开始点名」后名单里的名字快速跳动，点「停止」则定格显示当前名字。
-  另有「自动点名」：在 1.0x~3.0x 速率与 2~3 秒时长范围内各随机取一个值，
-  到时自动停止并定格结果。
-
-名单来源：
-  与随机抽人一致，使用样本库中的 RCP 名单（data/rcplist/）。
-
-点名优化（见 RollCallConfigWindow）：
-  名字轮换速率、点名前打乱名单、放回式/不放回式、重置限度。
-"""
+"""随机点名模块：跑马灯式点名、自动点名和结果通知。"""
 import random
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -21,12 +7,13 @@ from core.logman import rctlog
 from core.config import ConfigManager
 from core.fileman import SampleLibrary
 from core.window import BaseTab
+from core.notify import notify_result
 from core.platutils import set_window_icon
 from core.info import rct_icon_path
 
 
 class RollCallTab(BaseTab):
-    """随机点名选项卡 — 手动点名 + 自动点名"""
+    """随机点名选项卡：手动点名、自动点名和通知提醒。"""
 
     ROLL_INTERVAL_MS = 70   # 滚动时名字切换间隔（毫秒）
     NAME_FONT_SIZE = 40    # 名字显示字号（固定，避免点名时 UI 跳变）
@@ -196,7 +183,7 @@ class RollCallTab(BaseTab):
         if not values:
             self.info_var.set("样本库为空")
         elif self.sample_name and self.sample_name not in values:
-            self.info_var.set(f"当前名单: {self.sample_name}（已不在样本库中）")
+            self.info_var.set(f"当前名单：{self.sample_name}（已不在样本库中）")
         elif not self.sample_name:
             self.info_var.set("尚未加载名单")
 
@@ -221,32 +208,32 @@ class RollCallTab(BaseTab):
         name = self.sample_var.get()
         if not name:
             if not silent:
-                messagebox.showwarning("警告", "样本库为空，请先导入样本")
+                messagebox.showwarning("样本库为空", "样本库为空，请先导入样本。")
             return
         names = SampleLibrary.load_names(name)
         if not names:
             if not silent:
-                messagebox.showwarning("警告", f"样本「{name}」为空或无效")
+                messagebox.showwarning("样本无效", f"样本「{name}」为空或内容无效。")
             return
         # 1) 先截断超长名字
         names, truncated = self._truncate_names(names)
         # 2) 再强制合并重复名字（点名场景恒定去重，忽略软件配置开关）
         names, merged_count = self._merge_duplicates(names)
         self._set_names(name, names)
-        msg = f"已加载名单「{name}」\n共 {len(names)} 人"
+        msg = f"已加载名单「{name}」，共 {len(names)} 人。"
         notes = []
         if truncated:
-            notes.append(f"有 {len(truncated)} 个名字超过 "
-                         f"{self.MAX_NAME_LEN} 个字符，已自动截断")
+            notes.append(f"其中 {len(truncated)} 个名字超过 "
+                         f"{self.MAX_NAME_LEN} 个字符，已自动截断。")
         if merged_count:
-            notes.append(f"有 {merged_count} 个重复名字，已自动合并")
+            notes.append(f"其中 {merged_count} 个重复名字，已自动合并。")
         if notes:
             msg += "\n\n" + "\n".join(notes)
         if not silent:
             if notes:
-                messagebox.showwarning("提示", msg)
+                messagebox.showwarning("名单已加载", msg)
             else:
-                messagebox.showinfo("成功", msg)
+                messagebox.showinfo("加载成功", msg)
         rctlog.info(f"[随机点名] 加载名单: {name}, 共 {len(names)} 人 "
                     f"(截断 {len(truncated)} 个, 合并 {merged_count} 个)")
         if truncated:
@@ -283,7 +270,7 @@ class RollCallTab(BaseTab):
         self.names = list(names)
         self.sample_name = name
         self._refill_pool()
-        self.info_var.set(f"当前名单: {name} ｜ 共 {len(self.names)} 人")
+        self.info_var.set(f"当前名单：{name} ｜ 共 {len(self.names)} 人")
         self._show("准备就绪", highlight=False, idle=True)
         self.start_btn.config(text="开始点名", state="normal")
         self.stop_btn.config(state="disabled")
@@ -298,7 +285,7 @@ class RollCallTab(BaseTab):
         speed: 本次使用的速率倍数，None 用用户配置速率
         """
         if not self.names:
-            messagebox.showwarning("警告", "请先加载名单")
+            messagebox.showwarning("未加载名单", "请先加载点名名单。")
             return
         if self.rolling:
             return
@@ -316,7 +303,7 @@ class RollCallTab(BaseTab):
     def auto_start(self):
         """自动点名：在速率与时长范围内各随机取一个值，到时自动停止"""
         if not self.names:
-            messagebox.showwarning("警告", "请先加载名单")
+            messagebox.showwarning("未加载名单", "请先加载点名名单。")
             return
         if self.rolling:
             return
@@ -424,6 +411,9 @@ class RollCallTab(BaseTab):
         self.stop_btn.config(state="disabled")
         if result:
             rctlog.info(f"[随机点名] 点中: {result}")
+            # 按配置提醒：弹窗 或 ClassIsland 通知
+            notify_result("点名结果", [result],
+                          default_mask_title="随机点名结果")
 
     def _stop_rolling(self):
         """停止内部滚动定时器"""

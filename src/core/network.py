@@ -1,6 +1,4 @@
-"""
-更新程序网络层 — 元数据获取、版本比对、下载 URL 构造
-"""
+"""更新程序网络层：获取远程元数据并构造下载地址。"""
 import json
 from urllib.request import urlopen, Request
 from core import updconf
@@ -24,7 +22,8 @@ def check_remote_version(source="github", timeout=10, accept_preview=False):
     result = {"success": False, "has_update": False,
               "local_version": updconf.VERSION, "local_vercode": updconf.VERCODE,
               "remote_version": "", "remote_vercode": 0,
-              "remote_date": "", "source_name": updconf.SOURCE_NAMES.get(source, source),
+              "remote_date": "", "is_preview": False,
+              "source_name": updconf.SOURCE_NAMES.get(source, source),
               "quark_url": "", "lanzou_url": "", "lanzou_password": "",
               "error": None}
     try:
@@ -33,8 +32,9 @@ def check_remote_version(source="github", timeout=10, accept_preview=False):
         remote_vercode = ver.get("vercode", 0)
         remote_version = ver.get("version", "?")
         remote_date = ver.get("date", "?")
+        is_preview = False
 
-        # 如果允许测试版更新，检查 preview 段的版本号
+        # 接受测试版时，若 preview 段版本更高则改用测试版
         if accept_preview:
             prev = meta.get("preview", {})
             prev_vercode = prev.get("vercode", 0)
@@ -42,10 +42,12 @@ def check_remote_version(source="github", timeout=10, accept_preview=False):
                 remote_vercode = prev_vercode
                 remote_version = prev.get("version", remote_version)
                 remote_date = prev.get("date", remote_date)
+                is_preview = True
 
         result["remote_version"] = remote_version
         result["remote_vercode"] = remote_vercode
         result["remote_date"] = remote_date
+        result["is_preview"] = is_preview
         result["has_update"] = remote_vercode > updconf.VERCODE
         # 网盘备用下载渠道（供更新界面展示）
         qk = meta.get("quark") or {}

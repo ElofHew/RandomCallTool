@@ -1,6 +1,4 @@
-"""
-功能模块 - 退出及外部进程调用
-"""
+"""通用辅助功能：退出和外部进程启动。"""
 import subprocess
 from core.logman import rctlog
 

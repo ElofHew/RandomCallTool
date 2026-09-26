@@ -1,13 +1,13 @@
-"""
-UI 窗口布局模块 — 配置窗口、选项卡界面、高级抽取窗口
-"""
+"""UI 窗口模块：配置窗口、选项卡界面和高级抽取界面。"""
 import os
 from time import strftime
 import tkinter as tk
 import tkinter.font as tkFont
-from tkinter import ttk, messagebox, filedialog, simpledialog
+from tkinter import ttk, messagebox, filedialog
 from core.logman import rctlog
 from core.config import ConfigManager
+from core import islandmq
+from core.notify import notify_result
 from core.info import rct_rcplist_path, rct_version, document_path
 from core.fileman import SampleLibrary, SaveResult, base64decode
 from core.sampler import SmartSampler
@@ -18,7 +18,7 @@ from core.platutils import set_window_icon
 
 
 class ConfigWindow:
-    """软件内配置窗口（多选项卡）"""
+    """软件内配置窗口：统一管理程序各项设置。"""
     def __init__(self, parent):
         self.parent = parent
         self.config = ConfigManager()
@@ -57,6 +57,7 @@ class ConfigWindow:
         self._create_general_tab(notebook)
         self._create_sampling_tab(notebook)
         self._create_sample_mgr_tab(notebook)
+        self._create_notify_tab(notebook)
         self._create_update_tab(notebook)
 
         self.window.protocol("WM_DELETE_WINDOW", self._prompt_close)
@@ -70,7 +71,7 @@ class ConfigWindow:
             tk.Button(btn_frame, text=text, command=cmd, width=12, height=1
                       ).pack(side="left", padx=5)
 
-    # ── 标签页 1：基本设置 ────────────────────────────────
+    # 基本设置
 
     def _create_general_tab(self, notebook):
         tab = self._make_tab(notebook, "基本设置")
@@ -124,7 +125,7 @@ class ConfigWindow:
 
         tk.Label(tab, text="默认加载样本",
                  font=("", 10, "bold"), fg="#2b5b84").pack(anchor="w", padx=15, pady=(2, 0))
-        tk.Label(tab, text="启动时自动加载的样本库文件",
+        tk.Label(tab, text="启动时自动加载的样本库文件（用于随机抽人）",
                  fg="gray", font=("", 8)).pack(anchor="w", padx=15, pady=(0, 2))
 
         f3 = tk.Frame(tab)
@@ -138,7 +139,7 @@ class ConfigWindow:
         else:
             self.sample_combo.set("（无）")
 
-    # ── 标签页 2：抽样设置 ────────────────────────────────
+    # 抽样设置
 
     def _create_sampling_tab(self, notebook):
         tab = self._make_tab(notebook, "抽样设置")
@@ -154,7 +155,7 @@ class ConfigWindow:
             tk.Radiobutton(f1, text=name, variable=self.sampler_mode_var,
                            value=i).pack(side="left", padx=1)
 
-        tk.Label(tab, text="基本: 纯随机 | 智能: 避免连续抽中+可自定义权重 | 高级: 完整高级配置",
+        tk.Label(tab, text="基本：纯随机 ｜ 智能：避免连续、可自定义权重 ｜ 高级：完整高级配置",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
 
         # 智能模式：使用固定权重
@@ -175,7 +176,7 @@ class ConfigWindow:
                   activebackground="#357abd", activeforeground="white",
                   relief="flat", bd=0, padx=10, cursor="hand2",
                   width=18).pack(side="left", padx=5)
-        tk.Label(tab, text="放回/不放回、抽取优化、加权等详细配置",
+        tk.Label(tab, text="放回 / 不放回、抽取优化、加权等详细配置",
                  fg="gray", font=("", 8)).pack(anchor="w", **pad, pady=(0, 6))
 
         # ── 随机点名配置入口 ──
@@ -188,7 +189,7 @@ class ConfigWindow:
                   activebackground="#7d3c98", activeforeground="white",
                   relief="flat", bd=0, padx=10, cursor="hand2",
                   width=18).pack(side="left", padx=5)
-        tk.Label(tab, text="点名速率、打乱名单、放回/不放回、重置限度等",
+        tk.Label(tab, text="点名速率、打乱名单、放回 / 不放回、重置限度等",
                  fg="gray", font=("", 8)).pack(anchor="w", **pad, pady=(0, 6))
 
         ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=6)
@@ -196,7 +197,7 @@ class ConfigWindow:
         # ── 默认值 ──
         tk.Label(tab, text="默认值设定",
                  font=("", 10, "bold"), fg="#2b5b84").pack(anchor="w", **pad, pady=(2, 0))
-        tk.Label(tab, text="以下值作为各输入框的默认显示值",
+        tk.Label(tab, text="以下数值将作为对应输入框的默认值",
                  fg="gray", font=("", 8)).pack(anchor="w", **pad, pady=(0, 4))
 
         mode_row = tk.Frame(tab)
@@ -211,7 +212,7 @@ class ConfigWindow:
         self._default_vars = {}
         default_items = [
             ("抽组默认总数：", "rct_group_total", 9, 1, 26),
-            ("默认选取数量：", "rct_choice_default", 3, 1, 50),
+            ("默认抽取数量：", "rct_choice_default", 3, 1, 50),
         ]
         for label, key, default, mn, mx in default_items:
             row = tk.Frame(tab)
@@ -283,7 +284,7 @@ class ConfigWindow:
             self.sample_combo["values"] = []
             self.sample_combo.set("（样本库为空）")
 
-    # ── 标签页 3：样本管理 ────────────────────────────────
+    # 样本管理
 
     def _create_sample_mgr_tab(self, notebook):
         tab = self._make_tab(notebook, "样本管理")
@@ -291,7 +292,7 @@ class ConfigWindow:
 
         tk.Label(tab, text="已保存的样本（上限50个）",
                  font=("", 10, "bold")).pack(anchor="w", **pad, pady=(10, 2))
-        tk.Label(tab, text="RCP / TXT 为导出样本的格式",
+        tk.Label(tab, text="样本可导出为 RCP / TXT 格式",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad, pady=(0, 2))
 
         btn_row = tk.Frame(tab)
@@ -359,22 +360,23 @@ class ConfigWindow:
             title="选择要导入的名单文件",
             filetypes=[("可用文件", "*.txt;*.csv;*.rcp"),
                        ("文本文件", "*.txt"),
-                       ("CSV文件", "*.csv"),
-                       ("编码文件", "*.rcp"),
+                       ("CSV 文件", "*.csv"),
+                       ("RCP 文件", "*.rcp"),
                        ("所有文件", "*.*")])
         if not fp:
             return
 
         samples = SampleLibrary.get_samples()
         if len(samples) >= 50:
-            messagebox.showwarning("警告", "样本库已达上限（50个），请删除一些后再导入")
+            messagebox.showwarning("样本库已达上限",
+                                   "样本库最多存放 50 个样本，请先删除部分样本后再导入。")
             return
 
         default_name = os.path.splitext(os.path.basename(fp))[0]
         name = ask_string(
             "导入样本",
-            "请输入样本名称（将作为文件名，不含扩展名）：\n"
-            "不能包含字符: \\ / : * ? \" < > |",
+            "请输入样本名称（将作为文件名，无需填写扩展名）：\n"
+            "不能包含以下字符：\\ / : * ? \" < > |",
             initialvalue=default_name,
             parent=self.window)
         if not name:
@@ -386,36 +388,36 @@ class ConfigWindow:
             rctlog.info(f"样本已导入: {name}")
             self._rebuild_mgr_list()
             self._refresh_sample_list()
-            messagebox.showinfo("成功", f"样本「{name}」已导入")
+            messagebox.showinfo("导入成功", f"样本「{name}」已导入样本库。")
         except Exception as e:
-            messagebox.showerror("导入失败", str(e))
+            messagebox.showerror("导入失败", f"导入样本时出错：\n{e}")
 
     def _export_rcp(self, name):
         """导出单个样本为 .rcp"""
-        dest = filedialog.askdirectory(title=f"选择导出目录 - {name}.rcp")
+        dest = filedialog.askdirectory(title=f"选择 RCP 文件的导出目录（{name}.rcp）")
         if not dest:
             return
         try:
             path = SampleLibrary.export_rcp(name, dest)
-            messagebox.showinfo("成功", f"已导出:\n{path}")
+            messagebox.showinfo("导出成功", f"已导出到：\n{path}")
         except Exception as e:
-            messagebox.showerror("导出失败", str(e))
+            messagebox.showerror("导出失败", f"导出 RCP 文件时出错：\n{e}")
 
     def _export_txt(self, name):
         """导出单个样本为 .txt"""
-        dest = filedialog.askdirectory(title=f"选择导出目录 - {name}.txt")
+        dest = filedialog.askdirectory(title=f"选择 TXT 文件的导出目录（{name}.txt）")
         if not dest:
             return
         try:
             path = SampleLibrary.export_txt(name, dest)
-            messagebox.showinfo("成功", f"已导出:\n{path}")
+            messagebox.showinfo("导出成功", f"已导出到：\n{path}")
         except Exception as e:
-            messagebox.showerror("导出失败", str(e))
+            messagebox.showerror("导出失败", f"导出 TXT 文件时出错：\n{e}")
 
     def _rename_sample(self, old_name):
         """重命名样本"""
-        new_name = simpledialog.askstring(
-            "重命名样本", f"请输入新的名称（原名称: {old_name}）：",
+        new_name = ask_string(
+            "重命名样本", f"请输入新的样本名称（原名称：{old_name}）：",
             initialvalue=old_name, parent=self.window)
         if not new_name:
             return
@@ -426,20 +428,205 @@ class ConfigWindow:
             SampleLibrary.rename_sample(old_name, new_name)
             self._rebuild_mgr_list()
             self._refresh_sample_list()
-            messagebox.showinfo("成功", f"已重命名为: {new_name}")
+            messagebox.showinfo("重命名成功", f"样本已重命名为「{new_name}」。")
         except Exception as e:
-            messagebox.showerror("重命名失败", str(e))
+            messagebox.showerror("重命名失败", f"重命名样本时出错：\n{e}")
 
     def _delete_sample(self, name):
         """删除样本"""
-        if not messagebox.askyesno("确认删除", f"确定要删除样本「{name}」吗？"):
+        if not messagebox.askyesno("删除样本",
+                                   f"确定要删除样本「{name}」吗？\n\n删除后无法恢复。"):
             return
         SampleLibrary.delete_sample(name)
         self._rebuild_mgr_list()
         self._refresh_sample_list()
-        messagebox.showinfo("成功", f"样本「{name}」已删除")
+        messagebox.showinfo("删除成功", f"样本「{name}」已删除。")
 
-    # ── 标签页 4：更新设置 ──────────────────────────────
+    # 抽取后提醒
+
+    @staticmethod
+    def _parse_duration(value, default):
+        """解析时长输入，非法值回退到默认值"""
+        try:
+            seconds = float(value)
+        except (TypeError, ValueError):
+            return default
+        return round(seconds, 1) if seconds > 0 else default
+
+    def _create_notify_tab(self, notebook):
+        tab = self._make_tab(notebook, "提醒")
+        pad = {"padx": 15}
+
+        # ── 提醒方式 ──
+        f1 = tk.Frame(tab)
+        f1.pack(fill="x", **pad, pady=(15, 2))
+        tk.Label(f1, text="提醒方式：", width=15, anchor="w").pack(side="left")
+        self.notify_mode_var = tk.StringVar(
+            value=str(self.config.get("notify_mode", "popup")))
+        tk.Radiobutton(f1, text="弹窗提醒", variable=self.notify_mode_var,
+                       value="popup",
+                       command=self._on_notify_mode_change).pack(side="left", padx=2)
+        self.island_radio = tk.Radiobutton(
+            f1, text="ClassIsland 通知", variable=self.notify_mode_var,
+            value="island", command=self._on_notify_mode_change)
+        self.island_radio.pack(side="left", padx=2)
+
+        tk.Label(tab, text="弹窗提醒：抽取 / 点名完成后弹出结果窗口（默认）\n"
+                           "ClassIsland 通知：通过 IslandMQ 插件把结果推送到教室电脑",
+                 fg="gray", font=("", 8), justify="left").pack(anchor="w", **pad)
+
+        # ── ClassIsland 通知设置 ──
+        self.island_box = tk.LabelFrame(tab, text="ClassIsland 通知设置")
+        self.island_box.pack(fill="x", padx=15, pady=(8, 0))
+        self._island_widgets = []
+
+        row = tk.Frame(self.island_box)
+        row.pack(fill="x", padx=8, pady=(8, 2))
+        tk.Label(row, text="主机 IP：", width=9, anchor="w").pack(side="left")
+        self.ci_ip_var = tk.StringVar(
+            value=str(self.config.get("ci_ip", islandmq.DEFAULT_IP)))
+        w = tk.Entry(row, textvariable=self.ci_ip_var, width=16)
+        w.pack(side="left")
+        self._island_widgets.append(w)
+        tk.Label(row, text="端口：").pack(side="left", padx=(10, 0))
+        self.ci_port_var = tk.StringVar(
+            value=str(self.config.get("ci_port", islandmq.DEFAULT_PORT)))
+        w = tk.Entry(row, textvariable=self.ci_port_var, width=8)
+        w.pack(side="left", padx=2)
+        self._island_widgets.append(w)
+
+        row = tk.Frame(self.island_box)
+        row.pack(fill="x", padx=8, pady=2)
+        tk.Label(row, text="通知标题：", width=9, anchor="w").pack(side="left")
+        self.ci_title_var = tk.StringVar(
+            value=str(self.config.get("ci_title", "")))
+        w = tk.Entry(row, textvariable=self.ci_title_var)
+        w.pack(side="left", fill="x", expand=True)
+        self._island_widgets.append(w)
+
+        tk.Label(self.island_box,
+                 text="标题留空时，抽取自动用「随机抽取结果」、点名自动用「随机点名结果」",
+                 fg="gray", font=("", 8)).pack(anchor="w", padx=8)
+
+        row = tk.Frame(self.island_box)
+        row.pack(fill="x", padx=8, pady=2)
+        tk.Label(row, text="遮罩时长：", width=9, anchor="w").pack(side="left")
+        self.ci_mask_var = tk.StringVar(
+            value=str(self.config.get("ci_mask_duration",
+                                      islandmq.DEFAULT_MASK_DURATION)))
+        w = tk.Spinbox(row, textvariable=self.ci_mask_var, from_=0.5, to=60.0,
+                       increment=0.5, width=6)
+        w.pack(side="left")
+        self._island_widgets.append(w)
+        tk.Label(row, text="秒").pack(side="left", padx=(2, 14))
+        tk.Label(row, text="正文时长：").pack(side="left")
+        self.ci_overlay_var = tk.StringVar(
+            value=str(self.config.get("ci_overlay_duration",
+                                      islandmq.DEFAULT_OVERLAY_DURATION)))
+        w = tk.Spinbox(row, textvariable=self.ci_overlay_var, from_=0.5, to=60.0,
+                       increment=0.5, width=6)
+        w.pack(side="left")
+        self._island_widgets.append(w)
+        tk.Label(row, text="秒").pack(side="left", padx=2)
+
+        row = tk.Frame(self.island_box)
+        row.pack(fill="x", padx=8, pady=(4, 8))
+        self.ci_fallback_var = tk.BooleanVar(
+            value=bool(self.config.get("ci_fallback_popup", True)))
+        cb = tk.Checkbutton(row, text="发送失败时改用弹窗提醒",
+                            variable=self.ci_fallback_var)
+        cb.pack(side="left")
+        self._island_widgets.append(cb)
+
+        self.ci_test_btn = tk.Button(
+            row, text="连接测试", command=self._test_island_connection,
+            bg="#4a90d9", fg="white",
+            activebackground="#357abd", activeforeground="white",
+            relief="flat", bd=0, padx=10, cursor="hand2")
+        self.ci_test_btn.pack(side="right")
+        self._island_widgets.append(self.ci_test_btn)
+
+        self.ci_notice_btn = tk.Button(
+            row, text="发送测试通知", command=self._send_test_island_notice,
+            relief="groove", bd=1, padx=10, cursor="hand2")
+        self.ci_notice_btn.pack(side="right", padx=6)
+        self._island_widgets.append(self.ci_notice_btn)
+
+        tk.Label(self.island_box,
+                 text="需要教室电脑运行 ClassIsland 并安装 IslandMQ 插件；\n"
+                      "抽取 / 点名的结果会以「标题（遮罩）+ 名单（正文）」的形式推送。",
+                 fg="gray", font=("", 8), justify="left"
+                 ).pack(anchor="w", padx=8, pady=(0, 6))
+
+        # pyzmq 不可用时禁用该选项
+        if not islandmq.is_available():
+            self.island_radio.config(state="disabled")
+            self.notify_mode_var.set("popup")
+            tk.Label(self.island_box,
+                     text="⚠ 未检测到 pyzmq，ClassIsland 通知不可用。\n"
+                          "请先执行：pip install pyzmq",
+                     fg="#c0392b", font=("", 8), justify="left"
+                     ).pack(anchor="w", padx=8, pady=(0, 6))
+
+        self._on_notify_mode_change()
+
+    def _on_notify_mode_change(self):
+        """选择弹窗提醒时禁用 ClassIsland 相关控件"""
+        state = ("normal" if self.notify_mode_var.get() == "island"
+                 else "disabled")
+        for w in self._island_widgets:
+            try:
+                w.config(state=state)
+            except tk.TclError:
+                pass
+
+    def _island_endpoint_or_warn(self):
+        """校验当前 IP/端口，返回端点字符串；无效时提示并返回 None"""
+        try:
+            return islandmq.build_endpoint(self.ci_ip_var.get(),
+                                           self.ci_port_var.get())
+        except ValueError as e:
+            messagebox.showwarning("地址无效", str(e))
+            return None
+
+    def _test_island_connection(self):
+        """向 ClassIsland 发送 ping 心跳"""
+        if not islandmq.is_available():
+            messagebox.showwarning(
+                "ClassIsland 通知不可用",
+                "未检测到 pyzmq，无法发送 ClassIsland 通知。\n"
+                "请先执行：pip install pyzmq")
+            return
+        if self._island_endpoint_or_warn() is None:
+            return
+        ok, msg = islandmq.ping(self.ci_ip_var.get(), self.ci_port_var.get())
+        if ok:
+            messagebox.showinfo("连接测试", f"连接成功！\n\n服务器响应：{msg}")
+        else:
+            messagebox.showerror("连接失败", f"无法连接到 ClassIsland。\n\n{msg}")
+
+    def _send_test_island_notice(self):
+        """发送一条测试通知，用于确认遮罩 / 正文时长"""
+        if not islandmq.is_available():
+            messagebox.showwarning(
+                "ClassIsland 通知不可用",
+                "未检测到 pyzmq，无法发送 ClassIsland 通知。\n"
+                "请先执行：pip install pyzmq")
+            return
+        if self._island_endpoint_or_warn() is None:
+            return
+        ok, msg = islandmq.send_notice(
+            self.ci_title_var.get(), "这是一条测试通知",
+            self.ci_ip_var.get(), self.ci_port_var.get(),
+            self.ci_mask_var.get(), self.ci_overlay_var.get(),
+            self.config.get("ci_timeout_ms", islandmq.DEFAULT_TIMEOUT_MS),
+        )
+        if ok:
+            messagebox.showinfo("测试通知", "测试通知已发送，请在教室电脑上查看显示效果。")
+        else:
+            messagebox.showerror("测试通知发送失败", msg)
+
+    # 更新设置
 
     def _create_update_tab(self, notebook):
         tab = self._make_tab(notebook, "更新")
@@ -458,7 +645,7 @@ class ConfigWindow:
         tk.Label(tab, text="选择从哪个平台获取版本更新信息",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
         
-        tk.Label(tab, text="中国大陆建议使用Gitee，其他地区建议使用GitHub",
+        tk.Label(tab, text="中国大陆建议使用 Gitee，其他地区建议使用 GitHub",
                  fg="gray", font=("", 9)).pack(anchor="w", **pad)
 
         # 自动检测更新
@@ -492,8 +679,9 @@ class ConfigWindow:
         tk.Label(info_frame, text="当前版本信息",
                  font=("", 10, "bold")).pack(anchor="w", padx=10, pady=(8, 2))
         tk.Label(info_frame,
-                 text=f"版本: {rct_version} (版本码: {rct_vercode})\n"
-                       f"日期: {rct_date}",
+                 text=f"版本号：{rct_version}\n"
+                      f"版本代码：{rct_vercode}\n"
+                      f"发布日期：{rct_date}",
                  fg="gray", font=("", 9), justify="left"
                  ).pack(anchor="w", padx=10, pady=(0, 8))
 
@@ -514,7 +702,7 @@ class ConfigWindow:
         from core.update import run_auto_update
         success = run_auto_update(source=update_source, mode="--check", accept_preview=accept_preview)
         if not success:
-            messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载。")
+            messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载最新版本。")
 
     # ── 保存（纯逻辑，不涉及 UI 弹窗）──────────────
 
@@ -533,6 +721,15 @@ class ConfigWindow:
             "update_source": self.update_source_var.get(),
             "auto_check_update": self.auto_check_var.get(),
             "accept_preview_update": self.accept_preview_var.get(),
+            "notify_mode": self.notify_mode_var.get(),
+            "ci_ip": self.ci_ip_var.get().strip(),
+            "ci_port": self.ci_port_var.get().strip(),
+            "ci_title": self.ci_title_var.get().strip(),
+            "ci_mask_duration": self._parse_duration(
+                self.ci_mask_var.get(), islandmq.DEFAULT_MASK_DURATION),
+            "ci_overlay_duration": self._parse_duration(
+                self.ci_overlay_var.get(), islandmq.DEFAULT_OVERLAY_DURATION),
+            "ci_fallback_popup": self.ci_fallback_var.get(),
         }
         if updates["rct_default_sample"] in ("（无）", "（样本库为空）"):
             updates["rct_default_sample"] = ""
@@ -553,7 +750,7 @@ class ConfigWindow:
             return True
         except Exception as e:
             rctlog.error(f"保存配置失败: {e}")
-            messagebox.showerror("错误", f"保存配置失败: {e}")
+            messagebox.showerror("保存失败", f"保存配置时出错：\n{e}")
             return False
 
     # ── 按钮回调 ──────────────────────────────────────
@@ -561,7 +758,7 @@ class ConfigWindow:
     def _prompt_close(self):
         """关闭前检查是否有未应用的更改"""
         if self._collect_config() != self._init_config and not self._applied:
-            if messagebox.askyesno("配置已更改", "配置已更改，是否应用？"):
+            if messagebox.askyesno("配置已更改", "配置已修改但尚未保存，是否立即应用？"):
                 self._ok()
                 return
         self.window.destroy()
@@ -570,14 +767,14 @@ class ConfigWindow:
         """确定：应用更改并关闭窗口"""
         if self._collect_and_save():
             self._applied = True
-            messagebox.showinfo("成功", "配置已保存")
+            messagebox.showinfo("保存成功", "配置已保存。")
             self.window.destroy()
 
     def _apply(self):
         """应用：仅应用更改，不关闭窗口"""
         if self._collect_and_save():
             self._applied = True
-            messagebox.showinfo("成功", "配置已应用")
+            messagebox.showinfo("应用成功", "配置已应用。")
 
     # ── 旧的 _save 方法保留兼容引用 ──────────────────
     def _save(self):
@@ -586,8 +783,8 @@ class ConfigWindow:
 
 
 # ══════════════════════════════════════════════════════════
-#  便捷引用 — 将公共对话框暴露在 core.window 命名空间
-#  实际实现在 core.dialog
+# 便捷引用：将通用对话框暴露到 core.window 命名空间。
+# 实现位于 core.dialog。
 # ══════════════════════════════════════════════════════════
 
 def _get_rct_about_info():
@@ -605,7 +802,7 @@ def _get_rct_about_window(parent):
 # ========================================
 
 class BaseTab:
-    """选项卡基类"""
+    """所有选项卡的公共基类。"""
     def __init__(self, parent, title):
         self.frame = ttk.Frame(parent)
         self.create_title(title)
@@ -693,7 +890,7 @@ class BaseTab:
         rctlog.info(f"[{self.__class__.__name__}] 清空结果")
 
 class HomeTab(BaseTab):
-    """首页选项卡"""
+    """主页选项卡：提供主功能入口。"""
     def __init__(self, parent):
         super().__init__(parent, "随机抽取工具")
         self.create_widgets()
@@ -707,7 +904,7 @@ class HomeTab(BaseTab):
         )
         version_label.pack(pady=(0, 12))
 
-        # ── 2 列 × 3 行按钮区 ──
+        # 主界面快捷入口
         btn_frame = tk.Frame(self.frame)
         btn_frame.pack(expand=True)
 
@@ -791,10 +988,10 @@ class HomeTab(BaseTab):
             ok = run_auto_update(source=source, mode="--check",
                                  accept_preview=accept_preview)
             if not ok:
-                messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载。")
+                messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载最新版本。")
         except Exception as e:
             rctlog.error(f"打开更新程序失败: {e}")
-            messagebox.showerror("错误", f"无法启动更新程序: {e}")
+            messagebox.showerror("启动失败", f"无法启动更新程序：\n{e}")
 
     def open_config_window(self):
         """打开配置窗口"""
@@ -813,7 +1010,7 @@ class HomeTab(BaseTab):
         self.frame.winfo_toplevel().destroy()
 
 class RandomCallTab(BaseTab):
-    """整合的随机抽取选项卡 — 支持随机抽人/随机抽组切换"""
+    """随机抽取选项卡：支持抽人、抽组和历史记录管理。"""
 
     def __init__(self, parent):
         super().__init__(parent, "随机抽取")
@@ -935,7 +1132,7 @@ class RandomCallTab(BaseTab):
         order_row = tk.Frame(self.group_frame)
         order_row.pack(pady=5)
         tk.Label(order_row, text="分组方式：").pack(side="left")
-        for text, val in [("123(数字)", "123"), ("ABC(字母)", "ABC")]:
+        for text, val in [("123（数字）", "123"), ("ABC（字母）", "ABC")]:
             tk.Radiobutton(
                 order_row, text=text, variable=self.group_order_var, value=val,
             ).pack(side="left", padx=5)
@@ -953,7 +1150,7 @@ class RandomCallTab(BaseTab):
 
         self.total_entry.bind("<<ComboboxSelected>>", self._on_total_change)
 
-        tk.Label(self.group_frame, text="最多支持26个组，触屏设备可以在选择框上滑动选择",
+        tk.Label(self.group_frame, text="最多支持 26 个组；触屏设备可在选择框上滑动选择",
                  fg="gray", font=("", 8)).pack(pady=(0, 4))
 
         # ----- 右侧历史记录 -----
@@ -1156,17 +1353,18 @@ class RandomCallTab(BaseTab):
                     else list(range(1, total + 1))
                 )
             except (ValueError, AttributeError):
-                messagebox.showwarning("警告", "请先设置组参数")
+                messagebox.showwarning("参数不足", "请先设置抽组的组数等参数。")
                 return
 
         if not items:
-            messagebox.showwarning("警告", "当前无可用样本")
+            messagebox.showwarning("无可抽样本", "当前没有可用的样本。")
             return
 
         win = tk.Toplevel(self.frame.winfo_toplevel())
         win.title("权重设置")
         win.geometry("420x480+100+100")
         win.transient(self.frame.winfo_toplevel())
+        set_window_icon(win, rct_icon_path)
         win.grab_set()
         win.minsize(300, 300)
 
@@ -1231,11 +1429,11 @@ class RandomCallTab(BaseTab):
             for item in items:
                 if fixed_on:
                     weight_labels[item].config(
-                        text=f"固定: {self.sampler.get_weight(item):.1f}")
+                        text=f"固定：{self.sampler.get_weight(item):.1f}")
                 else:
                     smart_w = self.sampler.get_smart_effective_weight(item)
                     weight_labels[item].config(
-                        text=f"智能: {smart_w:.1f}")
+                        text=f"智能：{smart_w:.1f}")
             # 同步切换输入框可编辑状态
             state = "normal" if fixed_on else "readonly"
             for entry in weight_entries.values():
@@ -1274,19 +1472,20 @@ class RandomCallTab(BaseTab):
                     w = float(var.get().strip())
                     self.sampler.set_weight(item, w)
                 except ValueError:
-                    messagebox.showwarning("无效输入", f"'{item}' 的权重值无效，已跳过")
+                    messagebox.showwarning(
+                        "权重无效", f"「{item}」的权重值不是有效数字，已跳过。")
                     continue
             # 同步高级模式的自定义权重开关
             self.sampler.advanced_config["custom_weights"] = self.sampler.use_fixed_weights
             _applied = True
             rctlog.info(f"权重已更新 ({len(weight_vars)} 项), 固定权重={self.sampler.use_fixed_weights}")
-            messagebox.showinfo("成功", "权重已保存")
+            messagebox.showinfo("保存成功", "权重已保存。")
             canvas.unbind_all("<MouseWheel>")
             win.destroy()
 
         def _prompt_and_close():
             if _has_weight_changes() and not _applied:
-                if messagebox.askyesno("配置已更改", "权重配置已更改，是否应用？"):
+                if messagebox.askyesno("权重已更改", "权重已修改但尚未保存，是否立即应用？"):
                     save_weights()
                     return
             canvas.unbind_all("<MouseWheel>")
@@ -1355,9 +1554,9 @@ class RandomCallTab(BaseTab):
             file_path = filedialog.askopenfilename(
                 filetypes=[
                     ("可用文件", "*.rcp;*.txt;*.csv"),
-                    ("名单文件", "*.rcp"),
+                    ("RCP 名单文件", "*.rcp"),
                     ("文本文件", "*.txt"),
-                    ("CSV文件", "*.csv"),
+                    ("CSV 文件", "*.csv"),
                     ("所有文件", "*.*"),
                 ],
                 initialdir=document_path,
@@ -1399,7 +1598,7 @@ class RandomCallTab(BaseTab):
                     extra.append("文件中存在重复的名字，已保留")
 
             if not names:
-                messagebox.showwarning("警告", "文件中没有有效的数据")
+                messagebox.showwarning("文件为空", "文件中没有可用的名单数据。")
                 return [], extra
 
             self._set_sample_info(
@@ -1427,11 +1626,11 @@ class RandomCallTab(BaseTab):
                     return lines, extra
             except Exception as e:
                 rctlog.error(f"[随机抽取] 读取文件失败: {e}")
-                messagebox.showerror("错误", f"读取文件失败: {e}")
+                messagebox.showerror("读取失败", f"读取文件时出错：\n{e}")
                 return [], extra
         except Exception as e:
             rctlog.error(f"[随机抽取] 读取文件失败: {e}")
-            messagebox.showerror("错误", f"读取文件失败: {e}")
+            messagebox.showerror("读取失败", f"读取文件时出错：\n{e}")
             return [], extra
 
     def _decode_rcp(self, data):
@@ -1445,10 +1644,10 @@ class RandomCallTab(BaseTab):
         if names:
             self.names = names
             self.sampler.reset_no_replace_pool()
-            msg = f"共加载 {len(names)} 个名字"
+            msg = f"已加载 {len(names)} 个名字。"
             if extra:
                 msg += "\n" + "\n".join(extra)
-            messagebox.showinfo("成功", msg)
+            messagebox.showinfo("加载成功", msg)
             # 样本库为空时，询问是否将该文件导入到样本库
             if not SampleLibrary.get_samples():
                 self._prompt_import_to_library(self.current_file)
@@ -1458,8 +1657,8 @@ class RandomCallTab(BaseTab):
         if not file_path or not os.path.isfile(file_path):
             return
         if not messagebox.askyesno(
-                "提示",
-                "当前样本库为空。\n是否将此文件导入到样本库？"):
+                "导入到样本库",
+                "样本库当前为空。\n是否将刚刚打开的文件导入到样本库？"):
             return
         try:
             from core.appfunc import ApplicationFunctions
@@ -1467,7 +1666,7 @@ class RandomCallTab(BaseTab):
                 parent=self.frame.winfo_toplevel(), source_path=file_path)
         except Exception as e:
             rctlog.error(f"[随机抽取] 导入到样本库失败: {e}")
-            messagebox.showerror("错误", f"导入到样本库失败: {e}")
+            messagebox.showerror("导入失败", f"导入到样本库时出错：\n{e}")
 
     def reload_current_file(self):
         """重新加载当前文件"""
@@ -1476,21 +1675,22 @@ class RandomCallTab(BaseTab):
             if names:
                 self.names = names
                 self.sampler.reset_no_replace_pool()
-                msg = f"重新加载成功\n共 {len(names)} 个名字"
+                msg = f"已重新加载，共 {len(names)} 个名字。"
                 if extra:
                     msg += "\n" + "\n".join(extra)
-                messagebox.showinfo("成功", msg)
+                messagebox.showinfo("加载成功", msg)
 
     def load_from_library(self):
         """从样本库选择样本加载"""
         samples = SampleLibrary.get_samples()
         if not samples:
-            messagebox.showwarning("警告", "样本库为空，请先导入样本")
+            messagebox.showwarning("样本库为空", "样本库为空，请先导入样本。")
             return
         win = tk.Toplevel(self.frame.winfo_toplevel())
         win.title("选择样本")
         win.geometry("380x420+150+150")
         win.transient(self.frame.winfo_toplevel())
+        set_window_icon(win, rct_icon_path)
         win.grab_set()
         win.minsize(300, 250)
 
@@ -1540,17 +1740,19 @@ class RandomCallTab(BaseTab):
             mx = len(names)
             self.choice_entry["values"] = list(range(1, mx + 1))
             rctlog.info(f"[随机抽取] 从样本库加载: {name}, 共 {len(names)} 个名字")
-            messagebox.showinfo("成功", f"已加载样本「{name}」\n共 {len(names)} 个名字")
+            messagebox.showinfo("加载成功", f"已加载样本「{name}」，共 {len(names)} 个名字。")
             win.destroy()
         else:
-            messagebox.showwarning("警告", f"样本「{name}」为空或无效")
+            messagebox.showwarning("样本无效", f"样本「{name}」为空或内容无效。")
 
     def auto_load_file(self):
         """自动加载默认样本（从样本库）"""
         config = ConfigManager()
         default_name = config.get("rct_default_sample", "")
         if not default_name:
-            messagebox.showwarning("警告", "未设置默认样本，请先在配置中设置")
+            messagebox.showwarning(
+                "未设置默认样本",
+                "尚未设置默认样本，请先到「配置 → 基本设置」中选择「默认加载样本」。")
             return
         names = SampleLibrary.load_names(default_name)
         if names:
@@ -1561,9 +1763,9 @@ class RandomCallTab(BaseTab):
             mx = len(names)
             self.choice_entry["values"] = list(range(1, mx + 1))
             rctlog.info(f"[随机抽取] 自动加载样本库: {default_name}, 共 {len(names)} 个名字")
-            messagebox.showinfo("成功", f"已加载默认样本「{default_name}」\n共 {len(names)} 个名字")
+            messagebox.showinfo("加载成功", f"已加载默认样本「{default_name}」，共 {len(names)} 个名字。")
         else:
-            messagebox.showwarning("警告", f"默认样本「{default_name}」不存在或无效")
+            messagebox.showwarning("默认样本无效", f"默认样本「{default_name}」不存在或内容无效。")
 
     # ══════════════════════════════════════════════════════════
     #  抽取逻辑
@@ -1580,30 +1782,33 @@ class RandomCallTab(BaseTab):
     def _draw_person(self):
         """随机抽人"""
         if not self.names:
-            messagebox.showwarning("警告", "请先加载样本列表文件")
+            messagebox.showwarning("未加载样本", "请先加载样本文件。")
             return
 
         try:
             k = int(self.choice_entry.get())
         except (ValueError, TypeError):
-            messagebox.showwarning("警告", "请选择抽取数量")
+            messagebox.showwarning("未选择数量", "请先选择抽取数量。")
             return
 
         if k < 1:
             return
         if k > len(self.names):
-            messagebox.showwarning("错误", f"抽取数量({k})大于样本数量({len(self.names)})")
+            messagebox.showwarning(
+                "数量超出范围",
+                f"抽取数量（{k}）超过了样本数量（{len(self.names)}），请重新选择。")
             return
-        if k == len(self.names) and not messagebox.askyesno("提示", "抽取数量与总数量相同，确定要抽取所有人吗？"):
+        if k == len(self.names) and not messagebox.askyesno(
+                "抽取数量与样本总数相同", "确定要抽取全部人员吗？"):
             return
 
         selected = self.sampler.smart_sample(self.names, k)
 
         preview = ", ".join(selected[:8]) + ("..." if len(selected) > 8 else "")
-        self._add_history("person", selected, f"抽{k}人: {preview}")
+        self._add_history("person", selected, f"抽{k}人：{preview}")
 
         rctlog.info(f"[随机抽取] 抽人成功: {selected}")
-        messagebox.showinfo("抽取结果", "抽取结果：\n" + "\n".join(selected))
+        self._notify_result("抽取结果", selected)
 
         if ConfigManager().get("save_result", True):
             SaveResult().save_result("RandomPerson", "随机抽人", selected)
@@ -1614,19 +1819,20 @@ class RandomCallTab(BaseTab):
             total = int(self.total_entry.get())
             k = int(self.choice_entry.get())
         except (ValueError, TypeError):
-            messagebox.showwarning("错误", "请选择有效的数字")
+            messagebox.showwarning("参数无效", "请选择有效的数字。")
             return
 
         if total < 1:
-            messagebox.showwarning("错误", "样本总数不能小于1")
+            messagebox.showwarning("参数无效", "样本总数不能小于 1。")
             return
         if k < 1:
-            messagebox.showwarning("错误", "抽取数量不能小于1")
+            messagebox.showwarning("参数无效", "抽取数量不能小于 1。")
             return
         if k > total:
-            messagebox.showwarning("错误", "抽取数量不能大于总数量")
+            messagebox.showwarning("参数无效", "抽取数量不能大于样本总数。")
             return
-        if k == total and not messagebox.askyesno("提示", "抽取数量与总数量相同，确定要抽取所有组吗？"):
+        if k == total and not messagebox.askyesno(
+                "抽取数量与组总数相同", "确定要抽取全部组吗？"):
             return
 
         all_groups = (
@@ -1640,13 +1846,21 @@ class RandomCallTab(BaseTab):
         result_items = [f"{g}组" for g in selected]
 
         preview = ", ".join(str(g) for g in selected[:8]) + ("..." if len(selected) > 8 else "")
-        self._add_history("group", result_items, f"抽{k}组: {preview}")
+        self._add_history("group", result_items, f"抽{k}组：{preview}")
 
         rctlog.info(f"[随机抽取] 抽组成功: {selected}")
-        messagebox.showinfo("抽取结果", "抽取结果：\n" + "\n".join(result_items))
+        self._notify_result("抽取结果", result_items)
 
         if ConfigManager().get("save_result", True):
             SaveResult().save_result("RandomGroup", "随机抽组", result_items)
+
+    # ══════════════════════════════════════════════════════════
+    #  抽取后提醒
+    # ══════════════════════════════════════════════════════════
+
+    def _notify_result(self, title, items):
+        """抽取后提醒：按配置选择「弹窗」或「ClassIsland 通知」"""
+        notify_result(title, items, default_mask_title="随机抽取结果")
 
     # ══════════════════════════════════════════════════════════
     #  历史记录
@@ -1725,6 +1939,7 @@ class RandomCallTab(BaseTab):
         # 固定窗口位置：距屏幕上方、左侧各 100 像素
         win.geometry("400x300+100+100")
         win.transient(self.frame.winfo_toplevel())
+        set_window_icon(win, rct_icon_path)
         win.grab_set()
 
         tk.Label(win, text=f"历史记录 #{entry['id']}  -  {entry['timestamp']}",
@@ -1753,7 +1968,7 @@ class RandomCallTab(BaseTab):
     def batch_save_all(self):
         """批量保存所有历史记录（使用各条目自身的时间戳）"""
         if not self.history:
-            messagebox.showinfo("提示", "暂无历史记录")
+            messagebox.showinfo("暂无历史记录", "暂无历史记录。")
             return
         msg = self._prompt_save_message()
         if msg is None:
@@ -1768,7 +1983,7 @@ class RandomCallTab(BaseTab):
             )
             if path:
                 saved += 1
-        messagebox.showinfo("批量保存", f"已保存 {saved}/{len(self.history)} 条记录")
+        messagebox.showinfo("批量保存完成", f"已保存 {saved} / {len(self.history)} 条记录。")
 
     def _prompt_save_message(self):
         """弹窗输入保存提示信息
@@ -1777,9 +1992,8 @@ class RandomCallTab(BaseTab):
             str: 用户输入的提示信息（可能为空字符串）
             None: 用户点了取消或关闭窗口
         """
-        from tkinter import simpledialog
-        return simpledialog.askstring(
-            "保存提示", "输入保存提示信息（留空则无提示）:",
+        return ask_string(
+            "保存提示", "请输入保存提示信息（留空则不显示提示）：",
             parent=self.frame.winfo_toplevel(),
         )
 
@@ -1790,7 +2004,7 @@ class RandomCallTab(BaseTab):
     def save_current_result(self):
         """保存当前抽取结果（取自最新一条历史记录）"""
         if not self.history:
-            messagebox.showwarning("警告", "暂无抽取结果可保存")
+            messagebox.showwarning("暂无结果", "暂无抽取结果可保存。")
             return
         entry = self.history[0]
         msg = self._prompt_save_message()
@@ -1805,11 +2019,12 @@ class RandomCallTab(BaseTab):
 
     def clear_all_history(self):
         """清空所有历史记录"""
-        if messagebox.askyesno("确认", "确定要清除所有历史记录吗？"):
+        if messagebox.askyesno("清除历史记录",
+                               "确定要清除全部历史记录吗？\n\n清除后无法恢复。"):
             self.history.clear()
             self._rebuild_history_ui()
             rctlog.info("所有历史记录已清除")
-            messagebox.showinfo("成功", "历史记录已清除")
+            messagebox.showinfo("清除成功", "历史记录已清除。")
 
     # ══════════════════════════════════════════════════════════
     #  重置抽样历史
@@ -1817,9 +2032,9 @@ class RandomCallTab(BaseTab):
 
     def reset_sampler_history(self):
         """重置抽样器历史记录"""
-        if messagebox.askyesno("确认", "确定要重置抽样历史记录和统计计数吗？"):
+        if messagebox.askyesno("重置抽样历史", "确定要重置抽样历史与统计计数吗？"):
             self.sampler.reset_history()
-            messagebox.showinfo("成功", "抽样历史记录已重置")
+            messagebox.showinfo("重置成功", "抽样历史记录已重置。")
 
 # ========================================
 #  高级抽取配置窗口
@@ -1840,7 +2055,7 @@ class AdvancedConfigWindow:
         self.win.title("高级抽取配置")
         self._applied = False
         # 创建控件后再收集初始快照（控件在后续流程创建）
-        self.win.geometry("450x550+80+80")
+        self.win.geometry("470x575+80+80")
         self.win.minsize(450, 550)
         self.win.maxsize(550, 650)
         self.win.resizable(True, True)
@@ -1894,7 +2109,7 @@ class AdvancedConfigWindow:
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
         def _prompt_close():
             if self._collect_config() != self._init_config and not self._applied:
-                if messagebox.askyesno("配置已更改", "高级抽取配置已更改，是否应用？"):
+                if messagebox.askyesno("配置已更改", "高级抽取配置已修改但尚未保存，是否立即应用？"):
                     self._apply()
                     return
             canvas.unbind_all("<MouseWheel>")
@@ -1928,6 +2143,13 @@ class AdvancedConfigWindow:
                 variable=self.no_replace_method_var, value=val,
                 command=self._on_no_replace_method_change,
             ).pack(side="left", padx=3)
+
+        tk.Label(sec1,
+                 text="连续循环样本：抽完剩余名字后接着下一轮补齐；\n"
+                      "整除式重载：剩余不足一轮时直接重载整轮；\n"
+                      "比率式调整：剩余低于阈值比率时提前重载。",
+                 fg="gray", font=("", 8), justify="left"
+                 ).pack(anchor="w", padx=20, pady=(0, 4))
 
         # 比率式阈值
         self.ratio_frame = tk.Frame(sec1)
@@ -2005,7 +2227,7 @@ class AdvancedConfigWindow:
             from_=2, to=100, increment=1, state="readonly", width=4,
         )
         self.multi_spin.pack(side="left", padx=3)
-        tk.Label(f_multi, text="(取被抽次数最多的前k个)", fg="gray", font=("", 8)).pack(side="left")
+        tk.Label(f_multi, text="（取被抽次数最多的前 k 个）", fg="gray", font=("", 8)).pack(side="left")
 
         # --- 随机定权重 ---
         f_randw = tk.Frame(self.sec2)
@@ -2053,7 +2275,7 @@ class AdvancedConfigWindow:
         self.smart_memory_var = tk.StringVar(value=str(cfg.get("smart_memory_count", 3)))
         tk.Spinbox(f_smart, textvariable=self.smart_memory_var,
                    from_=1, to=20, increment=1, state="readonly", width=4).pack(side="left", padx=3)
-        tk.Label(f_smart, text="(统计最近N次抽取，自动降权)", fg="gray", font=("", 8)).pack(side="left")
+        tk.Label(f_smart, text="（统计最近 N 次抽取，自动降权）", fg="gray", font=("", 8)).pack(side="left")
 
         # --- 自定义权重 ---
         f_custw = tk.Frame(self.sec3)
@@ -2323,7 +2545,7 @@ class AdvancedConfigWindow:
         self._save_to_global_config()
         self._applied = True
         rctlog.info("高级抽取配置已应用")
-        messagebox.showinfo("成功", "高级抽取配置已应用")
+        messagebox.showinfo("应用成功", "高级抽取配置已应用。")
         if self.on_apply:
             self.on_apply()
 
@@ -2339,7 +2561,7 @@ class AdvancedConfigWindow:
 
     def _reset_defaults(self):
         """恢复默认配置"""
-        if not messagebox.askyesno("确认", "确定要恢复高级抽取的默认配置吗？"):
+        if not messagebox.askyesno("恢复默认配置", "确定要将高级抽取配置恢复为默认值吗？"):
             return
         defaults = {
             "with_replacement": True,
@@ -2385,7 +2607,7 @@ class AdvancedConfigWindow:
         self._on_replacement_change()
         self._apply_conflicts()
         rctlog.info("高级抽取配置已恢复默认")
-        messagebox.showinfo("成功", "已恢复默认配置")
+        messagebox.showinfo("已恢复默认", "高级抽取配置已恢复为默认值。")
 
     def _open_weight_from_advanced(self):
         """从高级窗口打开权重设置"""
@@ -2395,7 +2617,6 @@ class AdvancedConfigWindow:
             self.on_open_weights()
         else:
             messagebox.showinfo(
-                "提示",
-                "请先在主界面中加载样本，\n"
-                "再点击此按钮设置。"
+                "无可设置的样本",
+                "请先在「随机抽取」页加载样本，再点击此按钮设置权重。"
             )

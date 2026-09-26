@@ -54,9 +54,9 @@ class Main:
         try:
             reply = messagebox.askyesno(
                 "发现新版本",
-                "检测到新版本可用！\n\n"
+                "检测到新版本可用。\n\n"
                 "是否立即打开更新程序进行升级？\n\n"
-                "「是」打开更新程序  |  「否」稍后手动更新"
+                "选择「是」打开更新程序，选择「否」稍后手动更新。"
             )
             if reply:
                 from core.update import run_auto_update
@@ -67,7 +67,7 @@ class Main:
     def on_closing(self):
         """窗口关闭时询问确认"""
         rctlog.info("用户关闭窗口，准备退出程序")
-        if messagebox.askyesno("确认", "确定要退出程序吗？"):
+        if messagebox.askyesno("退出程序", "确定要退出随机抽取工具吗？"):
             rctlog.info("程序正常退出")
             self.root.destroy()
 
@@ -84,10 +84,16 @@ def main():
         rctlog.info(f"工作目录: {work_path}")
         rctlog.info("=" * 50)
         Main()
+        # 主循环结束，释放 IslandMQ 通知使用的 ZeroMQ Context
+        try:
+            from core import islandmq
+            islandmq.shutdown()
+        except Exception as e:
+            rctlog.warning(f"释放 IslandMQ Context 失败: {e}")
         rctlog.info("=" * 50)
     except Exception as e:
         rctlog.error(f"程序启动失败: {e}", exc_info=True)
-        messagebox.showerror("错误", f"程序启动失败:\n{e}")
+        messagebox.showerror("启动失败", f"程序启动失败：\n{e}")
 
 if __name__ == '__main__':
     main()

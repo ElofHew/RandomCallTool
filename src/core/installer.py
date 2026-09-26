@@ -1,6 +1,4 @@
-"""
-更新程序卸载与安装 — 卸载核心逻辑 + remove.exe 链式卸载安装
-"""
+"""卸载与安装辅助逻辑，包括清理脚本生成和链式安装流程。"""
 import os
 import sys
 import time
@@ -8,9 +6,7 @@ import subprocess
 from core import updconf
 
 
-# ==============================
-#  函数：进程列表
-# ==============================
+# 进程列表
 
 def get_process_list():
     """需要杀死的进程名列表"""
@@ -175,9 +171,7 @@ def run_uninstall(mode, setup_path=None):
     os._exit(0)
 
 
-# ==============================
-#  函数：remove.exe 路径 & 链式调用
-# ==============================
+# remove.exe 路径与链式调用
 
 def get_remove_path():
     candidates = [updconf.REMOVE_EXE, os.path.join(updconf.PROGRAM_ROOT, "src", "remove.py")]

@@ -1,7 +1,4 @@
-"""
-更新程序 GUI — 单窗口多页面
-根据参数直接渲染对应页面，不新建子窗口
-"""
+"""更新程序 GUI：单窗口多页面逻辑。"""
 import os
 import time
 import threading
@@ -61,7 +58,7 @@ class UpdateApp:
         for label, value in [
             ("当前版本", "v" + updconf.VERSION if updconf.VERSION else "未知"),
             ("版本代码", updconf.VERCODE if updconf.VERCODE else "未知"),
-            ("发行日期", updconf.VERDATE if updconf.VERDATE else "未知"),
+            ("发布日期", updconf.VERDATE if updconf.VERDATE else "未知"),
         ]:
             r = tk.Frame(card, bg="#ffffff")
             r.pack(fill="x", pady=2)
@@ -113,7 +110,7 @@ class UpdateApp:
         self._clear()
         main = tk.Frame(self.root, bg="#f0f4ff")
         main.pack(fill="both", expand=True)
-        tk.Label(main, text="正在检测更新...",
+        tk.Label(main, text="正在检测更新…",
                  font=("Microsoft YaHei", 14, "bold"),
                  fg="#2b5b84", bg="#f0f4ff").pack(pady=(30, 10))
         tk.Label(main, text="正在从 " + updconf.SOURCE_NAMES.get(self.source, self.source) + " 获取版本信息\u2026",
@@ -146,27 +143,27 @@ class UpdateApp:
         if not result["success"]:
             tk.Label(main, text="检测失败", font=("", 14, "bold"),
                      fg="red", bg="#f0f4ff").pack(pady=(30, 10))
-            tk.Label(main, text="无法获取更新信息\n\n" + (result["error"] or ""),
+            tk.Label(main, text="无法获取更新信息。\n\n" + (result["error"] or ""),
                      font=("", 10), fg="#555", bg="#f0f4ff", justify="center").pack(pady=10)
             self._back_or_close().pack(pady=15)
             return
         if result["has_update"]:
-            label_text = "发现新版本"
-            if self.accept_preview:
-                label_text = "发现新版本（含测试版）"
+            # 仅当所选新版本确实来自测试版时才提示测试版
+            is_preview = bool(result.get("is_preview"))
+            label_text = "发现新版本（测试版）" if is_preview else "发现新版本"
             tk.Label(main, text=label_text, font=("", 16, "bold"),
                      fg="green", bg="#f0f4ff").pack(pady=(20, 5))
-            info_text = ("当前版本: v" + result["local_version"] + "\n"
-                         "最新版本: v" + result["remote_version"] + " (" + result["remote_date"] + ")\n"
-                         "更新源: " + result["source_name"])
-            if self.accept_preview:
-                info_text += "\n类型: 含测试版更新"
+            info_text = ("当前版本：v" + result["local_version"] + "\n"
+                         "最新版本：v" + result["remote_version"] + "（" + result["remote_date"] + "）\n"
+                         "更新源：" + result["source_name"])
+            if is_preview:
+                info_text += "\n类型：测试版更新"
             tk.Label(main, text=info_text,
                      font=("", 10), fg="#333", bg="#f0f4ff", justify="center").pack(pady=10)
             bf = tk.Frame(main, bg="#f0f4ff")
             bf.pack(pady=10)
             for text, cmd, bg in [
-                ("  直接下载(推荐)  ", self._start_download, "#4a90d9"),
+                ("  直接下载（推荐）  ", self._start_download, "#4a90d9"),
                 ("  前往官网下载  ", lambda: webbrowser.open(updconf.OFFICIAL_URL), "#28a745"),
             ]:
                 tk.Button(bf, text=text, command=cmd, font=("", 10), bg=bg, fg="white",
@@ -182,21 +179,21 @@ class UpdateApp:
             if netdisks:
                 nf = tk.Frame(main, bg="#f0f4ff")
                 nf.pack(pady=(4, 0))
-                tk.Label(nf, text="备用下载:", font=("", 9), fg="#777",
+                tk.Label(nf, text="备用下载：", font=("", 9), fg="#777",
                          bg="#f0f4ff").pack(side="left")
                 for name, url in netdisks:
                     tk.Button(nf, text=name, font=("", 9), cursor="hand2",
                               relief="groove", bd=1,
                               command=lambda u=url: webbrowser.open(u)).pack(side="left", padx=4)
                 if result.get("lanzou_url") and result.get("lanzou_password"):
-                    tk.Label(main, text="蓝奏云访问码: " + result["lanzou_password"],
+                    tk.Label(main, text="蓝奏云提取码：" + result["lanzou_password"],
                              font=("", 8), fg="#999", bg="#f0f4ff").pack(pady=(0, 2))
             self._back_or_close().pack(pady=8)
         else:
             tk.Label(main, text="已是最新版本", font=("", 16, "bold"),
                      fg="blue", bg="#f0f4ff").pack(pady=(30, 10))
-            tk.Label(main, text="当前版本: v" + result["local_version"] + "\n"
-                                "远程版本: v" + result["remote_version"] + " (" + result["remote_date"] + ")\n\n"
+            tk.Label(main, text="当前版本：v" + result["local_version"] + "\n"
+                                "远程版本：v" + result["remote_version"] + "（" + result["remote_date"] + "）\n\n"
                                 "暂无可用更新。",
                      font=("", 10), fg="#555", bg="#f0f4ff", justify="center").pack(pady=10)
             self._back_or_close().pack(pady=15)
@@ -211,7 +208,7 @@ class UpdateApp:
         meta = {"version": {"version": ver}}
         dl_url, filename = network.get_download_url(meta, self.source, ver)
         dest_path = os.path.join(updconf.CACHE_DIR, filename)
-        self._dl_info.config(text="正在下载: " + filename)
+        self._dl_info.config(text="正在下载：" + filename)
         # 通过 after(0) 将 tkinter 操作调度到主线程，避免后台线程竞争
         def on_progress(downloaded, total, pct):
             self.root.after(0, self._on_dl_progress, downloaded, total, pct)
@@ -233,12 +230,12 @@ class UpdateApp:
         """主线程：下载完成回调"""
         self._dl_btn.config(state="disabled")
         if success:
-            self._dl_info.config(text="下载完成，正在安装...", fg="green")
+            self._dl_info.config(text="下载完成，正在安装…", fg="green")
             self._dl_bar["value"] = 100
             self._dl_pct.config(text="100%")
             self._do_install(dest_path)
         else:
-            msg = "下载失败: " + (error or "") if error else "下载已取消"
+            msg = "下载失败：" + (error or "") if error else "下载已取消"
             self._dl_info.config(text=msg, fg="red")
             self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
                                 command=self.root.destroy if self.auto_check else self._build_home,
@@ -248,10 +245,10 @@ class UpdateApp:
         self._clear()
         main = tk.Frame(self.root, bg="#f0f4ff")
         main.pack(fill="both", expand=True, padx=20, pady=15)
-        tk.Label(main, text="正在下载更新包...",
+        tk.Label(main, text="正在下载更新包…",
                  font=("Microsoft YaHei", 12, "bold"),
                  fg="#2b5b84", bg="#f0f4ff").pack(anchor="w")
-        tk.Label(main, text="网络库特性，下载可能会卡住一会，请耐心等待。",
+        tk.Label(main, text="受网络状况影响，下载期间界面可能短暂无响应，请耐心等待。",
                  font=("", 8), fg="#888", bg="#f0f4ff").pack(anchor="w", pady=(0, 5))
         self._dl_info = tk.Label(main, text="", font=("", 9), fg="#555",
                                   bg="#f0f4ff", anchor="w", justify="left")
@@ -276,7 +273,7 @@ class UpdateApp:
     def _do_install(self, exe_path):
         """链式卸载+安装：启动 remove.exe --setup-path → 自毁"""
         try:
-            self._dl_info.config(text="即将安装，正在准备...")
+            self._dl_info.config(text="即将安装，正在准备…")
             self._dl_btn.config(state="disabled")
             self.root.update()
             time.sleep(2)
@@ -284,7 +281,7 @@ class UpdateApp:
             # 启动 remove.exe；它会建 bat 链式完成：杀进程→删文件→运行安装包→自删
             ok = installer.run_remove_with_setup(exe_path)
             if not ok:
-                self._dl_info.config(text="启动卸载程序失败，请手动运行安装包。", fg="red")
+                self._dl_info.config(text="无法启动卸载程序，请手动运行安装包。", fg="red")
                 self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
                                     command=self.root.destroy if self.auto_check else self._build_home,
                                     state="normal")
@@ -295,7 +292,7 @@ class UpdateApp:
             import os as _os
             _os._exit(0)
         except Exception as e:
-            self._dl_info.config(text="安装过程出错: " + str(e), fg="red")
+            self._dl_info.config(text="安装过程出错：" + str(e), fg="red")
             self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
                                 command=self.root.destroy if self.auto_check else self._build_home,
                                 state="normal")

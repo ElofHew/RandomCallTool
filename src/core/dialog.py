@@ -1,23 +1,21 @@
-"""
-公共对话框模块 - 关于窗口、使用说明窗口（可翻页）
-"""
+"""通用对话框：文本输入、关于窗口和项目链接。"""
 import os
 import webbrowser
 import tkinter as tk
 from tkinter import simpledialog
 from core.logman import rctlog
-from core.info import github, gitee, official_website, res_path
+from core.info import github, gitee, official_website, res_path, rct_icon_path
+from core.platutils import set_window_icon
 
 
-# ══════════════════════════════════════════════════════════
-#  文本输入对话框（预填但不高亮全选）
-# ══════════════════════════════════════════════════════════
+# 文本输入对话框：支持预填内容但不强制全选
 
 class _QueryStringNoSelect(simpledialog._QueryString):
-    """与 tkinter 原生 askstring 完全相同的样式，
-    仅在预填文本后取消自动全选（光标移到末尾），保持原有观感。"""
+    """在原生 askstring 基础上保留预填值，但不自动全选。"""
 
     def body(self, master):
+        # self 即对话框自身的 Toplevel，这里补上任务栏图标
+        set_window_icon(self, rct_icon_path)
         entry = super().body(master)
         if self.initialvalue is not None:
             entry.select_clear()
@@ -34,23 +32,13 @@ def ask_string(title, prompt, initialvalue=None, parent=None):
     return dlg.result
 
 
-# ══════════════════════════════════════════════════════════
-#  关于窗口（通用）
-# ══════════════════════════════════════════════════════════
+# 关于窗口
 
 class AboutWindow:
-    """美观的关于窗口（通用版，信息从参数字典传入）"""
+    """通用关于窗口，接收外部信息字典展示。"""
 
     def __init__(self, parent, info, icon_path=None):
-        from core.platutils import set_window_icon
-        """
-        info: dict 包含以下键
-            - title: 应用名称
-            - description: 描述
-            - version: 版本号
-            - date: 日期
-            - author: 作者
-        """
+        """info: 含 title / description / version / date / author 的字典"""
         self.win = tk.Toplevel(parent)
         self.win.title(f"关于随机抽取工具")
         self.win.geometry("460x380")

@@ -1,13 +1,11 @@
-"""
-配置管理器 - 随机抽取工具的 JSON 配置读写（单例模式）
-"""
+"""JSON 配置读写管理器，负责加载和保存应用设置。"""
 import os
 import json
 from core.logman import rctlog
 from core.info import rct_config_path
 
 class ConfigManager:
-    """配置管理器（单例模式）"""
+    """单例配置管理器。"""
     _instance = None
     _config = None
 
@@ -74,6 +72,16 @@ class ConfigManager:
             "rollcall_reset_limit": "full",     # 重置限度: full/half/custom
             "rollcall_reset_custom": 1,         # 自定义重置阈值(剩多少人时重置)
             "rollcall_auto_load_sample": True,  # 启动时自动加载点名名单(独立于抽样)
+
+            # ── 抽取后提醒 ──
+            "notify_mode": "popup",             # 提醒方式: popup=弹窗, island=ClassIsland 通知
+            "ci_ip": "127.0.0.1",               # ClassIsland 主机 IP
+            "ci_port": "5555",                  # ClassIsland 端口
+            "ci_title": "",                     # 通知标题（遮罩文本），留空按场景自动取默认
+            "ci_mask_duration": 1.0,            # 遮罩显示时长（秒）
+            "ci_overlay_duration": 3.0,         # 正文显示时长（秒）
+            "ci_timeout_ms": 1000,              # 通知请求超时（毫秒，上限 1 秒）
+            "ci_fallback_popup": True,          # ClassIsland 通知失败时回退为弹窗
         }
 
         if os.path.exists(rct_config_path):

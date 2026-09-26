@@ -33,7 +33,7 @@ def parse_args():
 def gui_main():
     """tkinter GUI 模式 — 让用户选择卸载方式并确认"""
     root = tk.Tk()
-    root.title("随机抽取工具 - 卸载")
+    root.title("随机抽取工具 — 卸载")
     root.geometry("460x320+200+200")
     root.resizable(False, False)
     try:
@@ -46,12 +46,12 @@ def gui_main():
     mode_var = tk.StringVar(value="keep-data")
 
     tk.Label(
-        root, text="随机抽取工具 - 卸载程序",
+        root, text="随机抽取工具 — 卸载程序",
         font=("Helvetica", 14, "bold"), fg="blue"
     ).pack(pady=(15, 5))
 
     tk.Label(
-        root, text="目录: " + updconf.PROGRAM_ROOT,
+        root, text="安装目录：" + updconf.PROGRAM_ROOT,
         font=("", 9), fg="gray", wraplength=420
     ).pack(pady=(0, 10))
 
@@ -60,28 +60,28 @@ def gui_main():
 
     tk.Radiobutton(
         mode_frame,
-        text="保留数据 - 仅删除程序文件，保留数据配置和桌面结果",
+        text="保留数据 — 仅删除程序文件，保留配置、日志与桌面结果",
         variable=mode_var, value="keep-data",
         anchor="w", font=("", 10),
     ).pack(fill="x", padx=15, pady=(10, 2))
 
     tk.Radiobutton(
         mode_frame,
-        text="重置配置 - 仅删除数据配置和日志，保留程序文件",
+        text="重置配置 — 仅删除数据配置和日志，保留程序文件",
         variable=mode_var, value="reset",
         anchor="w", font=("", 10),
     ).pack(fill="x", padx=15, pady=(2, 2))
 
     tk.Radiobutton(
         mode_frame,
-        text="完全卸载 - 删除所有文件（包括程序/数据/配置/日志）",
+        text="完全卸载 — 删除全部文件（程序、数据、配置与日志）",
         variable=mode_var, value="full",
         anchor="w", font=("", 10),
     ).pack(fill="x", padx=15, pady=(2, 10))
 
     warn_label = tk.Label(
         root,
-        text="注意: 卸载前请确保已备份重要数据，此操作不可撤销！",
+        text="注意：卸载前请先备份重要数据，此操作不可撤销。",
         fg="red", font=("", 9),
     )
     warn_label.pack(pady=(5, 10))
@@ -94,10 +94,10 @@ def gui_main():
         labels = {"keep-data": "保留数据", "reset": "重置（仅删除数据）", "full": "完全卸载"}
         label = labels.get(mode, mode)
         ok = messagebox.askyesno(
-            "确认",
-            "即将执行: " + label + "\n\n"
-            "目标目录: " + updconf.PROGRAM_ROOT + "\n\n"
-            "确定要继续吗？\n(此操作不可撤销！)"
+            "确认卸载",
+            "即将执行：" + label + "\n\n"
+            "安装目录：" + updconf.PROGRAM_ROOT + "\n\n"
+            "确定要继续吗？（此操作不可撤销）"
         )
         if ok:
             root.destroy()

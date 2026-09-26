@@ -1,6 +1,4 @@
-"""
-应用功能模块 - 主界面选项卡、菜单栏及通用功能
-"""
+"""主应用功能：菜单、快捷键和通用操作入口。"""
 import os
 import webbrowser
 from time import strftime
@@ -90,10 +88,8 @@ class MainApplication:
                 else:
                     menu.add_command(label=item_text, command=command)
 
-    # ── 快捷键 ──────────────────────────────────────────────
-
     def _bind_shortcuts(self):
-        """绑定全局快捷键"""
+        """绑定全局快捷键。"""
         ct = self.call_tab  # 简写引用
 
         self.root.bind("<Control-o>", lambda e: ct.load_names() if ct else None)
@@ -122,7 +118,7 @@ class MainApplication:
     
     def quit_app(self):
         """退出应用程序"""
-        if messagebox.askyesno("确认", "确定要退出程序吗？"):
+        if messagebox.askyesno("退出程序", "确定要退出随机抽取工具吗？"):
             rctlog.info("用户确认退出程序")
             self.root.quit()
 
@@ -141,21 +137,22 @@ class ApplicationFunctions:
         else:
             fp = fd.askopenfilename(
                 title="选择要导入的名单文件",
-                filetypes=[("可用文件", "*.txt;*.csv;*.rcp"),
+                filetypes=[("样本文件", "*.txt;*.csv;*.rcp"),
                            ("文本文件", "*.txt"),
-                           ("CSV文件", "*.csv"),
-                           ("编码文件", "*.rcp"),
+                           ("CSV 文件", "*.csv"),
+                           ("RCP 文件", "*.rcp"),
                            ("所有文件", "*.*")])
             if not fp:
                 return
         if len(SampleLibrary.get_samples()) >= 50:
-            messagebox.showwarning("警告", "样本库已达上限（50个），请删除一些后再导入")
+            messagebox.showwarning("样本库已达上限",
+                                   "样本库最多存放 50 个样本，请先删除部分样本后再导入。")
             return
         default_name = os.path.splitext(os.path.basename(fp))[0]
         name = ask_string(
             "导入样本",
             "请输入样本名称（将作为文件名，不含扩展名）：\n"
-            "不能包含字符: \\ / : * ? \" < > |",
+            "不能包含字符：\\ / : * ? \" < > |",
             initialvalue=default_name,
             parent=parent)
         if not name:
@@ -164,9 +161,9 @@ class ApplicationFunctions:
         try:
             SampleLibrary.import_sample(fp, name)
             rctlog.info(f"样本已导入: {name}")
-            messagebox.showinfo("成功", f"样本「{name}」已导入")
+            messagebox.showinfo("导入成功", f"样本「{name}」已导入样本库。")
         except Exception as e:
-            messagebox.showerror("导入失败", str(e))
+            messagebox.showerror("导入失败", f"导入样本时出错：\n{e}")
 
     @staticmethod
     def open_website():
@@ -195,8 +192,8 @@ class ApplicationFunctions:
 
         if not messagebox.askyesno(
             "检测更新",
-            f"将从 {source.upper()} 检测新版本\n"
-            f"当前版本: v{rct_version}\n\n"
+            f"将从 {source.upper()} 检测新版本。\n\n"
+            f"当前版本：v{rct_version}\n\n"
             f"是否打开更新程序？",
         ):
             return
@@ -204,7 +201,7 @@ class ApplicationFunctions:
         from core.update import run_auto_update
         success = run_auto_update(source=source, mode="--check")
         if not success:
-            messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载。")
+            messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载最新版本。")
 
     @staticmethod
     def show_about(root):
@@ -215,19 +212,21 @@ class ApplicationFunctions:
     @staticmethod
     def clear_all_history(call_tab):
         """清除所有历史记录"""
-        if messagebox.askyesno("确认", "确定要清除所有历史记录吗？"):
+        if messagebox.askyesno("清除历史记录",
+                               "确定要清除全部历史记录吗？\n\n清除后无法恢复。"):
             if hasattr(call_tab, "history") and hasattr(call_tab, "_rebuild_history_ui"):
                 call_tab.history.clear()
                 call_tab._rebuild_history_ui()
             rctlog.info("所有历史记录已清除")
-            messagebox.showinfo("成功", "历史记录已清除")
+            messagebox.showinfo("清除成功", "历史记录已清除。")
             return True
         return False
     
     @staticmethod
     def clear_log():
-        """清除日志"""
-        if messagebox.askyesno("确认", "确定要清除所有日志文件吗？"):
+        """清除日志（保留当天日志）"""
+        if messagebox.askyesno("清除日志",
+                               "确定要清除历史日志文件吗？\n\n今天的日志会保留。"):
             try:
                 for file in os.listdir(rct_log_path):
                     if file == f"{rct_appname}-{strftime('%Y-%m-%d')}.log" or file == f"{strftime('%Y-%m-%d')}.log":
@@ -235,9 +234,9 @@ class ApplicationFunctions:
                     if file.endswith('.log'):
                         os.remove(os.path.join(rct_log_path, file))
                 rctlog.info("日志文件已清除")
-                messagebox.showinfo("成功", "日志文件已清除")
+                messagebox.showinfo("清除成功", "历史日志文件已清除。")
                 return True
             except Exception as e:
                 rctlog.error(f"清除日志失败: {e}")
-                messagebox.showerror("错误", f"清除日志失败: {e}")
+                messagebox.showerror("清除失败", f"清除日志时出错：\n{e}")
                 return False

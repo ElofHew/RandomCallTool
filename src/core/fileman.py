@@ -1,6 +1,4 @@
-"""
-文件管理器模块 - 目录操作、结果保存、Base64 解码、样本库管理
-"""
+"""文件管理：目录访问、结果导出、样本库和 Base64 处理。"""
 import os
 import re
 from base64 import b64decode, b64encode
@@ -12,7 +10,7 @@ from core.config import ConfigManager
 from core.info import rct_result_path, rct_desktop_result_path, rct_log_path, rct_appname, rct_rcplist_path, github, gitee, res_path, official_website, rct_version
 
 class FileManager:
-    """文件管理器"""
+    """文件与目录相关的通用工具。"""
     
     @staticmethod
     def get_result_path():
@@ -39,7 +37,7 @@ class FileManager:
             return True
         except Exception as e:
             rctlog.error(f"打开目录失败: {e}")
-            messagebox.showerror("错误", f"无法打开目录: {e}")
+            messagebox.showerror("无法打开目录", f"打开目录时出错：\n{e}")
             return False
     
     @staticmethod
@@ -52,11 +50,11 @@ class FileManager:
                 rctlog.info("打开日志文件")
                 return True
             else:
-                messagebox.showinfo("提示", "今天的日志文件不存在")
+                messagebox.showinfo("暂无日志", "今天的日志文件不存在。")
                 return False
         except Exception as e:
             rctlog.error(f"打开日志文件失败: {e}")
-            messagebox.showerror("错误", f"无法打开日志文件: {e}")
+            messagebox.showerror("无法打开日志", f"打开日志文件时出错：\n{e}")
             return False
 
 
@@ -136,12 +134,12 @@ class SaveResult:
                 file.write(self.make_html(class_name, result, save_message, ts_display))
             
             rctlog.info(f"[{prefix}] 结果已保存到: {file_path}")
-            messagebox.showinfo("成功", f"抽取结果已保存到:\n{file_path}")
+            messagebox.showinfo("保存成功", f"抽取结果已保存到：\n{file_path}")
             return file_path
             
         except Exception as e:
             rctlog.error(f"[{prefix}] 保存结果失败: {e}")
-            messagebox.showwarning("错误", f"保存结果失败: {e}")
+            messagebox.showerror("保存失败", f"保存结果时出错：\n{e}")
             return None
 
 def base64decode(data=None):
@@ -184,7 +182,7 @@ class SampleLibrary:
         if not name or not name.strip():
             return False, "样本名不能为空"
         if not cls._NAME_REGEX.match(name):
-            return False, "样本名包含非法字符 (\\ / : * ? \" < > |)"
+            return False, "样本名包含非法字符：\\ / : * ? \" < > |"
         if len(name) > 100:
             return False, "样本名过长（最多100字符）"
         return True, ""

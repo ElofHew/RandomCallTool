@@ -4,7 +4,8 @@ chcp 65001 >nul
 rmdir /S /Q "dist"
 
 echo Starting compilation of rctool...
-pyinstaller --icon=./src/res/icon/rctool.ico -w .\src\rctool.py
+:: --hidden-import=zmq 用于把 ClassIsland 通知依赖的 pyzmq 一并打包
+pyinstaller --icon=./src/res/icon/rctool.ico -w --hidden-import=zmq .\src\rctool.py
 
 echo Starting compilation of remove...
 pyinstaller --icon=./src/res/icon/remove.ico -w .\src\remove.py

@@ -1,6 +1,4 @@
-"""
-跨平台工具函数
-"""
+"""跨平台工具函数：打开文件和设置窗口图标。"""
 import os
 import platform
 import subprocess
