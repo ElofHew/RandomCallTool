@@ -1,8 +1,8 @@
-;!@Install@!UTF-8!
+﻿;!@Install@!UTF-8!
 InstallPath="C:\\Apps\\RandomCallTool\\"
 Title="随机抽取工具 安装程序"
 BeginPrompt="确定安装 随机抽取工具 吗？"
-ExtractPathText="选择安装目录"
+ExtractPathText="选择安装目录（默认即可，不建议更改）"
 ExtractDialogText="正在解压程序文件"
 CancelPrompt="确定要取消安装吗？"
 FinishMessage="安装完成"
@@ -18,9 +18,9 @@ Shortcut="P,{C:\\Apps\\RandomCallTool\\rctool.exe},{},{随机抽取工具},{一�
 Shortcut="P,{C:\\Apps\\RandomCallTool\\update.exe},{},{随机抽取工具},{检测随机抽取工具是否有新版本更新},{检测更新},{C:\\Apps\\RandomCallTool\\},{},{}"
 Shortcut="P,{C:\\Apps\\RandomCallTool\\remove.exe},{},{随机抽取工具},{卸载或重置随机抽取工具},{卸载工具},{C:\\Apps\\RandomCallTool\\},{},{}"
 ;!@InstallEnd@!
-7zSFXBuilder_7zArchive=dist.7z
-7zSFXBuilder_SFXName=RandomCallTool_Setup.exe
-7zSFXBuilder_SFXIcon=setup.ico
+7zSFXBuilder_7zArchive=RandomCallTool_Green_V2.7-beta2.7z
+7zSFXBuilder_SFXName=RandomCallTool_Setup_V2.7-beta2.exe
+7zSFXBuilder_SFXIcon=rctool.ico
 7zSFXBuilder_UseDefMod=7zsd_LZMA2
 7zSFXBuilder_UPXCommands=--best --all-methods
 7zSFXBuilder_Res_FileVersion=2.7-beta2
