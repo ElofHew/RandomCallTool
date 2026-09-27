@@ -45,11 +45,22 @@ class DownloadWorker:
                         elif self.on_progress:
                             self.on_progress(downloaded, total, 0)
             if self._cancel:
+                # 取消后清理半成品，避免下次同名复用拿到损坏安装包
+                self._cleanup_partial()
                 if self.on_done:
                     self.on_done(False, 0, "\u5df2\u53d6\u6d88")
             else:
                 if self.on_done:
                     self.on_done(True, os.path.getsize(self.dest_path), None)
         except Exception as e:
+            self._cleanup_partial()
             if self.on_done:
                 self.on_done(False, 0, str(e))
+
+    def _cleanup_partial(self):
+        """删除未完成的下载文件，失败仅记录不抛出"""
+        try:
+            if os.path.exists(self.dest_path):
+                os.remove(self.dest_path)
+        except OSError:
+            pass

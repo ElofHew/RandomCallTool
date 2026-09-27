@@ -3,6 +3,19 @@ from random import sample, shuffle, choices, random, uniform
 from collections import defaultdict, Counter
 
 
+def _normalize_weights(weights):
+    """把权重列表归一化为和为 1 的概率列表
+
+    - 负数权重按 0 处理（random.choices 要求非负）；
+    - 全部为 0 时返回 None，由调用方决定退化为等概率还是随机选取。
+    """
+    safe = [w if w > 0 else 0.0 for w in weights]
+    total = sum(safe)
+    if total <= 0:
+        return None
+    return [w / total for w in safe]
+
+
 class SmartSampler:
     """三档抽样器：基础随机、智能加权和高级策略。"""
 
@@ -203,7 +216,8 @@ class SmartSampler:
             w_max = cfg.get("random_weight_max", 2.00)
             temp_weights = {item: uniform(w_min, w_max) for item in pop}
             return self._weighted_select(
-                pop, k, [temp_weights.get(item, 1.0) for item in pop]
+                pop, k, [temp_weights.get(item, 1.0) for item in pop],
+                replace=True,
             )
 
         # 2) 递进式抽取
@@ -263,7 +277,8 @@ class SmartSampler:
 
         if _use_custom and self.weights:
             return self._weighted_select(
-                pop, k, [self.weights.get(item, 1.0) for item in pop]
+                pop, k, [self.weights.get(item, 1.0) for item in pop],
+                replace=True,
             )
 
         if cfg.get("smart_reduce_weight", True):
@@ -274,7 +289,7 @@ class SmartSampler:
                     smart_weights[i] * self.weights.get(item, 1.0)
                     for i, item in enumerate(pop)
                 ]
-            return self._weighted_select(pop, k, smart_weights)
+            return self._weighted_select(pop, k, smart_weights, replace=True)
 
         # 默认：纯随机
         return sample(pop, k)
@@ -354,23 +369,41 @@ class SmartSampler:
         need = k - len(current)
         return current + sample(remaining, min(need, len(remaining)))
 
-    def _weighted_select(self, population, k, weights):
-        """带权重的无放回抽样（通用实现）
+    def _weighted_select(self, population, k, weights, replace=False):
+        """带权重的抽样（通用实现）
+
+        Args:
+            population: 候选总体
+            k: 抽取数量
+            weights: 与 population 等长的权重列表
+            replace: True=有放回（同一项可被重复抽中，用于放回式模式）；
+                     False=无放回（抽取结果互不相同）
+
         使用 (索引, 项) 元组避免重复项的 index() 查找错误。
         """
+        if not population or k <= 0:
+            return []
+
+        # ── 有放回：直接按归一化权重独立抽取 k 次 ──
+        if replace:
+            norm = _normalize_weights(weights)
+            if norm is None:  # 权重全为 0 → 退化为等概率
+                norm = [1.0 / len(population)] * len(population)
+            return choices(list(population), weights=norm, k=k)
+
+        # ── 无放回：抽一个移除一个 ──
         result = []
         # 用 [(idx, item), ...] 跟踪索引，避免重复项时 index() 返回错误位置
         temp_pop = list(enumerate(population))
-        temp_w = weights.copy()
+        temp_w = list(weights)
 
         for _ in range(k):
             if not temp_pop:
                 break
-            total = sum(temp_w)
-            if total <= 0:
+            norm = _normalize_weights(temp_w)
+            if norm is None:
                 sel_idx = sample(range(len(temp_pop)), 1)[0]
             else:
-                norm = [w / total for w in temp_w]
                 sel_idx = choices(range(len(temp_pop)), weights=norm, k=1)[0]
 
             idx, item = temp_pop[sel_idx]

@@ -2,6 +2,7 @@
 import os
 import re
 from base64 import b64decode, b64encode
+from html import escape as html_escape
 from time import strftime
 from tkinter import messagebox
 from core.logman import rctlog
@@ -25,6 +26,10 @@ def normalize_name(name, limit=MAX_NAME_LEN):
     return text[:limit] if len(text) > limit else text
 
 
+# 名单分隔符：半角与全角（中文）逗号、分号及制表符
+NAME_SEPARATORS = (",", "，", ";", "；", "、", "\t")
+
+
 def read_text_file(path, max_bytes=MAX_FILE_BYTES):
     """读取文本文件（自动尝试多种编码），最多读取 max_bytes 字节
 
@@ -44,28 +49,25 @@ def read_text_file(path, max_bytes=MAX_FILE_BYTES):
                 return raw.decode(enc, errors=errors), truncated
             except (UnicodeDecodeError, UnicodeError):
                 continue
-    raise UnicodeDecodeError("无法解码源文件", path, 0, 0, "")
+    # 官方要求首参为编码名，这里用候选列表首项占位
+    raise UnicodeDecodeError(TEXT_ENCODINGS[0], raw, 0, len(raw),
+                             "所有候选编码均无法解码")
 
 
 def parse_names(text, limit=MAX_NAMES):
     """把名单文本解析为名字列表
 
-    按行切分，行内再按逗号 / 分号 / 制表符切分；去空白与空项，名字统一截断到
-    MAX_NAME_LEN，最多返回 limit 个名字。
+    按行切分，行内再按逗号 / 分号（含中文全角）/ 顿号 / 制表符切分；去空白与空项，
+    名字统一截断到 MAX_NAME_LEN，最多返回 limit 个名字。
     """
     names = []
+    # 一次切分：任一分隔符（半角/全角逗号、分号、顿号、制表符）都算分隔
+    sep_pattern = "[" + re.escape("".join(NAME_SEPARATORS)) + "]"
     for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
-        parts = None
-        for sep in (",", ";", "\t"):
-            if sep in line:
-                parts = line.split(sep)
-                break
-        if parts is None:
-            parts = [line]
-        for part in parts:
+        for part in re.split(sep_pattern, line):
             name = normalize_name(part)
             if not name:
                 continue
@@ -107,9 +109,11 @@ class FileManager:
     
     @staticmethod
     def open_log_file():
-        """打开日志文件"""
+        """打开今天的日志文件"""
         try:
-            log_file = os.path.join(rct_log_path, f"{rct_appname}-{strftime('%Y-%m-%d')}.log")
+            # 日志由 TimedRotatingFileHandler 按午夜滚动，当天文件为
+            # {appname}.log，历史文件为 {appname}.log.{YYYY-MM-DD}
+            log_file = os.path.join(rct_log_path, f"{rct_appname}.log")
             if os.path.exists(log_file):
                 open_file_or_dir(log_file)
                 rctlog.info("打开日志文件")
@@ -156,7 +160,7 @@ class SaveResult:
         else:
             cname = "抽取结果"
 
-        result_text = "<br>".join(result)
+        result_text = "<br>".join(html_escape(str(item)) for item in result)
         current_time = timestamp or strftime('%Y-%m-%d %H:%M:%S')
 
         # 处理 tips 区域
@@ -164,7 +168,7 @@ class SaveResult:
             tips_section = (
                 '<div class="tips">\n'
                 '            <p><strong>提示/说明</strong></p>\n'
-                f'            <p style="font-size: 20px;">{save_message}</p>\n'
+                f'            <p style="font-size: 20px;">{html_escape(str(save_message))}</p>\n'
                 "        </div>"
             )
         else:
@@ -225,14 +229,20 @@ class SaveResult:
             messagebox.showerror("保存失败", f"保存结果时出错：\n{e}")
             return None
 
-def base64decode(data=None):
-    """Base64解码"""
+def base64decode(data=None, strict=False):
+    """Base64 解码
+
+    Args:
+        strict: True 时解码失败会抛出 ValueError，而非静默返回空串
+    """
     try:
         decoded = b64decode(data).decode('utf-8')
         rctlog.info("Base64解码成功")
         return decoded
     except Exception as e:
         rctlog.error(f"Base64解码失败: {e}")
+        if strict:
+            raise ValueError(f"Base64 解码失败：{e}") from e
         return ""
 
 
@@ -296,13 +306,17 @@ class SampleLibrary:
         if not names:
             raise ValueError("文件中没有可用的名单数据")
 
+        # 用不截断的解析结果判断是否真的发生了截断 / 超长，避免恰好等于上限时误报
+        content_names = parse_names(content, limit=10 ** 9)
+        raw_name_parts = content_names
+
         notes = []
         if truncated:
             mb = MAX_FILE_BYTES // (1024 * 1024)
             notes.append(f"文件超过 {mb}MB，只读取了前 {mb}MB 内容。")
-        if len(names) >= MAX_NAMES:
+        if len(content_names) > MAX_NAMES:
             notes.append(f"名单过长，只读取了前 {MAX_NAMES} 个名字。")
-        if any(len(n) == MAX_NAME_LEN for n in names):
+        if any(len(n) > MAX_NAME_LEN for n in raw_name_parts):
             notes.append(f"超长名字已截断至 {MAX_NAME_LEN} 个字符。")
 
         # 编码为 Base64 保存
@@ -338,7 +352,10 @@ class SampleLibrary:
             raise FileNotFoundError(f"样本 {sample_name} 不存在")
         with open(src, "r", encoding="utf-8") as f:
             encoded = f.read()
-        decoded = base64decode(encoded)
+        # 解码失败直接报错，避免写出空 TXT 却报告成功
+        decoded = base64decode(encoded, strict=True)
+        if not decoded:
+            raise ValueError(f"样本 {sample_name} 内容为空，无法导出")
         dest = os.path.join(dest_dir, f"{sample_name}.txt")
         with open(dest, "w", encoding=encoding) as f:
             f.write(decoded)

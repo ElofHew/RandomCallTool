@@ -12,12 +12,15 @@ class More:
         self.root.quit()
 
 def run_process(*command):
-    """启动外部进程（非阻塞，允许并行运行）"""
+    """启动外部进程（非阻塞，允许并行运行）
+
+    直接以参数列表方式启动（shell=False），避免安装路径含空格时被 cmd 截断。
+    """
     if not command:
         rctlog.error("运行程序失败：命令为空")
         return False
     try:
-        proc = subprocess.Popen(command, shell=True)
+        proc = subprocess.Popen(list(command), shell=False)
         rctlog.info(f"程序已启动，PID: {proc.pid}")
         return True
     except FileNotFoundError as e:

@@ -1,6 +1,5 @@
 """更新程序 GUI：单窗口多页面逻辑。"""
 import os
-import time
 import threading
 import webbrowser
 import tkinter as tk
@@ -275,9 +274,17 @@ class UpdateApp:
         try:
             self._dl_info.config(text="即将安装，正在准备…")
             self._dl_btn.config(state="disabled")
-            self.root.update()
-            time.sleep(2)
+            # 用 after 异步等待，避免 time.sleep 冻结界面
+            self.root.after(2000, lambda: self._start_uninstall(exe_path))
+        except Exception as e:
+            self._dl_info.config(text="安装过程出错：" + str(e), fg="red")
+            self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
+                                command=self.root.destroy if self.auto_check else self._build_home,
+                                state="normal")
 
+    def _start_uninstall(self, exe_path):
+        """延时后真正启动卸载链"""
+        try:
             # 启动 remove.exe；它会建 bat 链式完成：杀进程→删文件→运行安装包→自删
             ok = installer.run_remove_with_setup(exe_path)
             if not ok:

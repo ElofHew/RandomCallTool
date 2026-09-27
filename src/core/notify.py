@@ -1,4 +1,5 @@
 """抽取结果通知：支持弹窗和 ClassIsland 通知两种模式。"""
+import threading
 from tkinter import messagebox
 
 from core.logman import rctlog
@@ -33,7 +34,8 @@ def notify_result(popup_title, items, default_mask_title=None):
     mask_title = (str(config.get("ci_title", "") or "").strip()
                   or default_mask_title or popup_title)
 
-    ok, msg = islandmq.send_notice(
+    # 发送参数先取出：后续在后台线程里不再访问 ConfigManager
+    payload = (
         mask_title,
         "、".join(items),
         config.get("ci_ip", islandmq.DEFAULT_IP),
@@ -42,14 +44,36 @@ def notify_result(popup_title, items, default_mask_title=None):
         config.get("ci_overlay_duration", islandmq.DEFAULT_OVERLAY_DURATION),
         config.get("ci_timeout_ms", islandmq.DEFAULT_TIMEOUT_MS),
     )
+    fallback = config.get("ci_fallback_popup", True)
 
-    if ok:
-        rctlog.info(f"[提醒] ClassIsland 通知已发送（{mask_title}）: {items}")
-        return
+    def _send():
+        """后台线程发送，避免网络不通时阻塞界面最多 1 秒"""
+        ok, msg = islandmq.send_notice(*payload)
+        if ok:
+            rctlog.info(f"[提醒] ClassIsland 通知已发送（{mask_title}）: {items}")
+            return
+        rctlog.error(f"[提醒] ClassIsland 通知发送失败: {msg}")
+        # 回退弹窗需要回到主线程执行
+        if fallback:
+            _show_in_main(lambda: messagebox.showwarning(
+                popup_title, f"ClassIsland 通知发送失败：{msg}\n\n{text}"))
+        else:
+            _show_in_main(lambda: messagebox.showerror("通知发送失败", msg))
 
-    rctlog.error(f"[提醒] ClassIsland 通知发送失败: {msg}")
-    if config.get("ci_fallback_popup", True):
-        messagebox.showwarning(
-            popup_title, f"ClassIsland 通知发送失败：{msg}\n\n{text}")
-    else:
-        messagebox.showerror("通知发送失败", msg)
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def _show_in_main(func):
+    """在 Tk 主线程中执行 func（非主线程直接弹窗会出错）"""
+    try:
+        import tkinter as tk
+        root = tk._default_root
+        if root is not None:
+            root.after(0, func)
+            return
+    except Exception:
+        pass
+    try:
+        func()
+    except Exception as e:
+        rctlog.error(f"[提醒] 回退弹窗失败: {e}")

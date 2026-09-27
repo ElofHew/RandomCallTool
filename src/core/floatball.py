@@ -68,6 +68,10 @@ class FloatBall:
     KEY_COLOR = "#ff00ff"
     # 右键菜单可选的最大抽取数量
     MAX_QUICK_COUNT = 9
+    # 快捷抽取类型标识
+    KIND_PERSON = "person"
+    KIND_GROUP_LETTER = "group_letter"
+    KIND_GROUP_NUMBER = "group_number"
     # 窗口整体不透明度；越高则白字越亮，同时球体越实
     ALPHA = 0.92
     # 判定为「单击」而非「拖动」的位移阈值（像素）
@@ -79,9 +83,17 @@ class FloatBall:
         self._offset_x = 0
         self._offset_y = 0
         self._moved = False
-        # 左键单击时执行的操作（右键菜单里选择）
-        self._quick_kind = "person"
-        self._quick_count = 1
+        # 左键单击时执行的操作（右键菜单里选择），从配置恢复
+        _cfg = ConfigManager()
+        kind = str(_cfg.get("floatball_kind", self.KIND_PERSON) or self.KIND_PERSON)
+        if kind not in (self.KIND_GROUP_LETTER, self.KIND_GROUP_NUMBER, self.KIND_PERSON):
+            kind = self.KIND_PERSON
+        self._quick_kind = kind
+        try:
+            count = int(_cfg.get("floatball_count", 1))
+        except (TypeError, ValueError):
+            count = 1
+        self._quick_count = max(1, min(count, self.MAX_QUICK_COUNT))
         self._build_window()
         self._build_menu()
 
@@ -223,12 +235,23 @@ class FloatBall:
         # 切换类型后可抽数量可能变小，先把已选数量收窄
         self._quick_count = min(self._quick_count, self._max_quick_count())
         self._count_var.set(self._quick_count)
+        self._save_quick_prefs()
         rctlog.info(f"[悬浮球] 下一次左键操作类型改为: {kind}（数量 {self._quick_count}）")
 
     def _set_count(self, n):
         self._quick_count = max(1, min(int(n), self._max_quick_count()))
         self._count_var.set(self._quick_count)
+        self._save_quick_prefs()
         rctlog.info(f"[悬浮球] 下一次左键抽取数量改为: {self._quick_count}")
+
+    def _save_quick_prefs(self):
+        """持久化悬浮球的抽取类型与数量"""
+        try:
+            cfg = ConfigManager()
+            cfg.set("floatball_kind", self._quick_kind)
+            cfg.set("floatball_count", self._quick_count)
+        except Exception as e:
+            rctlog.warning(f"[悬浮球] 保存快捷参数失败: {e}")
 
     def _set_size(self, key):
         """快捷切换悬浮球大小"""

@@ -11,9 +11,10 @@ if getattr(sys, "frozen", False):
     # res 文件夹复制到 exe 同目录
     res_path = os.path.join(work_path, "res")
 else:
-    # 源码运行
-    work_path = os.getcwd()
+    # 源码运行：固定以项目根目录作为工作目录，避免随启动位置变化而在
+    # 根目录 data/ 与 src/data/ 之间来回切换（与 updconf.PROGRAM_ROOT 一致）
     src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    work_path = os.path.dirname(src_path)
     res_path = os.path.join(src_path, "res")
 user_home_path = os.path.expanduser("~")
 app_prog_data_path = os.path.join(work_path, "data")

@@ -104,8 +104,9 @@ def run_auto_update(source="github", timeout=120, mode="--check", accept_preview
 
         if mode == "--check-silent":
             # 静默模式：需要获取返回码，隐藏窗口
+            # CREATE_NO_WINDOW 仅 Windows 存在，其它平台取 0
             proc = subprocess.run(args, capture_output=True, timeout=timeout,
-                                  creationflags=subprocess.CREATE_NO_WINDOW)
+                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             return proc.returncode == 1  # 1=有更新
         else:
             # 非静默模式：GUI 需正常显示，不用 CREATE_NO_WINDOW

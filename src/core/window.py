@@ -24,7 +24,26 @@ from core.platutils import set_window_icon
 
 
 class ConfigWindow:
-    """软件内配置窗口：统一管理程序各项设置。"""
+    """软件内配置窗口：统一管理程序各项设置。
+
+    单例：重复打开（如托盘菜单连点）时改为前置已有窗口，避免出现多个模态窗口。
+    """
+    _instance = None
+
+    def __new__(cls, parent):
+        if cls._instance is not None:
+            try:
+                if cls._instance.window.winfo_exists():
+                    cls._instance.window.deiconify()
+                    cls._instance.window.lift()
+                    cls._instance.window.focus_force()
+                    rctlog.info("配置窗口已打开，前置已有窗口")
+                    return cls._instance
+            except Exception:
+                pass
+            cls._instance = None
+        return super().__new__(cls)
+
     def __init__(self, parent):
         self.parent = parent
         self.config = ConfigManager()
@@ -37,10 +56,18 @@ class ConfigWindow:
         self.window.maxsize(800, 600)
         self.window.transient(parent)
         self.window.grab_set()
+        self.window.protocol("WM_DELETE_WINDOW", self._on_close)
         set_window_icon(self.window, rct_icon_path)
         self._applied = False
         self._create_widgets()
         self._init_config = self._collect_config()
+        ConfigWindow._instance = self
+
+    def _on_close(self):
+        """关闭窗口时清除单例引用"""
+        if ConfigWindow._instance is self:
+            ConfigWindow._instance = None
+        self.window.destroy()
 
     def _make_tab(self, notebook, title):
         """创建标签页容器"""
@@ -240,11 +267,29 @@ class ConfigWindow:
                        state="readonly", width=8).pack(side="left")
 
     def _open_advanced_config(self):
-        """从配置窗口打开高级抽取配置"""
-        from core.sampler import SmartSampler
-        sampler = SmartSampler(mode=self.config.get("sampler_mode", 1),
-                               smart_window=self.config.get("smart_window", 3))
-        # 加载当前配置到临时 sampler
+        """从配置窗口打开高级抽取配置
+
+        优先复用抽取页正在使用的 sampler 实例，让「应用」即时生效；
+        只有在抽取页尚未就绪时才退化为临时 sampler（仅写配置文件）。
+        """
+        sampler = None
+        try:
+            from core.appfunc import get_app
+            app = get_app()
+            if app is not None and getattr(app, "call_tab", None) is not None:
+                sampler = app.call_tab.sampler
+        except Exception as e:
+            rctlog.warning(f"获取抽取页 sampler 失败，改用临时实例: {e}")
+            sampler = None
+
+        if sampler is None:
+            from core.sampler import SmartSampler
+            sampler = SmartSampler(mode=self.config.get("sampler_mode", 1),
+                                   smart_window=self.config.get(
+                                       "adv_smart_memory_count",
+                                       self.config.get("smart_window", 3)))
+
+        # 加载当前配置到 sampler（复用实例时同样先同步一遍，保证界面与运行态一致）
         adv_keys = [
             ("adv_with_replacement", "with_replacement"),
             ("adv_no_replace_method", "no_replace_method"),
@@ -1131,7 +1176,9 @@ class RandomCallTab(BaseTab):
         self.mode_var.trace_add("write", self._on_mode_changed)
 
         sampler_mode = config.get("sampler_mode", 0)
-        smart_window = config.get("smart_window", 3)
+        # 「记忆次数」以高级抽取配置（adv_smart_memory_count）为准，兼容旧的 smart_window
+        smart_window = config.get("adv_smart_memory_count",
+                                  config.get("smart_window", 3))
         self.sampler = SmartSampler(mode=sampler_mode, smart_window=smart_window)
 
         # 加载智能模式固定权重设置
@@ -1407,12 +1454,14 @@ class RandomCallTab(BaseTab):
         else:
             self.group_frame.pack(fill="x", pady=5)
             self.action_frame.pack(fill="x", pady=5)
-            # 恢复抽取数量范围为组选取数量
+            # 恢复抽取数量范围为组选取数量（与抽人一致：保留当前值，仅在超范围时收窄）
             try:
                 total = int(self.total_entry.get())
                 self.choice_entry["values"] = list(range(1, min(total + 1, 27)))
-                default_k = ConfigManager().get("rct_choice_default", 3)
-                self.choice_entry.set(str(min(default_k, total)))
+                cur = self.choice_entry.get()
+                if not cur or int(cur) > total:
+                    self.choice_entry.set(str(min(
+                        ConfigManager().get("rct_choice_default", 3), total)))
             except ValueError:
                 pass
 
@@ -1717,13 +1766,15 @@ class RandomCallTab(BaseTab):
             if truncated:
                 mb = MAX_FILE_BYTES // (1024 * 1024)
                 extra.append(f"文件超过 {mb}MB，只读取了前 {mb}MB 内容")
-            if len(names) >= MAX_NAMES:
+            # 用不截断的解析结果判断是否真的超过上限，避免恰好 1000 个时误报
+            if len(parse_names(content, limit=10 ** 9)) > MAX_NAMES:
                 extra.append(f"名单过长，只读取了前 {MAX_NAMES} 个名字")
 
             config = ConfigManager()
             if config.get("rct_merge_names", True):
                 if len(names) != len(set(names)):
-                    names = list(set(names))
+                    # 保序去重，避免 set 打乱原始名单顺序
+                    names = list(dict.fromkeys(names))
                     extra.append("文件中存在重复的名字，已自动去除")
             else:
                 if len(names) != len(set(names)):
@@ -2462,6 +2513,14 @@ class AdvancedConfigWindow:
         tk.Spinbox(f_smart, textvariable=self.smart_memory_var,
                    from_=1, to=20, increment=1, state="readonly", width=4).pack(side="left", padx=3)
         tk.Label(f_smart, text="（统计最近 N 次抽取，自动降权）", fg="gray", font=("", 8)).pack(side="left")
+
+        # --- 加权说明 ---
+        tk.Label(
+            self.sec3,
+            text="说明：放回式下加权抽取为「有放回」，同一样本可能被重复抽中；\n"
+                 "不放回式下始终按随机顺序抽取，不重复，也不叠加权重。",
+            fg="gray", font=("", 8), justify="left", anchor="w",
+        ).pack(fill="x", pady=(4, 2))
 
         # --- 自定义权重 ---
         f_custw = tk.Frame(self.sec3)

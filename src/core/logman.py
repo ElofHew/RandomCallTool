@@ -1,7 +1,7 @@
 """日志工具：按日期滚动写入日志文件。"""
 import os
 import logging
-from logging.handlers import RotatingFileHandler
+from logging.handlers import TimedRotatingFileHandler
 from time import strftime
 from core.info import rct_log_path, rct_appname
 
@@ -26,15 +26,18 @@ def setup_logging(appname=default_appname, logpath=default_log_path):
     )
     logger.addHandler(console_handler)
 
-    # 按日期滚动的文件输出
+    # 按日期滚动：文件名固定，由 TimedRotatingFileHandler 在午夜自动切换到新文件
     os.makedirs(logpath, exist_ok=True)
-    log_file = os.path.join(logpath, f"{appname}-{strftime('%Y-%m-%d')}.log")
-    file_handler = RotatingFileHandler(
+    log_file = os.path.join(logpath, f"{appname}.log")
+    file_handler = TimedRotatingFileHandler(
         log_file,
-        maxBytes=1024 * 1024,
-        backupCount=5,
+        when="midnight",
+        interval=1,
+        backupCount=30,
         encoding="utf-8",
     )
+    # 滚动后文件名形如 RandomCallTool.log.2026-09-27
+    file_handler.suffix = "%Y-%m-%d"
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(
         logging.Formatter(

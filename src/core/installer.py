@@ -5,6 +5,9 @@ import time
 import subprocess
 from core import updconf
 
+# 跨平台兜底：CREATE_NO_WINDOW 仅 Windows 存在，其它平台取 0
+NO_WINDOW_FLAG = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 
 # 进程列表
 
@@ -164,7 +167,7 @@ def run_uninstall(mode, setup_path=None):
     script = build_remove_script(mode, setup_path)
 
     print("[Uninstall] Starting cleanup in background...")
-    subprocess.Popen([script], creationflags=subprocess.CREATE_NO_WINDOW)
+    subprocess.Popen([script], creationflags=NO_WINDOW_FLAG)
 
     print("[Uninstall] Uninstaller exiting...")
     time.sleep(0.5)
@@ -198,7 +201,7 @@ def run_remove_with_setup(setup_path):
         subprocess.Popen([rp, "keep-data", "-y",
                           "--setup-path", setup_path],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         creationflags=subprocess.CREATE_NO_WINDOW)
+                         creationflags=NO_WINDOW_FLAG)
         return True
     except Exception:
         return False

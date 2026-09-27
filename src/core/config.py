@@ -1,6 +1,7 @@
 """JSON 配置读写管理器，负责加载和保存应用设置。"""
 import os
 import json
+import threading
 from core.logman import rctlog
 from core.info import rct_config_path
 
@@ -8,6 +9,8 @@ class ConfigManager:
     """单例配置管理器。"""
     _instance = None
     _config = None
+    # 写盘锁：后台更新线程与主线程可能并发写入
+    _write_lock = threading.RLock()
 
     def __new__(cls):
         if cls._instance is None:
@@ -20,7 +23,7 @@ class ConfigManager:
         default_config = {
             # ── 基本设置 ──
             "result_path": 0,             # 结果保存位置: 0=数据目录, 1=桌面
-            "save_result": False,          # 是否自动保存抽取结果
+            "save_result": True,           # 是否自动保存抽取结果
             "auto_load_sample": True,      # 启动时自动加载默认样本
             "max_history_items": 10,       # 历史记录最大条数
             "history_file_enabled": True,   # 是否把抽取历史实时写入本地文件
@@ -34,7 +37,7 @@ class ConfigManager:
 
             # ── 抽取默认值 ──
             "rct_choice_default": 3,       # 抽取 - 默认选取数量（抽组/抽人公用）
-            "rct_default_mode": "group",   # 默认抽取方式: person=抽人, group=抽组
+            "rct_default_mode": "person",  # 默认抽取方式: person=抽人, group=抽组
 
             # ── 抽样设置 ──
             "sampler_mode": 1,             # 抽样模式: 0=基本, 1=智能, 2=高级
@@ -49,7 +52,7 @@ class ConfigManager:
             "adv_shuffle_count": 1,              # 打乱次数 (1~10)
             "adv_shuffle_frequency": "each",     # 打乱频率: each=每次, once=仅启动时
             "adv_pre_draw_balance": False,       # 预抽取平衡
-            "adv_pre_draw_count": 3,             # 预抽取次数 (1~10)
+            "adv_pre_draw_count": 1,             # 预抽取次数 (1~10)
             "adv_pre_draw_frequency": "each",    # 预抽取频率: each=每次, once=仅启动时
             "adv_multi_draw_best": False,        # 多次取最值
             "adv_multi_draw_count": 3,           # 多次抽取次数 (2+)
@@ -58,11 +61,11 @@ class ConfigManager:
             "adv_random_weight_max": 2.00,       # 随机权重最大值
             "adv_progressive_draw": False,       # 递进式抽取
             "adv_smart_reduce_weight": True,     # 智能降权/配权
-            "adv_smart_memory_count": 5,         # 高级模式记忆次数
+            "adv_smart_memory_count": 3,         # 高级模式记忆次数
             "adv_custom_weights": False,         # 高级模式自定义权重
 
             # ── 更新设置 ──
-            "update_source": "gitee",           # 版本更新源: github/gitee
+            "update_source": "github",          # 版本更新源: github/gitee
             "auto_check_update": True,          # 启动时自动检测更新
             "accept_preview_update": False,     # 是否接收测试版更新
 
@@ -89,6 +92,8 @@ class ConfigManager:
             "floatball_size": "medium",        # 悬浮球尺寸: small/medium/large
             "floatball_x": None,                # 悬浮球 X 坐标（None 时用默认位置）
             "floatball_y": None,                # 悬浮球 Y 坐标（None 时用默认位置）
+            "floatball_kind": "person",         # 悬浮球快捷抽取类型: person/group_letter/group_number
+            "floatball_count": 1,               # 悬浮球快捷抽取数量
 
             # ── 系统托盘 ──
             "tray_enabled": True,               # 关闭窗口后保留系统托盘
@@ -112,18 +117,30 @@ class ConfigManager:
         rctlog.info(f"配置已加载: {self._config}")
 
     def _save_config(self):
-        """保存配置文件"""
-        try:
-            with open(rct_config_path, "w", encoding="utf-8") as f:
-                json.dump(self._config, f, ensure_ascii=False, indent=4)
-        except Exception as e:
-            rctlog.error(f"保存配置文件失败: {e}")
+        """保存配置文件（原子写入：先写临时文件再 os.replace，避免写一半损坏）"""
+        with self._write_lock:
+            tmp_path = rct_config_path + ".tmp"
+            try:
+                os.makedirs(os.path.dirname(rct_config_path), exist_ok=True)
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(self._config, f, ensure_ascii=False, indent=4)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_path, rct_config_path)
+            except Exception as e:
+                rctlog.error(f"保存配置文件失败: {e}")
+                try:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
+                except OSError:
+                    pass
 
     def get(self, key, default=None):
         """获取配置项"""
         return self._config.get(key, default)
 
     def set(self, key, value):
-        """设置配置项"""
-        self._config[key] = value
-        self._save_config()
+        """设置配置项并立即落盘"""
+        with self._write_lock:
+            self._config[key] = value
+            self._save_config()

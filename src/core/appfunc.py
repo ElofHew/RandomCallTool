@@ -12,10 +12,20 @@ from core.fileman import FileManager, SampleLibrary
 from core.window import HomeTab, RandomCallTab, ConfigWindow, AboutWindow
 from core.rollcall import RollCallTab
 
+# 当前运行中的主应用实例（供配置窗口等跨模块访问实时状态）
+_current_app = {"instance": None}
+
+
+def get_app():
+    """获取当前运行中的 MainApplication 实例（可能为 None）"""
+    return _current_app["instance"]
+
+
 class MainApplication:
     def __init__(self, root):
         self.root = root
         self.call_tab = None
+        _current_app["instance"] = self
         self.create_tabs()
         self.create_menu()
         self._bind_shortcuts()
