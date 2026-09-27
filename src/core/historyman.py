@@ -27,12 +27,14 @@ def format_line(time_text, mode, count, items):
     return f"[{time_text}]：{label}：抽取数量{count}：{names}"
 
 
-def append(mode, items, time_text=None):
+def append(mode, items, time_text=None, force=False):
     """把一次抽取追加写入当天的记录文件
+
+    force: 忽略配置开关强制写入（用于结果过多、必须落盘的场景）
 
     Returns: 写入的文件路径；未启用或失败时返回 None
     """
-    if not is_enabled():
+    if not force and not is_enabled():
         return None
     items = list(items or [])
     if not items:

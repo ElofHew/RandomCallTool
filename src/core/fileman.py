@@ -192,10 +192,11 @@ class SaveResult:
         return template
     
     def save_result(self, class_name, prefix, result, save_message="",
-                    custom_timestamp=None):
+                    custom_timestamp=None, silent=False):
         """保存结果
         Args:
             custom_timestamp: 可选 "YYYY-MM-DD HH:MM:SS"，用于文件名和 HTML 内的抽取时间
+            silent: True 时不弹出「保存成功」提示（由调用方自行提示）
         """
         if not result:
             rctlog.warning(f"[{prefix}] 结果为空，跳过保存")
@@ -215,7 +216,8 @@ class SaveResult:
                 file.write(self.make_html(class_name, result, save_message, ts_display))
             
             rctlog.info(f"[{prefix}] 结果已保存到: {file_path}")
-            messagebox.showinfo("保存成功", f"抽取结果已保存到：\n{file_path}")
+            if not silent:
+                messagebox.showinfo("保存成功", f"抽取结果已保存到：\n{file_path}")
             return file_path
             
         except Exception as e:

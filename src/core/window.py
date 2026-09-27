@@ -4,6 +4,9 @@ from time import strftime
 import tkinter as tk
 import tkinter.font as tkFont
 from tkinter import ttk, messagebox, filedialog
+
+# 抽取结果超过该数量时，提醒中省略多余项并强制保存完整结果
+OVERSIZED_LIMIT = 10
 from core.logman import rctlog
 from core.config import ConfigManager
 from core import islandmq
@@ -1887,13 +1890,16 @@ class RandomCallTab(BaseTab):
         selected = self.sampler.smart_sample(self.names, k)
 
         preview = ", ".join(selected[:8]) + ("..." if len(selected) > 8 else "")
-        self._add_history("person", selected, f"抽{k}人：{preview}")
+        oversized = self._is_oversized(selected)
+        self._add_history("person", selected, f"抽{k}人：{preview}", force=oversized)
 
         rctlog.info(f"[随机抽取] 抽人成功: {selected}")
-        self._notify_result("抽取结果", selected)
-
-        if ConfigManager().get("save_result", True):
-            SaveResult().save_result("RandomPerson", "随机抽人", selected)
+        if oversized:
+            self._handle_oversized("RandomPerson", "随机抽人", selected)
+        else:
+            self._notify_result("抽取结果", selected)
+            if ConfigManager().get("save_result", True):
+                SaveResult().save_result("RandomPerson", "随机抽人", selected)
 
     def _draw_group(self):
         """随机抽组"""
@@ -1928,13 +1934,16 @@ class RandomCallTab(BaseTab):
         result_items = [f"{g}组" for g in selected]
 
         preview = ", ".join(str(g) for g in selected[:8]) + ("..." if len(selected) > 8 else "")
-        self._add_history("group", result_items, f"抽{k}组：{preview}")
+        oversized = self._is_oversized(result_items)
+        self._add_history("group", result_items, f"抽{k}组：{preview}", force=oversized)
 
         rctlog.info(f"[随机抽取] 抽组成功: {selected}")
-        self._notify_result("抽取结果", result_items)
-
-        if ConfigManager().get("save_result", True):
-            SaveResult().save_result("RandomGroup", "随机抽组", result_items)
+        if oversized:
+            self._handle_oversized("RandomGroup", "随机抽组", result_items)
+        else:
+            self._notify_result("抽取结果", result_items)
+            if ConfigManager().get("save_result", True):
+                SaveResult().save_result("RandomGroup", "随机抽组", result_items)
 
     # ══════════════════════════════════════════════════════════
     #  抽取后提醒
@@ -1944,12 +1953,65 @@ class RandomCallTab(BaseTab):
         """抽取后提醒：按配置选择「弹窗」或「ClassIsland 通知」"""
         notify_result(title, items, default_mask_title="随机抽取结果")
 
+    @staticmethod
+    def _is_oversized(items):
+        """结果是否超过提醒数量上限（大于 10 个才省略）"""
+        return len(items) > OVERSIZED_LIMIT
+
+    def _handle_oversized(self, class_name, prefix, items):
+        """结果超过 10 个：提醒中省略多余项，强制保存完整结果并引导查看
+
+        - 弹窗 / ClassIsland 通知只带前 10 项
+        - 不受「自动保存抽取结果」开关影响，强制落盘 HTML
+        - 再次弹窗提醒，并用浏览器以 file:// 打开该 HTML
+        """
+        shown = list(items[:OVERSIZED_LIMIT])
+        rest = len(items) - len(shown)
+        self._notify_result("抽取结果", shown + [f"……（其余 {rest} 个已省略）"])
+
+        path = SaveResult().save_result(class_name, prefix, items, silent=True)
+        if not path:
+            messagebox.showwarning(
+                "完整结果保存失败",
+                f"本次共抽取 {len(items)} 个，提醒中已省略超出 {OVERSIZED_LIMIT} 个的部分。"
+                "\n\n完整结果保存失败，请到历史记录中手动保存后查看。")
+            return
+
+        rctlog.info(f"[{prefix}] 结果超过 {OVERSIZED_LIMIT} 个，"
+                    f"已强制保存并打开完整结果: {path}")
+        tip = "已自动打开" if self._open_result_html(path) else "打开失败，请手动打开"
+        messagebox.showinfo(
+            "结果较多，请查看完整结果",
+            f"本次共抽取 {len(items)} 个，提醒中已省略超出 {OVERSIZED_LIMIT} 个的部分。"
+            f"\n\n完整结果已保存为 HTML（{tip}）：\n{path}")
+
+    @staticmethod
+    def _open_result_html(path):
+        """用系统默认程序打开结果 HTML
+
+        不用 file:// URI：Windows 上会走 file: 协议处理器（旧 IE / Edge），可能被重定向到
+        帮助页而打不开文件。直接传普通路径等同于双击，会交给用户默认浏览器。
+        都失败时退回打开所在目录，保证用户能找到文件。
+        """
+        try:
+            open_file_or_dir(path)
+            return True
+        except Exception as e:
+            rctlog.warning(f"[随机抽取] 打开结果文件失败: {e}")
+        folder = os.path.dirname(path)
+        try:
+            open_file_or_dir(folder)
+            rctlog.info(f"[随机抽取] 已改为打开结果目录: {folder}")
+        except Exception as e:
+            rctlog.error(f"[随机抽取] 打开结果目录也失败: {e}")
+        return False
+
     # ══════════════════════════════════════════════════════════
     #  历史记录
     # ══════════════════════════════════════════════════════════
 
-    def _add_history(self, mode, items, preview):
-        """添加一条历史记录并刷新UI"""
+    def _add_history(self, mode, items, preview, force=False):
+        """添加一条历史记录并刷新UI（force=True 时强制写入记录文件）"""
         self._history_id_counter += 1
         now = strftime("%Y-%m-%d %H:%M:%S")
         entry = {
@@ -1963,7 +2025,7 @@ class RandomCallTab(BaseTab):
         self.history.insert(0, entry)
         # 同步追加到 data/history/YYYY-MM-DD.txt，失败不影响抽取主流程
         try:
-            history_append(mode, items, entry["ts_short"])
+            history_append(mode, items, entry["ts_short"], force=force)
         except Exception as e:
             rctlog.warning(f"[随机抽取] 写入历史记录文件失败: {e}")
 
