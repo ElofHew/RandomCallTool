@@ -2303,7 +2303,7 @@ class AdvancedConfigWindow:
         self.win.title("高级抽取配置")
         self._applied = False
         # 创建控件后再收集初始快照（控件在后续流程创建）
-        self.win.geometry("470x575+80+80")
+        self.win.geometry("470x610+80+80")
         self.win.minsize(450, 550)
         self.win.maxsize(550, 650)
         self.win.resizable(True, True)
