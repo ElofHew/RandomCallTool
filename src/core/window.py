@@ -1114,6 +1114,16 @@ class HomeTab(BaseTab):
 class RandomCallTab(BaseTab):
     """随机抽取选项卡：支持抽人、抽组和历史记录管理。"""
 
+    # 历史记录面板固定宽度（保证每条记录都与面板等宽）
+    HISTORY_PANEL_WIDTH = 160
+    HISTORY_CANVAS_WIDTH = 140
+    HISTORY_ROW_PADX = 4
+    # 条目文字换行宽度：画布宽减去条目内边距
+    HISTORY_TEXT_WRAP = HISTORY_CANVAS_WIDTH - 2 * HISTORY_ROW_PADX - 12
+    # 样本名显示：固定单行，超出该像素宽度用省略号截断
+    SAMPLE_NAME_FONT = ("Microsoft YaHei", 12)
+    SAMPLE_NAME_MAX_WIDTH = 220
+
     def __init__(self, parent):
         super().__init__(parent, "随机抽取")
         config = ConfigManager()
@@ -1195,16 +1205,16 @@ class RandomCallTab(BaseTab):
         self.person_frame = tk.LabelFrame(self.control_frame, text="样本列表", height=120)
         self.person_frame.pack_propagate(False)
 
-        # 样本信息行：名称（紫色）+ 数量（绿色），合并为一行
+        # 样本信息行：名称（紫色）+ 数量（绿色），名称固定单行、超宽用省略号
         info_row = tk.Frame(self.person_frame)
         info_row.pack(pady=5, padx=5)
         self.file_path_label = tk.Label(
-            info_row, text="未选择文件", fg="gray", wraplength=220,
-            font=("Microsoft YaHei", 12),
+            info_row, text="未选择文件", fg="gray",
+            font=self.SAMPLE_NAME_FONT,
         )
         self.file_path_label.pack(side="left")
         self.sample_count_label = tk.Label(info_row, text="", fg="green",
-                                           font=("Microsoft YaHei", 12))
+                                           font=self.SAMPLE_NAME_FONT)
         self.sample_count_label.pack(side="left")
 
         btn_row = tk.Frame(self.person_frame)
@@ -1336,11 +1346,13 @@ class RandomCallTab(BaseTab):
 
     def _create_history_area(self, parent):
         """创建右侧历史记录面板"""
-        hist_frame = tk.LabelFrame(parent, text="历史记录", width=160)
+        hist_frame = tk.LabelFrame(parent, text="历史记录",
+                                   width=self.HISTORY_PANEL_WIDTH)
         hist_frame.pack(side="right", fill="y", padx=(10, 0))
         hist_frame.pack_propagate(False)
 
-        canvas = tk.Canvas(hist_frame, highlightthickness=0, width=140)
+        canvas = tk.Canvas(hist_frame, highlightthickness=0,
+                           width=self.HISTORY_CANVAS_WIDTH)
         vbar = tk.Scrollbar(hist_frame, orient="vertical", command=canvas.yview)
         self.history_inner = tk.Frame(canvas)
 
@@ -1348,7 +1360,13 @@ class RandomCallTab(BaseTab):
             "<Configure>",
             lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
         )
-        canvas.create_window((0, 0), window=self.history_inner, anchor="nw")
+        self._history_win_id = canvas.create_window(
+            (0, 0), window=self.history_inner, anchor="nw")
+        # 让内部容器始终等于画布宽度，条目才能与面板等宽
+        canvas.bind(
+            "<Configure>",
+            lambda e: canvas.itemconfig(self._history_win_id, width=e.width),
+        )
         canvas.configure(yscrollcommand=vbar.set)
 
         canvas.pack(side="left", fill="both", expand=True)
@@ -1621,12 +1639,27 @@ class RandomCallTab(BaseTab):
     # ══════════════════════════════════════════════════════════
 
     def _set_sample_info(self, name_text, count=None):
-        """更新样本信息行：名称紫色，数量用 (绿色) 紧随其后"""
-        self.file_path_label.config(text=name_text, fg="purple")
+        """更新样本信息行：名称紫色、固定单行，数量用 (绿色) 紧随其后"""
+        self.file_path_label.config(
+            text=self._ellipsize(name_text, self.SAMPLE_NAME_MAX_WIDTH), fg="purple")
         if count is None:
             self.sample_count_label.config(text="")
         else:
             self.sample_count_label.config(text=f" ({count})", fg="green")
+
+    def _ellipsize(self, text, max_width):
+        """把文本按像素宽度截断为单行，超出部分用省略号
+
+        Tkinter 的 Label 不支持自动省略号，因此用字体实测宽度后手动截断。
+        """
+        text = str(text)
+        font = tkFont.Font(font=self.SAMPLE_NAME_FONT)
+        if font.measure(text) <= max_width:
+            return text
+        for cut in range(len(text) - 1, 0, -1):
+            if font.measure(text[:cut] + "…") <= max_width:
+                return text[:cut] + "…"
+        return "…"
 
     def _auto_load_sample(self):
         """自动加载默认样本（从样本库）"""
@@ -2043,7 +2076,7 @@ class RandomCallTab(BaseTab):
         for entry in self.history:
             eid = entry["id"]
             row = tk.Frame(self.history_inner, relief="groove", bd=1)
-            row.pack(fill="x", padx=3, pady=2)
+            row.pack(fill="x", padx=self.HISTORY_ROW_PADX, pady=2)
 
             # 时间戳
             ts_label = tk.Label(
@@ -2056,7 +2089,7 @@ class RandomCallTab(BaseTab):
             label = tk.Label(
                 row, text=entry["preview"],
                 anchor="w", justify="left", font=("", 9),
-                wraplength=180,
+                wraplength=self.HISTORY_TEXT_WRAP,
             )
             label.pack(fill="x", padx=3, pady=(0, 1))
 
