@@ -218,6 +218,9 @@ class UpdateApp:
 
     def _on_dl_progress(self, downloaded, total, pct):
         """主线程：更新下载进度"""
+        # 页面已被切换 / 控件已销毁时直接忽略，避免操作失效控件抛 TclError
+        if self.worker is None or not self._widget_alive(self._dl_bar):
+            return
         if total > 0:
             self._dl_bar["value"] = pct
             self._dl_pct.config(text=str(pct) + "%")
@@ -225,17 +228,33 @@ class UpdateApp:
         else:
             self._dl_pct.config(text=str(downloaded // 1024) + "KB")
 
+    @staticmethod
+    def _widget_alive(widget):
+        """控件是否仍存在（页面切换后旧控件会被销毁）"""
+        try:
+            return bool(widget is not None and widget.winfo_exists())
+        except tk.TclError:
+            return False
+
     def _on_dl_done(self, success, size, error, dest_path):
         """主线程：下载完成回调"""
+        # 用户取消后已切回主页，此时旧控件已不存在，直接返回即可
+        if not self._widget_alive(self._dl_btn):
+            return
         self._dl_btn.config(state="disabled")
         if success:
             self._dl_info.config(text="下载完成，正在安装…", fg="green")
             self._dl_bar["value"] = 100
             self._dl_pct.config(text="100%")
             self._do_install(dest_path)
+        elif error == downloader.CANCELED:
+            # 取消是用户主动行为，不应显示为「下载失败」
+            self._dl_info.config(text="下载已取消", fg="#888")
+            self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
+                                command=self.root.destroy if self.auto_check else self._build_home,
+                                state="normal")
         else:
-            msg = "下载失败：" + (error or "") if error else "下载已取消"
-            self._dl_info.config(text=msg, fg="red")
+            self._dl_info.config(text="下载失败：" + (error or ""), fg="red")
             self._dl_btn.config(text="  退出  " if self.auto_check else "  返回  ",
                                 command=self.root.destroy if self.auto_check else self._build_home,
                                 state="normal")
@@ -265,8 +284,15 @@ class UpdateApp:
         self._dl_btn.pack(side="right")
 
     def _cancel_download(self):
-        if self.worker:
-            self.worker.cancel()
+        """取消下载：先中止后台线程并清除引用，再切回主页
+
+        先置 self.worker = None，让后台线程随后的完成回调识别为「已失效」并跳过，
+        避免回调操作已被销毁的控件抛 TclError。
+        """
+        worker = self.worker
+        self.worker = None
+        if worker is not None:
+            worker.cancel()
         self._build_home()
 
     def _do_install(self, exe_path):

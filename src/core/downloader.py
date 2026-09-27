@@ -5,6 +5,9 @@ import os
 import threading
 from urllib.request import urlopen, Request
 
+# 取消时传递给 on_done 的标识（updgui 据此区分「用户取消」与「下载失败」）
+CANCELED = "已取消"
+
 
 class DownloadWorker:
     """后台下载线程，支持进度回调和中止"""
@@ -23,6 +26,11 @@ class DownloadWorker:
 
     def cancel(self):
         self._cancel = True
+
+    @property
+    def canceled(self):
+        """是否已被取消"""
+        return self._cancel
 
     def _run(self, timeout):
         try:
@@ -48,7 +56,7 @@ class DownloadWorker:
                 # 取消后清理半成品，避免下次同名复用拿到损坏安装包
                 self._cleanup_partial()
                 if self.on_done:
-                    self.on_done(False, 0, "\u5df2\u53d6\u6d88")
+                    self.on_done(False, 0, CANCELED)
             else:
                 if self.on_done:
                     self.on_done(True, os.path.getsize(self.dest_path), None)

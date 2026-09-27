@@ -149,10 +149,31 @@ class TrayIcon:
         rctlog.info("[托盘] 显示主界面")
 
     def open_config(self):
-        """打开配置窗口"""
-        self.show_main()
+        """打开配置窗口（ConfigWindow 自带单例，重复点击只会前置已有窗口）"""
         from core.window import ConfigWindow
         ConfigWindow(self.root)
+        # 配置窗口需要主窗口作为 parent，等窗口建好后再前置主界面，
+        # 避免 show_main 的 lift/置顶把刚打开的配置窗口盖住
+        self.root.after(50, self._raise_above_main)
+        rctlog.info("[托盘] 打开软件配置")
+
+    def _raise_above_main(self):
+        """把配置窗口重新提到主窗口之上（主窗口置顶后可能盖住它）"""
+        from core.window import ConfigWindow
+        win = getattr(ConfigWindow, "_instance", None)
+        if win is None:
+            return
+        try:
+            w = win.window
+            if w.winfo_exists():
+                w.lift()
+                w.focus_force()
+                try:
+                    w.grab_set()
+                except Exception:
+                    pass
+        except Exception as e:
+            rctlog.warning(f"[托盘] 前置配置窗口失败: {e}")
 
     def check_update(self):
         """检测更新"""

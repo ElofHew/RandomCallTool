@@ -37,7 +37,13 @@ class ConfigWindow:
                     cls._instance.window.deiconify()
                     cls._instance.window.lift()
                     cls._instance.window.focus_force()
+                    try:
+                        cls._instance.window.grab_set()
+                    except tk.TclError:
+                        pass
                     rctlog.info("配置窗口已打开，前置已有窗口")
+                    # 阻止 __init__ 再次执行（否则会新建 Toplevel 覆盖旧窗口）
+                    cls._instance._skip_init = True
                     return cls._instance
             except Exception:
                 pass
@@ -45,6 +51,11 @@ class ConfigWindow:
         return super().__new__(cls)
 
     def __init__(self, parent):
+        # __new__ 复用了已存在的实例时，跳过全部初始化
+        if getattr(self, "_skip_init", False):
+            self._skip_init = False
+            return
+
         self.parent = parent
         self.config = ConfigManager()
 
