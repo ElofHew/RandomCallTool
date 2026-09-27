@@ -4,7 +4,7 @@ from tkinter import messagebox
 
 from core.config import ConfigManager
 from core.logman import rctlog
-from core import notify
+from core import islandmq, notify
 
 
 _ball_ref = {"instance": None}
@@ -173,9 +173,15 @@ class FloatBall:
         ("group_number", "抽数字组"),
         ("person", "抽人"),
     ]
+    # 通知模式 → 菜单显示名（与配置项 notify_mode 对应）
+    NOTIFY_LABELS = [
+        ("popup", "弹窗提醒"),
+        ("island", "ClassIsland 通知"),
+    ]
+    NOTIFY_DEFAULT = "popup"
 
     def _build_menu(self):
-        """右键菜单：三个子菜单分别预设抽取模式 / 数量 / 悬浮球大小"""
+        """右键菜单：子菜单预设抽取模式 / 数量 / 悬浮球大小 / 通知模式"""
         self._menu = tk.Menu(self.win, tearoff=0)
 
         # 抽取模式（单选，当前模式带勾选标记）
@@ -201,6 +207,56 @@ class FloatBall:
                 label=label, variable=self._size_var, value=key,
                 command=lambda k=key: self._set_size(k))
         self._menu.add_cascade(label="悬浮球大小", menu=self._size_menu)
+
+        # 通知模式（单选，与主界面配置窗口共用 notify_mode 配置项）
+        self._notify_var = tk.StringVar(value=self._notify_mode())
+        self._notify_menu = tk.Menu(self._menu, tearoff=0)
+        for key, label in self.NOTIFY_LABELS:
+            self._notify_menu.add_radiobutton(
+                label=label, variable=self._notify_var, value=key,
+                command=lambda k=key: self._set_notify_mode(k))
+        self._menu.add_cascade(label="通知模式", menu=self._notify_menu)
+
+    # 通知模式菜单项的基础 label（键 → 文案）
+    NOTIFY_BASE_LABELS = dict(NOTIFY_LABELS)
+
+    def _notify_mode(self):
+        """当前通知模式键，用于菜单勾选状态"""
+        key = str(ConfigManager().get("notify_mode", self.NOTIFY_DEFAULT) or "").lower()
+        return key if key in self.NOTIFY_BASE_LABELS else self.NOTIFY_DEFAULT
+
+    def _sync_notify_menu(self):
+        """弹出前同步通知模式勾选状态；pyzmq 缺失时禁用 ClassIsland 选项并标注原因
+
+        注意：entryconfigure 用**索引**定位，因为 label 会被改写，
+        下次再按原 label 查找会抛 TclError。
+        """
+        self._notify_var.set(self._notify_mode())
+        available = islandmq.is_available()
+        for idx, (key, label) in enumerate(self.NOTIFY_LABELS):
+            if key == "island" and not available:
+                # 菜单无法展示长说明，直接把原因写进 label
+                self._notify_menu.entryconfigure(
+                    idx, label=f"{label}（需 pyzmq）", state="disabled")
+            else:
+                self._notify_menu.entryconfigure(
+                    idx, label=label, state="normal")
+
+    def _set_notify_mode(self, mode):
+        """快捷切换抽取结果的通知模式"""
+        if mode == "island" and not islandmq.is_available():
+            rctlog.warning("[悬浮球] 未安装 pyzmq，无法切换到 ClassIsland 通知")
+            self._notify_var.set(self._notify_mode())
+            # 菜单无提示，被拒绝时弹窗告知用户，避免像「点了没反应」
+            messagebox.showwarning(
+                "通知模式不可用",
+                "未检测到 pyzmq，无法使用 ClassIsland 通知。\n"
+                "请先执行：pip install pyzmq")
+            return
+        ConfigManager().set("notify_mode", mode)
+        self._notify_var.set(mode)
+        label = self.NOTIFY_BASE_LABELS.get(mode, mode)
+        rctlog.info(f"[悬浮球] 通知模式已切换为: {label}")
 
     def _size_key(self):
         """当前尺寸档位键，用于菜单勾选状态"""
@@ -287,6 +343,7 @@ class FloatBall:
         self._kind_var.set(self._quick_kind)
         self._size_var.set(self._size_key())
         self._sync_count_menu()
+        self._sync_notify_menu()
         self._menu.tk_popup(event.x_root, event.y_root)
 
     def show(self):
