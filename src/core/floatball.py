@@ -155,28 +155,40 @@ class FloatBall:
 
     # ── 菜单 ──
 
+    # 抽取类型 → 菜单显示名
+    KIND_LABELS = [
+        ("group_letter", "抽字母组"),
+        ("group_number", "抽数字组"),
+        ("person", "抽人"),
+    ]
+
     def _build_menu(self):
-        """右键菜单：选择下一次左键单击要执行的操作"""
+        """右键菜单：三个子菜单分别预设抽取模式 / 数量 / 悬浮球大小"""
         self._menu = tk.Menu(self.win, tearoff=0)
-        for kind, label in [
-            ("group_letter", "抽字母组"),
-            ("group_number", "抽数字组"),
-            ("person", "抽人"),
-        ]:
-            self._menu.add_command(
-                label=label,
+
+        # 抽取模式（单选，当前模式带勾选标记）
+        self._kind_var = tk.StringVar(value=self._quick_kind)
+        self._kind_menu = tk.Menu(self._menu, tearoff=0)
+        for kind, label in self.KIND_LABELS:
+            self._kind_menu.add_radiobutton(
+                label=label, variable=self._kind_var, value=kind,
                 command=lambda k=kind: self._set_kind(k))
+        self._menu.add_cascade(label="抽取模式", menu=self._kind_menu)
+
+        # 抽取数量（单选，当前数量带勾选标记）
+        self._count_var = tk.IntVar(value=self._quick_count)
         self._count_menu = tk.Menu(self._menu, tearoff=0)
         self._menu.add_cascade(label="抽取数量", menu=self._count_menu)
         self._sync_count_menu()
-        # 尺寸快捷切换（单选，当前档位带勾选标记）
+
+        # 悬浮球大小（单选，当前档位带勾选标记）
         self._size_var = tk.StringVar(value=self._size_key())
-        size_menu = tk.Menu(self._menu, tearoff=0)
+        self._size_menu = tk.Menu(self._menu, tearoff=0)
         for key, label in [("small", "小"), ("medium", "中"), ("large", "大")]:
-            size_menu.add_radiobutton(
+            self._size_menu.add_radiobutton(
                 label=label, variable=self._size_var, value=key,
                 command=lambda k=key: self._set_size(k))
-        self._menu.add_cascade(label="悬浮球大小", menu=size_menu)
+        self._menu.add_cascade(label="悬浮球大小", menu=self._size_menu)
 
     def _size_key(self):
         """当前尺寸档位键，用于菜单勾选状态"""
@@ -198,20 +210,24 @@ class FloatBall:
         """按当前可抽数量重建「抽取数量」子菜单，避免选到不够的数量"""
         self._count_menu.delete(0, "end")
         for k in range(1, self._max_quick_count() + 1):
-            self._count_menu.add_command(
-                label=f"抽 {k} 个",
+            self._count_menu.add_radiobutton(
+                label=f"抽 {k} 个", variable=self._count_var, value=k,
                 command=lambda n=k: self._set_count(n))
         if self._quick_count > self._max_quick_count():
             self._quick_count = self._max_quick_count()
+        self._count_var.set(self._quick_count)
 
     def _set_kind(self, kind):
         self._quick_kind = kind
+        self._kind_var.set(kind)
         # 切换类型后可抽数量可能变小，先把已选数量收窄
         self._quick_count = min(self._quick_count, self._max_quick_count())
+        self._count_var.set(self._quick_count)
         rctlog.info(f"[悬浮球] 下一次左键操作类型改为: {kind}（数量 {self._quick_count}）")
 
     def _set_count(self, n):
         self._quick_count = max(1, min(int(n), self._max_quick_count()))
+        self._count_var.set(self._quick_count)
         rctlog.info(f"[悬浮球] 下一次左键抽取数量改为: {self._quick_count}")
 
     def _set_size(self, key):
@@ -245,6 +261,7 @@ class FloatBall:
 
     def _on_right_click(self, event):
         # 同步勾选状态与可选数量（配置窗口、主界面加载名单后都可能变化）
+        self._kind_var.set(self._quick_kind)
         self._size_var.set(self._size_key())
         self._sync_count_menu()
         self._menu.tk_popup(event.x_root, event.y_root)
