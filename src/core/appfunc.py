@@ -4,7 +4,7 @@ import webbrowser
 from time import strftime
 import tkinter as tk
 from tkinter import ttk, messagebox
-from core.more import run_process
+from core.platutils import run_process
 from core.dialog import load_about_info, ask_string
 from core.info import work_path, rct_log_path, rct_appname, rct_version, official_website, rct_icon_path
 from core.logman import rctlog
