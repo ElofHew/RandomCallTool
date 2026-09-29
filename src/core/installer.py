@@ -61,6 +61,17 @@ def get_extra_uninstall_targets():
     for desktop in desktop_dirs:
         targets.append(os.path.join(desktop, "随机抽取工具.lnk"))
 
+    # 启动文件夹中的开机自启快捷方式：
+    #   公共 shell:common startup + 当前用户 shell:startup（兜底）
+    startup_dirs = [
+        os.path.join(programdata, "Microsoft", "Windows", "Start Menu",
+                     "Programs", "StartUp"),
+        os.path.join(appdata, "Microsoft", "Windows", "Start Menu",
+                     "Programs", "Startup"),
+    ]
+    for startup in startup_dirs:
+        targets.append(os.path.join(startup, "随机抽取工具.lnk"))
+
     return targets
 
 

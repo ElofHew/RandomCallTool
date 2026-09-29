@@ -11,6 +11,7 @@ from core.logman import rctlog
 from core.config import ConfigManager
 from core import islandmq
 from core import tray
+from core import autostart
 from core.notify import notify_result
 from core.info import rct_rcplist_path, rct_version, document_path, rct_history_path
 from core.fileman import (SampleLibrary, SaveResult, base64decode,
@@ -731,15 +732,6 @@ class ConfigWindow:
             tk.Radiobutton(size_row, text=label, variable=self.floatball_size_var,
                            value=val).pack(side="left", padx=3)
 
-        tip_frame = tk.Frame(tab, relief="groove", bd=1)
-        tip_frame.pack(fill="x", padx=15, pady=4)
-        tk.Label(tip_frame, justify="left", font=("", 9),
-                 text="• 拖拽圆形按钮可调整位置\n"
-                      "• 右键菜单选择下一次左键要执行的操作：字母组 / 数字组 / 抽人\n"
-                      "• 「抽取数量」子菜单选择每次抽取 1~9 个\n"
-                      "• 组数取自「抽样设置 → 抽组默认总数」",
-                 fg="#333").pack(anchor="w", padx=10, pady=8)
-
         # ── 系统托盘 ──
         ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=8)
 
@@ -762,6 +754,16 @@ class ConfigWindow:
         else:
             tk.Label(tab, text="托盘右键菜单：显示主界面 / 软件配置 / 检测更新 / 悬浮球 / 退出",
                      fg="gray", font=("", 9)).pack(anchor="w", **pad)
+
+        # ── 开机自启 ──
+        ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=8)
+
+        tk.Label(tab, text="开机自启",
+                 font=("", 10, "bold"), fg="#2b5b84").pack(anchor="w", **pad)
+
+        self.autostart_var = tk.BooleanVar(value=autostart.is_enabled())
+        tk.Checkbutton(tab, text="开机时自动启动本程序",
+                       variable=self.autostart_var).pack(anchor="w", **pad)
 
     # 更新设置
 
@@ -872,6 +874,7 @@ class ConfigWindow:
             "floatball_size": self.floatball_size_var.get(),
             "tray_enabled": self.tray_var.get(),
             "tray_start_minimized": self.tray_min_var.get(),
+            "auto_start": self.autostart_var.get(),
         }
         if updates["rct_default_sample"] in ("（无）", "（样本库为空）"):
             updates["rct_default_sample"] = ""
@@ -886,6 +889,11 @@ class ConfigWindow:
         """
         try:
             updates = self._collect_config()
+            # 开机自启：复制 / 删除启动文件夹快捷方式，失败则中止本次保存
+            ok, msg = autostart.apply(updates["auto_start"])
+            if not ok:
+                messagebox.showerror("开机自启设置失败", msg)
+                return False
             for key, value in updates.items():
                 self.config.set(key, value)
             rctlog.info("配置已保存")

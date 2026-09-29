@@ -98,6 +98,9 @@ class ConfigManager:
             # ── 系统托盘 ──
             "tray_enabled": True,               # 关闭窗口后保留系统托盘
             "tray_start_minimized": False,      # 启动后直接后台驻留托盘
+
+            # ── 开机自启 ──
+            "auto_start": False,                # 开机时自动启动（启动文件夹快捷方式）
         }
 
         if os.path.exists(rct_config_path):
