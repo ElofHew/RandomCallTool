@@ -22,8 +22,9 @@ def get_app():
 
 
 class MainApplication:
-    def __init__(self, root):
+    def __init__(self, root, start_args=None):
         self.root = root
+        self._start_args = start_args
         self.call_tab = None
         _current_app["instance"] = self
         self.create_tabs()
@@ -36,7 +37,7 @@ class MainApplication:
         self.notebook.pack(fill="both", expand=True, padx=5, pady=5)
 
         self.home_tab = HomeTab(self.notebook)
-        self.call_tab = RandomCallTab(self.notebook)
+        self.call_tab = RandomCallTab(self.notebook, self._start_args)
         self.roll_tab = RollCallTab(self.notebook)
 
         self.notebook.add(self.home_tab.frame, text="主页")

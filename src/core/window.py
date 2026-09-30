@@ -13,7 +13,7 @@ from core import islandmq
 from core import tray
 from core import autostart
 from core.notify import notify_result
-from core.info import rct_rcplist_path, rct_version, document_path, rct_history_path
+from core.info import work_path, rct_rcplist_path, rct_version, document_path, rct_history_path
 from core.fileman import (SampleLibrary, SaveResult, base64decode,
                           read_text_file, parse_names, MAX_FILE_BYTES, MAX_NAMES)
 from core.historyman import append as history_append, clear_files as history_clear_files
@@ -1188,8 +1188,9 @@ class RandomCallTab(BaseTab):
     SAMPLE_NAME_FONT = ("Microsoft YaHei", 12)
     SAMPLE_NAME_MAX_WIDTH = 220
 
-    def __init__(self, parent):
+    def __init__(self, parent, start_args=None):
         super().__init__(parent, "随机抽取")
+        self._start_args = start_args
         config = ConfigManager()
         self.mode_var = tk.StringVar(value=config.get("rct_default_mode", "person"))
         self.mode_var.trace_add("write", self._on_mode_changed)
@@ -1243,6 +1244,9 @@ class RandomCallTab(BaseTab):
 
         self._create_widgets()
         self._auto_load_sample()
+        # -file 指定外部文件：启动时自动加载并应用权重
+        if self._start_args is not None and self._start_args.target_files:
+            self._load_start_file()
 
     # ══════════════════════════════════════════════════════════
     #  界面构建
@@ -1729,6 +1733,88 @@ class RandomCallTab(BaseTab):
                 return text[:cut] + "…"
         return "…"
 
+    def _start_args_matches(self):
+        """当前已加载样本是否符合启动参数限定的目标。"""
+        sa = self._start_args
+        if sa is None:
+            return False
+        # 未指定 -lib/-file：全局生效
+        if not sa.target_libs and not sa.target_files:
+            return True
+        if not self.current_file:
+            return False
+        cur = os.path.normpath(self.current_file)
+        # 样本库来源：样本名命中 -lib 列表
+        if os.path.dirname(cur) == os.path.normpath(rct_rcplist_path):
+            stem = os.path.splitext(os.path.basename(cur))[0]
+            return stem in sa.target_libs
+        # 外部文件命中 -file 列表：
+        #   值为纯文件名（无目录）→ 任何路径下同名文件皆命中；
+        #   值带目录（绝对/相对路径）→ 仅匹配该具体文件，
+        #     相对路径基于工作目录解析。
+        base = os.path.basename(cur)
+        for target in sa.target_files:
+            tnorm = os.path.normpath(target)
+            if os.path.basename(tnorm) == tnorm:
+                if base == tnorm:
+                    return True
+            else:
+                if not os.path.isabs(tnorm):
+                    tnorm = os.path.normpath(os.path.join(work_path, target))
+                if cur == tnorm:
+                    return True
+        return False
+
+    def _apply_start_args(self):
+        """按启动参数对当前样本应用自定义权重（仅本次运行，不落盘）。"""
+        sa = self._start_args
+        if sa is None or not sa.has_rules() or not self.names:
+            return
+        if not self._start_args_matches():
+            rctlog.info("[启动参数] 当前样本不是限定目标，跳过权重设置")
+            return
+        applied = []
+        for name, w in sa.weight_sets:
+            if name in self.names:
+                self.sampler.set_weight(name, w)
+                applied.append("%s=%s" % (name, w))
+        if not applied:
+            rctlog.info("[启动参数] 当前样本中没有指定名字，未设置权重")
+            return
+        # 让权重在当前模式下真正生效
+        self.sampler.advanced_config["custom_weights"] = True
+        self.sampler.use_fixed_weights = True
+        if self.sampler.mode == SmartSampler.MODE_BASIC:
+            self.sampler.set_mode(SmartSampler.MODE_ADVANCED)
+            rctlog.info("[启动参数] 基本模式不支持权重，已切换为高级抽样模式")
+        rctlog.info("[启动参数] 已应用自定义权重：" + "，".join(applied))
+
+    def _load_start_file(self):
+        """启动参数 -file：自动加载第一个存在的指定外部文件并应用权重。"""
+        sa = self._start_args
+        loaded = None
+        for target in sa.target_files:
+            path = target
+            if not os.path.isabs(path):
+                cand = os.path.join(work_path, path)
+                if os.path.isfile(cand):
+                    path = cand
+            if os.path.isfile(path):
+                loaded = path
+                break
+        if loaded is None:
+            rctlog.warning("[启动参数] 指定文件均不存在，已跳过自动加载: %s"
+                           % "，".join(sa.target_files))
+            return
+        names, extra = self._load_names_from_file(loaded)
+        if not names:
+            return
+        self.names = names
+        self.current_file = loaded
+        self.sampler.reset_no_replace_pool()
+        self.choice_entry["values"] = list(range(1, len(names) + 1))
+        self._apply_start_args()
+
     def _auto_load_sample(self):
         """自动加载默认样本（从样本库）"""
         config = ConfigManager()
@@ -1746,6 +1832,7 @@ class RandomCallTab(BaseTab):
             mx = len(names)
             self.choice_entry["values"] = list(range(1, mx + 1))
             rctlog.info(f"[随机抽取] 自动加载样本库: {default_name}, 共 {len(names)} 个名字")
+            self._apply_start_args()
 
     # ══════════════════════════════════════════════════════════
     #  文件加载（抽人）
@@ -1832,6 +1919,7 @@ class RandomCallTab(BaseTab):
         if names:
             self.names = names
             self.sampler.reset_no_replace_pool()
+            self._apply_start_args()
             msg = f"已加载 {len(names)} 个名字。"
             if extra:
                 msg += "\n" + "\n".join(extra)
@@ -1863,6 +1951,7 @@ class RandomCallTab(BaseTab):
             if names:
                 self.names = names
                 self.sampler.reset_no_replace_pool()
+                self._apply_start_args()
                 msg = f"已重新加载，共 {len(names)} 个名字。"
                 if extra:
                     msg += "\n" + "\n".join(extra)
@@ -1928,6 +2017,7 @@ class RandomCallTab(BaseTab):
             mx = len(names)
             self.choice_entry["values"] = list(range(1, mx + 1))
             rctlog.info(f"[随机抽取] 从样本库加载: {name}, 共 {len(names)} 个名字")
+            self._apply_start_args()
             messagebox.showinfo("加载成功", f"已加载样本「{name}」，共 {len(names)} 个名字。")
             win.destroy()
         else:
@@ -1951,6 +2041,7 @@ class RandomCallTab(BaseTab):
             mx = len(names)
             self.choice_entry["values"] = list(range(1, mx + 1))
             rctlog.info(f"[随机抽取] 自动加载样本库: {default_name}, 共 {len(names)} 个名字")
+            self._apply_start_args()
             messagebox.showinfo("加载成功", f"已加载默认样本「{default_name}」，共 {len(names)} 个名字。")
         else:
             messagebox.showwarning("默认样本无效", f"默认样本「{default_name}」不存在或内容无效。")

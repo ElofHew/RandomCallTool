@@ -4,6 +4,7 @@ RandomCallTool - 随机抽取工具
 """
 
 import os
+import sys
 import tkinter as tk
 from tkinter import messagebox
 from core.logman import rctlog
@@ -13,7 +14,7 @@ from core.config import ConfigManager
 from core.appfunc import MainApplication
 
 class Main:
-    def __init__(self):
+    def __init__(self, start_args=None):
         self.config = ConfigManager()
         self._force_quit = False
         self.root = tk.Tk()
@@ -25,7 +26,7 @@ class Main:
         self.root.maxsize(1280, 1280)
         self.root.resizable(True, True)
         set_window_icon(self.root, rct_icon_path)
-        self.app = MainApplication(self.root)
+        self.app = MainApplication(self.root, start_args)
         # 创建桌面悬浮球（默认显示，可在配置中关闭）
         try:
             from core import floatball
@@ -136,12 +137,25 @@ def init_dir():
 def main():
     """主入口"""
     init_dir()
+    from core.startargs import parse as parse_start_args
+    start_args = parse_start_args(sys.argv[1:])
+    if start_args.errors:
+        rctlog.warning("启动参数存在问题（异常部分已忽略）: "
+                       + "; ".join(start_args.errors))
     try:
         rctlog.info("=" * 50)
         rctlog.info(f"随机抽取工具 {rct_version} 启动")
         rctlog.info(f"工作目录: {work_path}")
+        if start_args.has_rules():
+            parts = []
+            if start_args.target_libs:
+                parts.append("样本库=" + "、".join(start_args.target_libs))
+            if start_args.target_files:
+                parts.append("外部文件=" + "、".join(start_args.target_files))
+            scope = "；".join(parts) if parts else "全部样本"
+            rctlog.info("启动参数：自定义权重已开启，目标=" + scope)
         rctlog.info("=" * 50)
-        Main()
+        Main(start_args)
         # 主循环结束，释放 IslandMQ 通知使用的 ZeroMQ Context
         try:
             from core import islandmq
