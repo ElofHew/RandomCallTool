@@ -1,5 +1,6 @@
 """UI 窗口模块：配置窗口、选项卡界面和高级抽取界面。"""
 import os
+import math
 from time import strftime
 import tkinter as tk
 import tkinter.font as tkFont
@@ -1658,15 +1659,35 @@ class RandomCallTab(BaseTab):
 
         def save_weights():
             nonlocal _applied
-            self.sampler.use_fixed_weights = use_fixed_var.get()
+            # 先校验全部输入：非数字 / 负数 / nan / inf 均不应用，窗口保持打开
+            parsed = {}
+            bad = []
             for item, var in weight_vars.items():
+                raw = var.get().strip()
                 try:
-                    w = float(var.get().strip())
-                    self.sampler.set_weight(item, w)
+                    w = float(raw)
                 except ValueError:
-                    messagebox.showwarning(
-                        "权重无效", f"「{item}」的权重值不是有效数字，已跳过。")
+                    bad.append((item, "权重值不是有效数字"))
                     continue
+                if not math.isfinite(w):
+                    bad.append((item, "权重不能为 nan/inf 等特殊值"))
+                elif w < 0:
+                    bad.append((item, "权重不能为负数"))
+                else:
+                    parsed[item] = w
+            if bad:
+                lines = "\n".join("「%s」%s" % (it, why) for it, why in bad)
+                messagebox.showwarning(
+                    "权重有误",
+                    "以下权重值不正确，请修改后再应用：\n\n" + lines)
+                first_entry = weight_entries[bad[0][0]]
+                first_entry.focus_set()
+                first_entry.select_range(0, "end")
+                return
+            # 全部合法：写入并关闭
+            self.sampler.use_fixed_weights = use_fixed_var.get()
+            for item, w in parsed.items():
+                self.sampler.set_weight(item, w)
             # 同步高级模式的自定义权重开关
             self.sampler.advanced_config["custom_weights"] = self.sampler.use_fixed_weights
             _applied = True
