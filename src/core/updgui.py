@@ -10,6 +10,18 @@ from core import downloader
 from core import installer
 
 
+# ── 统一字阶（微软雅黑，避免各处默认字体/字号混乱）──
+F_TITLE = ("Microsoft YaHei", 16, "bold")    # 页面大标题
+F_HEADING = ("Microsoft YaHei", 14, "bold")  # 检测中 / 失败标题
+F_SUBHEAD = ("Microsoft YaHei", 12, "bold")  # 下载页标题
+F_BODY = ("Microsoft YaHei", 10)             # 正文 / 单选 / 勾选
+F_BODY_BOLD = ("Microsoft YaHei", 10, "bold")
+F_SMALL = ("Microsoft YaHei", 9)             # 卡片内容
+F_SMALL_BOLD = ("Microsoft YaHei", 9, "bold")
+F_TINY = ("Microsoft YaHei", 8)              # 辅助 / 提示小字
+F_BTN = ("Microsoft YaHei", 10, "bold")      # 按钮文字
+
+
 class UpdateApp:
     """单窗口多页面更新程序"""
 
@@ -24,6 +36,9 @@ class UpdateApp:
         self.root.geometry("460x420+100+100")
         self.root.resizable(False, False)
         self.root.configure(bg="#f0f4ff")
+        # 未显式指定字体的控件也默认使用雅黑
+        self.root.option_add("*Font", F_BODY)
+        self._setup_style()
         self._set_icon()
         self._build_home()
         if self.auto_check:
@@ -36,6 +51,83 @@ class UpdateApp:
                 self.root.iconbitmap(p)
         except Exception:
             pass
+
+    def _setup_style(self):
+        """配置与蓝色主题匹配的 ttk 进度条样式（替代默认绿色）。
+
+        Windows 的 vista 主题把进度条颜色硬编码为绿色，configure 改不动；
+        这里借用 clam 主题可自由着色的进度条元素，仅替换进度条这一个控件。
+        """
+        try:
+            style = ttk.Style()
+            try:
+                style.element_create("Blue.Progressbar.trough", "from", "clam")
+                style.element_create("Blue.Progressbar.pbar", "from", "clam")
+                style.layout("Blue.Horizontal.TProgressbar", [
+                    ("Blue.Progressbar.trough", {
+                        "sticky": "nswe",
+                        "children": [
+                            ("Blue.Progressbar.pbar",
+                             {"side": "left", "sticky": "nswe"}),
+                        ],
+                    }),
+                ])
+            except tk.TclError:
+                pass  # 元素 / 布局已存在（同进程重复初始化时）
+            style.configure(
+                "Blue.Horizontal.TProgressbar",
+                troughcolor="#e2e9f4",
+                background="#4a90d9",
+                bordercolor="#d5deeb",
+                lightcolor="#4a90d9",
+                darkcolor="#4a90d9",
+            )
+        except Exception:
+            pass
+
+    def _primary_btn(self, parent, text, cmd, bg="#4a90d9"):
+        # 主操作按钮：实心扁平（蓝 / 绿）
+        return tk.Button(parent, text=text, command=cmd, font=F_BTN,
+                         bg=bg, fg="white",
+                         activebackground=self._darken(bg),
+                         activeforeground="white",
+                         relief="flat", bd=0, padx=22, pady=6,
+                         cursor="hand2")
+
+    def _secondary_btn(self, parent, text, cmd):
+        # 次要按钮：浅灰蓝扁平（替代灰色 groove）
+        return tk.Button(parent, text=text, command=cmd, font=F_BTN,
+                         bg="#e9eef6", fg="#3c4a5e",
+                         activebackground="#d6dff0",
+                         activeforeground="#2b3b52",
+                         relief="flat", bd=0, padx=22, pady=6,
+                         cursor="hand2")
+
+    def _tiny_btn(self, parent, text, cmd):
+        # 网盘等小按钮：浅色扁平
+        return tk.Button(parent, text=text, command=cmd, font=F_SMALL,
+                         bg="#eef2f8", fg="#3c4a5e",
+                         activebackground="#dde5f1",
+                         activeforeground="#2b3b52",
+                         relief="flat", bd=0, padx=10, pady=2,
+                         cursor="hand2")
+
+    def _make_card(self, parent, **pack_kw):
+        """白色信息卡片（groove 浅边框，与主页卡片同一风格）。"""
+        card = tk.Frame(parent, relief="groove", bd=1, bg="#ffffff",
+                        padx=18, pady=12)
+        card.pack(**pack_kw)
+        return card
+
+    @staticmethod
+    def _card_row(card, label, value):
+        """卡片内的「标签：值」一行。"""
+        row = tk.Frame(card, bg="#ffffff")
+        row.pack(fill="x", pady=3)
+        tk.Label(row, text=label + "：", font=F_SMALL_BOLD,
+                 width=10, anchor="e", bg="#ffffff").pack(side="left")
+        tk.Label(row, text=value, font=F_SMALL, anchor="w",
+                 bg="#ffffff", fg="#333").pack(side="left", padx=5)
 
     def _clear(self):
         for w in self.root.winfo_children():
@@ -50,48 +142,49 @@ class UpdateApp:
         main = tk.Frame(self.root, bg="#f0f4ff")
         main.pack(fill="both", expand=True)
         tk.Label(main, text="随机抽取工具 更新程序",
-                 font=("Microsoft YaHei", 16, "bold"),
-                 fg="#2b5b84", bg="#f0f4ff").pack(pady=(15, 8))
-        card = tk.Frame(main, relief="groove", bd=1, bg="#ffffff", padx=20, pady=12)
-        card.pack(padx=40, pady=(0, 10), fill="x")
+                 font=F_TITLE,
+                 fg="#2b5b84", bg="#f0f4ff").pack(pady=(10, 6))
+        card = tk.Frame(main, relief="groove", bd=1, bg="#ffffff", padx=20, pady=10)
+        card.pack(padx=34, pady=(0, 8), fill="x")
         for label, value in [
             ("当前版本", "v" + updconf.VERSION if updconf.VERSION else "未知"),
             ("版本代码", updconf.VERCODE if updconf.VERCODE else "未知"),
             ("发布日期", updconf.VERDATE if updconf.VERDATE else "未知"),
         ]:
             r = tk.Frame(card, bg="#ffffff")
-            r.pack(fill="x", pady=2)
-            tk.Label(r, text=label + "：", font=("", 9, "bold"),
+            r.pack(fill="x", pady=3)
+            tk.Label(r, text=label + "：", font=F_SMALL_BOLD,
                      width=10, anchor="e", bg="#ffffff").pack(side="left")
-            tk.Label(r, text=value, font=("", 9), anchor="w",
+            tk.Label(r, text=value, font=F_SMALL, anchor="w",
                      bg="#ffffff", fg="#333", wraplength=280).pack(side="left", padx=5)
         sf = tk.Frame(main, bg="#f0f4ff")
-        sf.pack(pady=5)
-        tk.Label(sf, text="更新源：", font=("", 10, "bold"),
+        sf.pack(pady=4)
+        tk.Label(sf, text="更新源：", font=F_BODY_BOLD,
                  bg="#f0f4ff").pack(side="left", padx=(0, 5))
         self._src_var = tk.StringVar(value=self.source)
         for val, name in [("github", "GitHub"), ("gitee", "Gitee")]:
             tk.Radiobutton(sf, text=name, variable=self._src_var, value=val,
-                           bg="#f0f4ff", command=self._on_source_changed).pack(side="left", padx=8)
+                           bg="#f0f4ff", font=F_BODY, selectcolor="#f0f4ff",
+                           activebackground="#f0f4ff",
+                           command=self._on_source_changed).pack(side="left", padx=8)
 
         # 测试版更新选项
         pf = tk.Frame(main, bg="#f0f4ff")
         pf.pack(pady=2)
         self._preview_var = tk.BooleanVar(value=self.accept_preview)
         tk.Checkbutton(pf, text="接收测试版更新",
-                       variable=self._preview_var, bg="#f0f4ff",
+                       variable=self._preview_var, bg="#f0f4ff", font=F_BODY,
+                       selectcolor="#f0f4ff", activebackground="#f0f4ff",
                        command=self._on_preview_changed).pack()
 
         bf = tk.Frame(main, bg="#f0f4ff")
-        bf.pack(pady=12)
-        tk.Button(bf, text="  检测更新  ", command=self._start_check,
-                  font=("", 11, "bold"), bg="#4a90d9", fg="white",
-                  activebackground="#357abd", activeforeground="white",
-                  relief="flat", bd=0, padx=24, pady=6, cursor="hand2").pack(side="left", padx=6)
-        tk.Button(bf, text="  退出  ", command=self.root.destroy,
-                  font=("", 11), relief="groove", bd=1, padx=24, pady=5).pack(side="left", padx=6)
+        bf.pack(pady=8)
+        self._primary_btn(bf, "  检测更新  ", self._start_check,
+                          "#4a90d9").pack(side="left", padx=6)
+        self._secondary_btn(bf, "  退出  ", self.root.destroy
+                            ).pack(side="left", padx=6)
         tk.Label(main, text="从配置的源检测新版本，下载安装包后自动完成更新。",
-                 font=("", 8), fg="gray", bg="#f0f4ff").pack(side="bottom", pady=10)
+                 font=F_TINY, fg="gray", bg="#f0f4ff").pack(side="bottom", pady=8)
 
     def _on_source_changed(self):
         self.source = self._src_var.get()
@@ -109,18 +202,25 @@ class UpdateApp:
         self._clear()
         main = tk.Frame(self.root, bg="#f0f4ff")
         main.pack(fill="both", expand=True)
-        tk.Label(main, text="正在检测更新…",
-                 font=("Microsoft YaHei", 14, "bold"),
-                 fg="#2b5b84", bg="#f0f4ff").pack(pady=(30, 10))
-        tk.Label(main, text="正在从 " + updconf.SOURCE_NAMES.get(self.source, self.source) + " 获取版本信息\u2026",
-                 font=("", 10), fg="#555", bg="#f0f4ff").pack(pady=5)
-        self._progress = ttk.Progressbar(main, mode="indeterminate", length=300)
-        self._progress.pack(pady=10)
+
+        # 内容区整体垂直居中，避免返回按钮沉底、中部空洞
+        holder = tk.Frame(main, bg="#f0f4ff")
+        holder.pack(expand=True)
+        tk.Label(holder, text="正在检测更新…",
+                 font=F_HEADING,
+                 fg="#2b5b84", bg="#f0f4ff").pack(pady=(0, 10))
+        tk.Label(holder, text="正在从 " + updconf.SOURCE_NAMES.get(self.source, self.source) + " 获取版本信息\u2026",
+                 font=F_BODY, fg="#555", bg="#f0f4ff").pack(pady=5)
+        self._progress = ttk.Progressbar(holder, mode="indeterminate",
+                                         length=300,
+                                         style="Blue.Horizontal.TProgressbar")
+        self._progress.pack(pady=12)
         self._progress.start(10)
-        self._status_label = tk.Label(main, text="", font=("", 9),
-                                       fg="gray", bg="#f0f4ff", wraplength=380)
+        self._status_label = tk.Label(holder, text="", font=F_SMALL,
+                                      fg="gray", bg="#f0f4ff", wraplength=380)
         self._status_label.pack()
-        self._back_or_close().pack(pady=15)
+
+        self._back_or_close().pack(side="bottom", pady=16)
 
     def _start_check(self):
         self._build_checking()
@@ -140,34 +240,40 @@ class UpdateApp:
         main = tk.Frame(self.root, bg="#f0f4ff")
         main.pack(fill="both", expand=True)
         if not result["success"]:
-            tk.Label(main, text="检测失败", font=("", 14, "bold"),
-                     fg="red", bg="#f0f4ff").pack(pady=(30, 10))
-            tk.Label(main, text="无法获取更新信息。\n\n" + (result["error"] or ""),
-                     font=("", 10), fg="#555", bg="#f0f4ff", justify="center").pack(pady=10)
-            self._back_or_close().pack(pady=15)
+            tk.Label(main, text="检测失败", font=F_HEADING,
+                     fg="#c0392b", bg="#f0f4ff").pack(pady=(32, 12))
+            card = self._make_card(main, padx=34, fill="x")
+            tk.Label(card, text="无法获取更新信息。", font=F_BODY_BOLD,
+                     bg="#ffffff", fg="#333").pack(anchor="w")
+            tk.Label(card, text=result["error"] or "未知错误",
+                     font=F_SMALL, fg="#666", bg="#ffffff",
+                     justify="left", wraplength=350).pack(anchor="w",
+                                                          pady=(6, 0))
+            self._back_or_close().pack(pady=20)
             return
         if result["has_update"]:
             # 仅当所选新版本确实来自测试版时才提示测试版
             is_preview = bool(result.get("is_preview"))
             label_text = "发现新版本（测试版）" if is_preview else "发现新版本"
-            tk.Label(main, text=label_text, font=("", 16, "bold"),
-                     fg="green", bg="#f0f4ff").pack(pady=(20, 5))
-            info_text = ("当前版本：v" + result["local_version"] + "\n"
-                         "最新版本：v" + result["remote_version"] + "（" + result["remote_date"] + "）\n"
-                         "更新源：" + result["source_name"])
+            tk.Label(main, text=label_text, font=F_TITLE,
+                     fg="#28a745", bg="#f0f4ff").pack(pady=(20, 8))
+
+            # 版本对比信息以白色卡片承载，与主页风格呼应
+            card = self._make_card(main, padx=34, fill="x")
+            self._card_row(card, "当前版本", "v" + result["local_version"])
+            self._card_row(card, "最新版本",
+                           "v" + result["remote_version"] + "（" + result["remote_date"] + "）")
+            self._card_row(card, "更新源", result["source_name"])
             if is_preview:
-                info_text += "\n类型：测试版更新"
-            tk.Label(main, text=info_text,
-                     font=("", 10), fg="#333", bg="#f0f4ff", justify="center").pack(pady=10)
+                self._card_row(card, "类型", "测试版更新")
+
             bf = tk.Frame(main, bg="#f0f4ff")
-            bf.pack(pady=10)
+            bf.pack(pady=(12, 6))
             for text, cmd, bg in [
                 ("  直接下载（推荐）  ", self._start_download, "#4a90d9"),
                 ("  前往官网下载  ", lambda: webbrowser.open(updconf.OFFICIAL_URL), "#28a745"),
             ]:
-                tk.Button(bf, text=text, command=cmd, font=("", 10), bg=bg, fg="white",
-                          activebackground=self._darken(bg), activeforeground="white",
-                          relief="flat", bd=0, padx=14, pady=4, cursor="hand2").pack(side="left", padx=5)
+                self._primary_btn(bf, text, cmd, bg).pack(side="left", padx=5)
 
             # 备用网盘下载（metadata 提供时显示）
             netdisks = []
@@ -177,25 +283,27 @@ class UpdateApp:
                 netdisks.append(("蓝奏云", result["lanzou_url"]))
             if netdisks:
                 nf = tk.Frame(main, bg="#f0f4ff")
-                nf.pack(pady=(4, 0))
-                tk.Label(nf, text="备用下载：", font=("", 9), fg="#777",
+                nf.pack(pady=(8, 0))
+                tk.Label(nf, text="备用下载：", font=F_SMALL, fg="#777",
                          bg="#f0f4ff").pack(side="left")
                 for name, url in netdisks:
-                    tk.Button(nf, text=name, font=("", 9), cursor="hand2",
-                              relief="groove", bd=1,
-                              command=lambda u=url: webbrowser.open(u)).pack(side="left", padx=4)
+                    self._tiny_btn(nf, name,
+                                   lambda u=url: webbrowser.open(u)
+                                   ).pack(side="left", padx=4)
                 if result.get("lanzou_url") and result.get("lanzou_password"):
                     tk.Label(main, text="蓝奏云提取码：" + result["lanzou_password"],
-                             font=("", 8), fg="#999", bg="#f0f4ff").pack(pady=(0, 2))
+                             font=F_TINY, fg="#999", bg="#f0f4ff").pack(pady=(0, 2))
             self._back_or_close().pack(pady=8)
         else:
-            tk.Label(main, text="已是最新版本", font=("", 16, "bold"),
-                     fg="blue", bg="#f0f4ff").pack(pady=(30, 10))
-            tk.Label(main, text="当前版本：v" + result["local_version"] + "\n"
-                                "远程版本：v" + result["remote_version"] + "（" + result["remote_date"] + "）\n\n"
-                                "暂无可用更新。",
-                     font=("", 10), fg="#555", bg="#f0f4ff", justify="center").pack(pady=10)
-            self._back_or_close().pack(pady=15)
+            tk.Label(main, text="已是最新版本", font=F_TITLE,
+                     fg="#2b5b84", bg="#f0f4ff").pack(pady=(32, 12))
+            card = self._make_card(main, padx=34, fill="x")
+            self._card_row(card, "当前版本", "v" + result["local_version"])
+            self._card_row(card, "远程版本",
+                           "v" + result["remote_version"] + "（" + result["remote_date"] + "）")
+            tk.Label(main, text="暂无可用更新。",
+                     font=F_BODY, fg="#555", bg="#f0f4ff").pack(pady=10)
+            self._back_or_close().pack(pady=12)
 
     # ==============================
     #  下载页面
@@ -264,23 +372,32 @@ class UpdateApp:
         main = tk.Frame(self.root, bg="#f0f4ff")
         main.pack(fill="both", expand=True, padx=20, pady=15)
         tk.Label(main, text="正在下载更新包…",
-                 font=("Microsoft YaHei", 12, "bold"),
+                 font=F_SUBHEAD,
                  fg="#2b5b84", bg="#f0f4ff").pack(anchor="w")
         tk.Label(main, text="受网络状况影响，下载期间界面可能短暂无响应，请耐心等待。",
-                 font=("", 8), fg="#888", bg="#f0f4ff").pack(anchor="w", pady=(0, 5))
-        self._dl_info = tk.Label(main, text="", font=("", 9), fg="#555",
-                                  bg="#f0f4ff", anchor="w", justify="left")
-        self._dl_info.pack(fill="x", pady=5)
-        self._dl_bar = ttk.Progressbar(main, mode="determinate", length=400)
-        self._dl_bar.pack(fill="x", pady=5)
-        self._dl_pct = tk.Label(main, text="0%", font=("", 10, "bold"), fg="#333", bg="#f0f4ff")
-        self._dl_pct.pack()
-        self._dl_size = tk.Label(main, text="", font=("", 8), fg="gray", bg="#f0f4ff")
-        self._dl_size.pack()
+                 font=F_TINY, fg="#888", bg="#f0f4ff").pack(anchor="w",
+                                                             pady=(2, 10))
+
+        # 下载信息聚合到白色卡片，与其它页面风格一致
+        card = self._make_card(main, fill="x", padx=0, pady=0)
+        self._dl_info = tk.Label(card, text="", font=F_SMALL, fg="#555",
+                                 bg="#ffffff", anchor="w", justify="left")
+        self._dl_info.pack(fill="x")
+        self._dl_bar = ttk.Progressbar(card, mode="determinate",
+                                       style="Blue.Horizontal.TProgressbar")
+        self._dl_bar.pack(fill="x", pady=8)
+        pr = tk.Frame(card, bg="#ffffff")
+        pr.pack(fill="x")
+        self._dl_size = tk.Label(pr, text="", font=F_TINY, fg="gray",
+                                 bg="#ffffff")
+        self._dl_size.pack(side="left")
+        self._dl_pct = tk.Label(pr, text="0%", font=F_BODY_BOLD,
+                                fg="#333", bg="#ffffff")
+        self._dl_pct.pack(side="right")
+
         br = tk.Frame(main, bg="#f0f4ff")
-        br.pack(fill="x", pady=(10, 0))
-        self._dl_btn = tk.Button(br, text="  取消下载  ", command=self._cancel_download,
-                                  relief="groove", bd=1, padx=10)
+        br.pack(fill="x", pady=(12, 0))
+        self._dl_btn = self._secondary_btn(br, "  取消下载  ", self._cancel_download)
         self._dl_btn.pack(side="right")
 
     def _cancel_download(self):
@@ -334,9 +451,8 @@ class UpdateApp:
     #  工具
     # ==============================
 
-    @staticmethod
-    def _btn(text, cmd):
-        return tk.Button(text=text, command=cmd, relief="groove", bd=1, padx=15, pady=3)
+    def _btn(self, text, cmd):
+        return self._secondary_btn(self.root, text, cmd)
 
     def _back_or_close(self):
         """返回主页 或 关闭程序（auto_check 模式）"""
