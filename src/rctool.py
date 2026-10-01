@@ -137,8 +137,12 @@ def init_dir():
 def main():
     """主入口"""
     init_dir()
-    from core.startargs import parse as parse_start_args
-    start_args = parse_start_args(sys.argv[1:])
+    from core.startargs import parse as parse_start_args, StartArgs
+    if ConfigManager().get("parse_start_args", True):
+        start_args = parse_start_args(sys.argv[1:])
+    else:
+        start_args = StartArgs()
+        rctlog.info("已按配置跳过启动参数解析，全部启动参数被忽略")
     if start_args.errors:
         rctlog.warning("启动参数存在问题（异常部分已忽略）: "
                        + "; ".join(start_args.errors))

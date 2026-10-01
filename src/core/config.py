@@ -101,6 +101,10 @@ class ConfigManager:
 
             # ── 开机自启 ──
             "auto_start": False,                # 开机时自动启动（启动文件夹快捷方式）
+
+            # ── 高级设置 ──
+            "shortcuts_enabled": True,          # 是否启用全局快捷键
+            "parse_start_args": True,           # 启动时是否解析命令行参数
         }
 
         if os.path.exists(rct_config_path):

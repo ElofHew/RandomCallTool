@@ -103,8 +103,8 @@ class ConfigWindow:
         self._create_general_tab(notebook)
         self._create_sampling_tab(notebook)
         self._create_sample_mgr_tab(notebook)
-        self._create_notify_tab(notebook)
         self._create_floatball_tab(notebook)
+        self._create_advanced_tab(notebook)
         self._create_update_tab(notebook)
 
         self.window.protocol("WM_DELETE_WINDOW", self._prompt_close)
@@ -521,7 +521,7 @@ class ConfigWindow:
         self._refresh_sample_list()
         messagebox.showinfo("删除成功", f"样本「{name}」已删除。")
 
-    # 抽取后提醒
+    # 抽取后提醒（位于「高级」选项卡）
 
     @staticmethod
     def _parse_duration(value, default):
@@ -532,13 +532,12 @@ class ConfigWindow:
             return default
         return round(seconds, 1) if seconds > 0 else default
 
-    def _create_notify_tab(self, notebook):
-        tab = self._make_tab(notebook, "提醒")
+    def _create_notify_section(self, tab):
         pad = {"padx": 15}
 
         # ── 提醒方式 ──
         f1 = tk.Frame(tab)
-        f1.pack(fill="x", **pad, pady=(15, 2))
+        f1.pack(fill="x", **pad, pady=(2, 2))
         tk.Label(f1, text="提醒方式：", width=15, anchor="w").pack(side="left")
         self.notify_mode_var = tk.StringVar(
             value=str(self.config.get("notify_mode", "popup")))
@@ -769,7 +768,7 @@ class ConfigWindow:
     # 更新设置
 
     def _create_update_tab(self, notebook):
-        tab = self._make_tab(notebook, "更新")
+        tab = self._make_tab(notebook, "更新设置")
         pad = {"padx": 15}
 
         # 更新源选择
@@ -844,6 +843,29 @@ class ConfigWindow:
         if not success:
             messagebox.showerror("启动失败", "无法启动更新程序，请手动前往官网下载最新版本。")
 
+    # 高级设置
+
+    def _create_advanced_tab(self, notebook):
+        tab = self._make_tab(notebook, "高级设置")
+        pad = {"padx": 15, "pady": 4}
+
+        # 启用快捷键
+        self.shortcuts_var = tk.BooleanVar(
+            value=self.config.get("shortcuts_enabled", True))
+        tk.Checkbutton(tab, text="启用快捷键",
+                       variable=self.shortcuts_var).pack(anchor="w", padx=15, pady=(15, 4))
+
+        # 启动时解析参数
+        self.parse_args_var = tk.BooleanVar(
+            value=self.config.get("parse_start_args", True))
+        tk.Checkbutton(tab, text="启动时解析参数",
+                       variable=self.parse_args_var).pack(anchor="w", **pad)
+
+        # ── 抽取后提醒 ──
+        ttk.Separator(tab, orient="horizontal").pack(fill="x", padx=15, pady=8)
+
+        self._create_notify_section(tab)
+
     # ── 保存（纯逻辑，不涉及 UI 弹窗）──────────────
 
     def _collect_config(self):
@@ -876,6 +898,8 @@ class ConfigWindow:
             "tray_enabled": self.tray_var.get(),
             "tray_start_minimized": self.tray_min_var.get(),
             "auto_start": self.autostart_var.get(),
+            "shortcuts_enabled": self.shortcuts_var.get(),
+            "parse_start_args": self.parse_args_var.get(),
         }
         if updates["rct_default_sample"] in ("（无）", "（样本库为空）"):
             updates["rct_default_sample"] = ""
@@ -909,6 +933,14 @@ class ConfigWindow:
                 tray.refresh()
             except Exception as e:
                 rctlog.warning(f"刷新托盘状态失败: {e}")
+            # 按快捷键开关启用 / 停用全局快捷键
+            try:
+                from core.appfunc import get_app
+                app = get_app()
+                if app is not None:
+                    app.refresh_shortcuts()
+            except Exception as e:
+                rctlog.warning(f"刷新快捷键状态失败: {e}")
             return True
         except Exception as e:
             rctlog.error(f"保存配置失败: {e}")

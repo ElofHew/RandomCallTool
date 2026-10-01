@@ -8,6 +8,7 @@ from core.platutils import run_process
 from core.dialog import load_about_info, ask_string
 from core.info import work_path, rct_log_path, rct_appname, rct_version, official_website, rct_icon_path
 from core.logman import rctlog
+from core.config import ConfigManager
 from core.fileman import FileManager, SampleLibrary
 from core.window import HomeTab, RandomCallTab, ConfigWindow, AboutWindow
 from core.rollcall import RollCallTab
@@ -102,23 +103,38 @@ class MainApplication:
                     menu.add_command(label=item_text, command=command)
 
     def _bind_shortcuts(self):
-        """绑定全局快捷键。"""
+        """绑定全局快捷键（按配置开关决定启用或停用）。"""
         ct = self.call_tab  # 简写引用
 
-        self.root.bind("<Control-o>", lambda e: ct.load_names() if ct else None)
-        self.root.bind("<Control-Shift-O>", lambda e: ct.load_from_library() if ct else None)
-        self.root.bind("<Control-r>", lambda e: ct.reload_current_file() if ct else None)
-        self.root.bind("<Control-d>", lambda e: ct.auto_load_file() if ct else None)
-        self.root.bind("<Control-Return>", lambda e: ct.draw() if ct else None)
-        self.root.bind("<Control-s>", lambda e: ct.save_current_result() if ct else None)
-        self.root.bind("<Control-Shift-S>", lambda e: ct.batch_save_all() if ct else None)
-        self.root.bind("<Control-w>", lambda e: ct.clear_all_history() if ct else None)
-        self.root.bind("<Control-Shift-R>", lambda e: ct.reset_sampler_history() if ct else None)
-        self.root.bind("<Control-comma>", lambda e: self.open_config_window())
-        self.root.bind("<Control-i>", lambda e: ApplicationFunctions.import_sample(self.root))
-        self.root.bind("<Control-t>", lambda e: self.notebook.select(ct.frame) if ct else None)
-        self.root.bind("<Control-p>", lambda e: self.notebook.select(self.roll_tab.frame) if self.roll_tab else None)
-        self.root.bind("<Control-l>", lambda e: FileManager.open_log_file())
+        self._shortcuts = {
+            "<Control-o>": lambda e: ct.load_names() if ct else None,
+            "<Control-Shift-O>": lambda e: ct.load_from_library() if ct else None,
+            "<Control-r>": lambda e: ct.reload_current_file() if ct else None,
+            "<Control-d>": lambda e: ct.auto_load_file() if ct else None,
+            "<Control-Return>": lambda e: ct.draw() if ct else None,
+            "<Control-s>": lambda e: ct.save_current_result() if ct else None,
+            "<Control-Shift-S>": lambda e: ct.batch_save_all() if ct else None,
+            "<Control-w>": lambda e: ct.clear_all_history() if ct else None,
+            "<Control-Shift-R>": lambda e: ct.reset_sampler_history() if ct else None,
+            "<Control-comma>": lambda e: self.open_config_window(),
+            "<Control-i>": lambda e: ApplicationFunctions.import_sample(self.root),
+            "<Control-t>": lambda e: self.notebook.select(ct.frame) if ct else None,
+            "<Control-p>": lambda e: self.notebook.select(self.roll_tab.frame) if self.roll_tab else None,
+            "<Control-l>": lambda e: FileManager.open_log_file(),
+        }
+        self.refresh_shortcuts()
+
+    def refresh_shortcuts(self):
+        """按配置启用 / 停用全部全局快捷键。"""
+        if not hasattr(self, "_shortcuts"):
+            return
+        enabled = bool(ConfigManager().get("shortcuts_enabled", True))
+        for seq, handler in self._shortcuts.items():
+            if enabled:
+                self.root.bind(seq, handler)
+            else:
+                self.root.unbind(seq)
+        rctlog.info(f"全局快捷键已{'启用' if enabled else '停用'}")
 
     def open_config_window(self):
         """打开配置窗口"""
