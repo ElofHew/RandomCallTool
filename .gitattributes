@@ -6,7 +6,6 @@
 .gitmodules text eol=crlf
 
 # RandomCallTool Resources Files
-*.restxt text eol=crlf
 *.tpt text eol=crlf
 
 # Python files
@@ -43,12 +42,8 @@
 *.php text eol=crlf
 
 # Scripts files
-*.sh text eol=crlf
 *.bat text eol=crlf
 *.ps1 text eol=crlf
-
-# log files
-*.log text eol=crlf
 
 # toml files
 *.toml text eol=crlf
