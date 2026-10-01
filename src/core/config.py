@@ -22,26 +22,26 @@ class ConfigManager:
         """加载配置文件，缺失项用默认值补充"""
         default_config = {
             # ── 基本设置 ──
-            "result_path": 0,             # 结果保存位置: 0=数据目录, 1=桌面
-            "save_result": True,           # 是否自动保存抽取结果
+            "result_path": 0,              # 结果保存位置: 0=数据目录, 1=桌面
+            "save_result": False,          # 是否自动保存抽取结果
             "auto_load_sample": True,      # 启动时自动加载默认样本
             "max_history_items": 10,       # 历史记录最大条数
-            "history_file_enabled": True,   # 是否把抽取历史实时写入本地文件
+            "history_file_enabled": True,  # 是否把抽取历史实时写入本地文件
 
             # ── 抽组默认值 ──
             "rct_group_total": 9,          # 抽取 - 默认总组数
 
             # ── 抽人默认值 ──
             "rct_merge_names": True,       # 加载名单时自动合并重复名字
-            "rct_default_sample": "",     # 默认加载的样本名称
+            "rct_default_sample": "",      # 默认加载的样本名称
 
             # ── 抽取默认值 ──
             "rct_choice_default": 3,       # 抽取 - 默认选取数量（抽组/抽人公用）
-            "rct_default_mode": "person",  # 默认抽取方式: person=抽人, group=抽组
+            "rct_default_mode": "group",   # 默认抽取方式: person=抽人, group=抽组
 
             # ── 抽样设置 ──
             "sampler_mode": 1,             # 抽样模式: 0=基本, 1=智能, 2=高级
-            "smart_window": 3,             # 智能模式的记忆次数
+            "smart_window": 10,            # 智能模式的记忆次数
             "smart_use_fixed_weights": False,  # 智能模式是否使用固定权重
 
             # ── 高级抽取设置 ──
@@ -52,7 +52,7 @@ class ConfigManager:
             "adv_shuffle_count": 1,              # 打乱次数 (1~10)
             "adv_shuffle_frequency": "each",     # 打乱频率: each=每次, once=仅启动时
             "adv_pre_draw_balance": False,       # 预抽取平衡
-            "adv_pre_draw_count": 1,             # 预抽取次数 (1~10)
+            "adv_pre_draw_count": 3,             # 预抽取次数 (1~10)
             "adv_pre_draw_frequency": "each",    # 预抽取频率: each=每次, once=仅启动时
             "adv_multi_draw_best": False,        # 多次取最值
             "adv_multi_draw_count": 3,           # 多次抽取次数 (2+)
@@ -65,7 +65,7 @@ class ConfigManager:
             "adv_custom_weights": False,         # 高级模式自定义权重
 
             # ── 更新设置 ──
-            "update_source": "github",          # 版本更新源: github/gitee
+            "update_source": "gitee",           # 版本更新源: github/gitee
             "auto_check_update": True,          # 启动时自动检测更新
             "accept_preview_update": False,     # 是否接收测试版更新
 
@@ -89,7 +89,7 @@ class ConfigManager:
 
             # ── 桌面悬浮球 ──
             "floatball_enabled": True,          # 是否显示桌面悬浮球
-            "floatball_size": "medium",        # 悬浮球尺寸: small/medium/large
+            "floatball_size": "medium",         # 悬浮球尺寸: small/medium/large
             "floatball_x": None,                # 悬浮球 X 坐标（None 时用默认位置）
             "floatball_y": None,                # 悬浮球 Y 坐标（None 时用默认位置）
             "floatball_kind": "person",         # 悬浮球快捷抽取类型: person/group_letter/group_number
