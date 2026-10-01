@@ -105,6 +105,9 @@ class ConfigManager:
             # ── 高级设置 ──
             "shortcuts_enabled": True,          # 是否启用全局快捷键
             "parse_start_args": True,           # 启动时是否解析命令行参数
+
+            # ── 新手引导 ──
+            "welcome_guide": True,      # 是否显示新手引导
         }
 
         if os.path.exists(rct_config_path):

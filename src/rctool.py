@@ -5,10 +5,11 @@ RandomCallTool - 随机抽取工具
 
 import os
 import sys
+import webbrowser
 import tkinter as tk
 from tkinter import messagebox
 from core.logman import rctlog
-from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path, rct_history_path, rct_icon_path
+from core.info import work_path, rct_version, rct_prog_data_path, rct_result_path, rct_log_path, rct_cache_path, rct_history_path, rct_icon_path, official_website
 from core.platutils import set_window_icon
 from core.config import ConfigManager
 from core.appfunc import MainApplication
@@ -46,6 +47,8 @@ class Main:
         except Exception as e:
             rctlog.warning(f"创建系统托盘失败: {e}")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        # 启动后延迟执行新手帮助文档提醒
+        self.root.after(1000, self._show_docs_reminder)
         # 启动后延迟执行自动检测更新
         self.root.after(1500, self._auto_check_update)
         # 决定是否显示主界面：只有托盘已就绪且配置为后台启动才保持隐藏
@@ -99,6 +102,20 @@ class Main:
             t.start()
         except Exception as e:
             rctlog.warning(f"自动检测更新失败（静默）: {e}")
+
+    def _show_docs_reminder(self):
+        """启动后按配置提醒查阅官网文档"""
+        if not self.config.get("welcome_guide", True):
+            return
+        if messagebox.askyesno(
+            "欢迎使用",
+            "欢迎使用随机抽取工具！\n\n"
+            "建议浏览官网文档，了解本程序的使用和配置。\n"
+            "是否现在打开？",
+            parent=self.root,
+        ):
+            webbrowser.open(f"{official_website}/docs/")
+            ConfigManager().set("welcome_guide", False)
 
     def _show_update_prompt(self, source, accept_preview=False):
         """检测到新版本时弹窗"""
