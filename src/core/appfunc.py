@@ -254,12 +254,22 @@ class ApplicationFunctions:
         if messagebox.askyesno("清除日志",
                                "确定要清除历史日志文件吗？\n\n今天的日志会保留。"):
             try:
+                keep = f"{rct_appname}.log"          # 当前活动日志，保留
+                prefix = f"{rct_appname}."           # 归档日志前缀，如 RandomCallTool.
+                removed = []
+
                 for file in os.listdir(rct_log_path):
-                    if file == f"{rct_appname}-{strftime('%Y-%m-%d')}.log" or file == f"{strftime('%Y-%m-%d')}.log":
+                    if file == keep:
                         continue
-                    if file.endswith('.log'):
-                        os.remove(os.path.join(rct_log_path, file))
-                rctlog.info("日志文件已清除")
+                    # 只处理本程序的归档日志：<appname>.<date>.log
+                    if file.startswith(prefix) and file.endswith(".log"):
+                        try:
+                            os.remove(os.path.join(rct_log_path, file))
+                            removed.append(file)
+                        except OSError as e:
+                            rctlog.warning(f"删除日志文件失败：{file} - {e}")
+
+                rctlog.info(f"日志文件已清除，共删除 {len(removed)} 个归档文件")
                 messagebox.showinfo("清除成功", "历史日志文件已清除。")
                 return True
             except Exception as e:
