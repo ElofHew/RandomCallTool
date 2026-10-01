@@ -1,0 +1,42 @@
+title: "使用问题："
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提问前可以先查看 [官网文档](https://rct.danevan.top/docs/) 和现有讨论。
+        请勿发布包含个人名单、隐私信息或敏感数据的文件和截图。
+  - type: textarea
+    id: question
+    attributes:
+      label: 你的问题
+      description: 说明你想完成什么，以及具体卡在哪里。
+      placeholder: 尽量描述目标、当前结果和预期结果。
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: 已尝试的操作
+      description: 列出你已经尝试过的步骤，便于其他人定位问题。
+    validations:
+      required: false
+  - type: input
+    id: app-version
+    attributes:
+      label: 程序版本
+      placeholder: 例如：2.7.1.1
+    validations:
+      required: false
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: 操作系统
+      options:
+        - Windows 11
+        - Windows 10
+        - 其他 Windows 版本
+        - Linux
+        - macOS
+        - 其他
+    validations:
+      required: false

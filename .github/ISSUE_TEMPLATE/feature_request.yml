@@ -1,0 +1,38 @@
+name: 功能建议
+description: 提出能改善随机抽取、随机点名或日常使用体验的想法。
+title: "[功能建议] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢分享想法。提交前请先搜索现有 Issue 和 Discussions，看看是否已有相同建议。
+  - type: checkboxes
+    id: existing-suggestions
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索现有 Issue 和 Discussions，未发现相同建议。
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决的问题
+      description: 描述当前流程中遇到的不便，以及受影响的使用场景。
+      placeholder: 在什么情况下，现有功能无法满足需要？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的改进
+      description: 说明你希望程序如何改进；也可以附上示例或草图。
+      placeholder: 描述理想的操作方式或结果。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 已尝试的替代方案
+      description: 如果有其他操作方式或临时解决办法，请在此说明。
+    validations:
+      required: false

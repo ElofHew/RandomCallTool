@@ -1,0 +1,20 @@
+title: "想法："
+body:
+  - type: markdown
+    attributes:
+      value: |
+        欢迎分享使用体验、工作流和改进想法。若建议明确指向某项新功能，也可以使用仓库中的「功能建议」Issue 表单。
+  - type: textarea
+    id: idea
+    attributes:
+      label: 想法或主题
+      description: 简要介绍你想讨论的内容。
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: 使用场景与背景
+      description: 说明这个想法来自什么场景，或它能带来什么帮助。
+    validations:
+      required: false

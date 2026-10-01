@@ -1,0 +1,65 @@
+name: 故障反馈
+description: 报告程序崩溃、功能异常或与预期不符的问题。
+title: "[故障] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。提交前请先搜索现有 Issue，确认问题尚未被报告。
+        请勿在公开内容中粘贴个人名单、隐私信息或敏感数据。
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索现有 Issue，未发现相同问题。
+          required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 请说明发生了什么，以及你原本预期发生什么。
+      placeholder: 描述实际结果和预期结果。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 按顺序列出触发问题的操作；如果问题无法稳定复现，也请说明。
+      placeholder: |
+        1. 打开……
+        2. 选择……
+        3. 点击……
+        4. 观察到……
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: 程序版本
+      description: 可在程序的关于信息中查看；无法启动时填写“无法启动”。
+      placeholder: 例如：2.7.1.1
+    validations:
+      required: true
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: 操作系统
+      options:
+        - Windows 11
+        - Windows 10
+        - 其他 Windows 版本
+        - Linux
+        - macOS
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或补充信息
+      description: 可粘贴相关报错、日志片段或截图；请先移除个人信息和敏感内容。
+      placeholder: 如果没有可补充的信息，请留空。
+    validations:
+      required: false

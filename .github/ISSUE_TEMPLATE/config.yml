@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用问题与交流
+    url: https://github.com/ElofHew/RandomCallTool/discussions
+    about: 使用咨询、经验交流和功能想法请优先发布到 Discussions。
+  - name: 使用文档
+    url: https://rct.danevan.top/docs/
+    about: 查看功能说明、配置方法和更新日志。
+  - name: Gitee 问题反馈
+    url: https://gitee.com/ElofHew/RandomCallTool/issues
+    about: 如果 GitHub 访问不便，可在 Gitee 提交问题。
