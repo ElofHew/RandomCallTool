@@ -128,7 +128,7 @@ class ConfigWindow:
         self.save_result_var = tk.BooleanVar(
             value=self.config.get("save_result", True))
         tk.Checkbutton(tab, text="自动保存抽取结果",
-                       variable=self.save_result_var).pack(anchor="w", **pad)
+                       variable=self.save_result_var).pack(anchor="w", padx=15, pady=(10, 4))
 
         # 结果保存位置
         f1 = tk.Frame(tab)
@@ -203,7 +203,7 @@ class ConfigWindow:
 
         # ── 抽样模式 ──
         f1 = tk.Frame(tab)
-        f1.pack(fill="x", **pad, pady=(15, 4))
+        f1.pack(fill="x", **pad, pady=(10, 4))
         tk.Label(f1, text="抽样模式：", width=15, anchor="w").pack(side="left")
         self.sampler_mode_var = tk.IntVar(
             value=self.config.get("sampler_mode", 1))
@@ -711,7 +711,7 @@ class ConfigWindow:
         pad = {"padx": 15, "pady": 4}
 
         tk.Label(tab, text="桌面悬浮球",
-                 font=("", 10, "bold"), fg="#2b5b84").pack(anchor="w", **pad)
+                 font=("", 10, "bold"), fg="#2b5b84").pack(anchor="w", padx=15, pady=(10, 4))
 
         self.floatball_var = tk.BooleanVar(
             value=self.config.get("floatball_enabled", True))
@@ -773,7 +773,7 @@ class ConfigWindow:
 
         # 更新源选择
         f1 = tk.Frame(tab)
-        f1.pack(fill="x", **pad, pady=(15, 4))
+        f1.pack(fill="x", **pad, pady=(10, 4))
         tk.Label(f1, text="版本更新源：", width=15, anchor="w").pack(side="left")
         self.update_source_var = tk.StringVar(
             value=self.config.get("update_source", "github"))
@@ -852,8 +852,8 @@ class ConfigWindow:
         # 启用快捷键
         self.shortcuts_var = tk.BooleanVar(
             value=self.config.get("shortcuts_enabled", True))
-        tk.Checkbutton(tab, text="启用快捷键",
-                       variable=self.shortcuts_var).pack(anchor="w", padx=15, pady=(15, 4))
+        tk.Checkbutton(tab, text="启用快捷键支持",
+                       variable=self.shortcuts_var).pack(anchor="w", padx=15, pady=(10, 4))
 
         # 启动时解析参数
         self.parse_args_var = tk.BooleanVar(
