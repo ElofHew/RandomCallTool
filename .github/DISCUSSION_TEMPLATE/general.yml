@@ -3,12 +3,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        欢迎交流随机抽取工具的使用经验、工作流或相关话题。
+        欢迎交流随机抽取工具的使用经验，或相关话题。
         请保持友善，并避免分享个人名单、隐私信息或敏感数据。
   - type: textarea
     id: topic
     attributes:
       label: 讨论内容
-      description: 分享你的经验、问题背景或想交流的主题。
+      description: 分享你的经验，或想交流的主题。
     validations:
       required: true

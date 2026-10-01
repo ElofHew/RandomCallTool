@@ -1,18 +1,18 @@
-name: 故障反馈
+name: Bug反馈
 description: 报告程序崩溃、功能异常或与预期不符的问题。
-title: "[故障] "
+title: "[BUG] "
 body:
   - type: markdown
     attributes:
       value: |
-        感谢反馈。提交前请先搜索现有 Issue，确认问题尚未被报告。
-        请勿在公开内容中粘贴个人名单、隐私信息或敏感数据。
+        感谢反馈Bug，提交前请先浏览现有 Issue，确认问题尚未被报告。
+        注意，请勿在公开内容中粘贴个人名单、隐私信息或敏感数据等。
   - type: checkboxes
     id: existing-issues
     attributes:
       label: 提交前确认
       options:
-        - label: 我已搜索现有 Issue，未发现相同问题。
+        - label: 我已浏览现有 Issue，未发现相同问题。
           required: true
   - type: textarea
     id: description
@@ -26,7 +26,7 @@ body:
     id: reproduction
     attributes:
       label: 复现步骤
-      description: 按顺序列出触发问题的操作；如果问题无法稳定复现，也请说明。
+      description: 请详细描述如何复现此问题；如果问题无法稳定复现，也请说明。
       placeholder: |
         1. 打开……
         2. 选择……
@@ -49,8 +49,10 @@ body:
       options:
         - Windows 11
         - Windows 10
+        - Windows 7
         - 其他 Windows 版本
-        - Linux
+        - Linux (Wayland)
+        - Linux (X11)
         - macOS
         - 其他
     validations:

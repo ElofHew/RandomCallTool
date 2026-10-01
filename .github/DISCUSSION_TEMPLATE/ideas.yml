@@ -3,7 +3,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        欢迎分享使用体验、工作流和改进想法。若建议明确指向某项新功能，也可以使用仓库中的「功能建议」Issue 表单。
+        欢迎分享使用体验和改进想法。若建议明确指向某项新功能，也可以使用仓库中的「功能建议」Issue 表单。
   - type: textarea
     id: idea
     attributes:

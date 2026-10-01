@@ -8,4 +8,4 @@ contact_links:
     about: 查看功能说明、配置方法和更新日志。
   - name: Gitee 问题反馈
     url: https://gitee.com/ElofHew/RandomCallTool/issues
-    about: 如果 GitHub 访问不便，可在 Gitee 提交问题。
+    about: 如果 GitHub 访问不便，可在 Gitee 提交问题，但优先级较低。

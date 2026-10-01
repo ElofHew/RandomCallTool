@@ -34,8 +34,10 @@ body:
       options:
         - Windows 11
         - Windows 10
+        - Windows 7
         - 其他 Windows 版本
-        - Linux
+        - Linux (Wayland)
+        - Linux (X11)
         - macOS
         - 其他
     validations:
