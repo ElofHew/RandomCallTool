@@ -1,6 +1,5 @@
 """卸载与安装辅助逻辑，包括清理脚本生成和链式安装流程。"""
 import os
-import sys
 import time
 import subprocess
 from core import updconf
@@ -74,6 +73,9 @@ def get_extra_uninstall_targets():
 
     return targets
 
+def get_cache_dir():
+    """返回 data/cache 目录路径"""
+    return os.path.join(updconf.PROGRAM_ROOT, "data", "cache")
 
 def get_files_to_delete(mode):
     """获取要删除的文件/目录列表"""
@@ -113,6 +115,32 @@ def get_files_to_delete(mode):
 
     return all_items, updconf.PROGRAM_ROOT
 
+def _build_cache_cleanup_bat(cache_dir, exclude_path=None):
+    """生成清空 data/cache 目录内容的 bat 片段
+
+    - 保留 cache 目录本身（避免程序下次启动因目录缺失报错）
+    - 保留 exclude_path 指向的文件（通常是从 cache 里正在运行的安装包）
+    """
+    cache_dir = os.path.normpath(os.path.abspath(cache_dir))
+    exclude = os.path.normpath(os.path.abspath(exclude_path)) if exclude_path else None
+
+    bat = 'echo [Uninstall] Cleaning cache...\r\n'
+    bat += f'if exist "{cache_dir}" (\r\n'
+    if exclude:
+        # 逐个比对完整路径，跳过正在运行的安装包
+        bat += f'    for %%f in ("{cache_dir}\\*") do (\r\n'
+        bat += f'        if exist "%%~ff" (\r\n'
+        bat += f'            if /i not "%%~ff"=="{exclude}" del /f /q "%%~ff" >nul 2>&1\r\n'
+        bat += '        )\r\n'
+        bat += '    )\r\n'
+        bat += f'    for /d %%d in ("{cache_dir}\\*") do (\r\n'
+        bat += f'        if /i not "%%~fd"=="{exclude}" rmdir /s /q "%%~fd" >nul 2>&1\r\n'
+        bat += '    )\r\n'
+    else:
+        bat += f'    del /f /q "{cache_dir}\\*" >nul 2>&1\r\n'
+        bat += f'    for /d %%d in ("{cache_dir}\\*") do rmdir /s /q "%%d" >nul 2>&1\r\n'
+    bat += ')\r\n'
+    return bat
 
 def build_remove_script(mode, setup_path=None):
     """构建 remove.bat → 写入 %TEMP%，返回 bat 路径
@@ -120,7 +148,7 @@ def build_remove_script(mode, setup_path=None):
     bat 流程:
       1. 结束所有套件进程
       2. 按模式删除文件
-      3. 如果给了安装包，非阻塞运行安装
+      3. 如果给了安装包：等待安装完成 → 清空 data/cache（保留安装包自身）
       4. 删除自身
     """
     items, root_dir = get_files_to_delete(mode)
@@ -148,8 +176,12 @@ def build_remove_script(mode, setup_path=None):
 
     if setup_path and os.path.isfile(setup_path):
         sp = os.path.normpath(setup_path)
-        bat += f'echo [Uninstall] Running setup...\r\n'
-        bat += f'start /b "" "{sp}"\r\n'
+        bat += 'echo [Uninstall] Running setup...\r\n'
+        # 用 start /wait 等安装程序返回，随后再清理缓存。
+        # 注意：若安装包是「自解压后 fork 出真正安装进程」的实现，
+        # start /wait 只会等自解压外壳退出，不会等到真正安装完成。
+        bat += f'start /wait "" "{sp}"\r\n'
+        bat += _build_cache_cleanup_bat(get_cache_dir(), exclude_path=sp)
 
     bat += 'del /f /q "%~f0" >nul 2>&1\r\n'
     bat += 'exit\r\n'
@@ -196,11 +228,11 @@ def get_remove_path():
 
 
 def run_remove_with_setup(setup_path):
-    """启动 remove.exe，传安装包路径，使 bat 链式完成卸载→安装→自毁
+    """启动 remove.exe，传安装包路径，使 bat 链式完成卸载→安装→清理缓存→自毁
 
     remove.exe 会：
       1. 构建 remove.bat 写入 %TEMP%
-      2. bat 杀进程 → 删文件 → start 安装包 → 自删
+      2. bat 杀进程 → 删文件 → 等待安装包运行完 → 清空 data/cache（保留安装包自身）→ 自删
       3. remove.exe 自毁
     """
     if not setup_path or not os.path.isfile(setup_path):
