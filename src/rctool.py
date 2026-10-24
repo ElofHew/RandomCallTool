@@ -153,6 +153,10 @@ def init_dir():
 
 def main():
     """主入口"""
+    # 单实例检测：已有实例在运行则弹窗提示并直接退出，避免多实例相互冲突
+    from core.singleins import ensure_single_instance
+    if not ensure_single_instance():
+        sys.exit(0)
     init_dir()
     from core.startargs import parse as parse_start_args, StartArgs
     if ConfigManager().get("parse_start_args", True):
