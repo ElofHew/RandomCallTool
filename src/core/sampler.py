@@ -208,6 +208,20 @@ class SmartSampler:
         if not cfg["with_replacement"]:
             return self._advanced_no_replace(pop, k)
 
+        # 自定义权重只由高级配置的开关控制，避免与智能模式的固定权重互相串味
+        use_custom = bool(cfg.get("custom_weights", False)) and bool(self.weights)
+        smart_on = cfg.get("smart_reduce_weight", True)
+
+        def final_weights():
+            """高级模式的权重列表：仅自定义，或自定义与智能降权相乘"""
+            custom = [self.weights.get(item, 1.0) for item in pop]
+            if not smart_on:
+                return custom
+            return [
+                self.get_smart_effective_weight(item) * custom[i]
+                for i, item in enumerate(pop)
+            ]
+
         # ── 放回模式：应用抽取优化 ──
 
         # 1) 随机定权重
@@ -216,9 +230,7 @@ class SmartSampler:
             w_max = cfg.get("random_weight_max", 2.00)
             temp_weights = {item: uniform(w_min, w_max) for item in pop}
             return self._weighted_select(
-                pop, k, [temp_weights.get(item, 1.0) for item in pop],
-                replace=True,
-            )
+                pop, k, [temp_weights.get(item, 1.0) for item in pop])
 
         # 2) 递进式抽取
         if cfg["progressive_draw"]:
@@ -253,17 +265,24 @@ class SmartSampler:
                 # 后台静默预抽取
                 sample(pop, min(k, len(pop)))
 
-        # 5) 多次取最值
+        # 5) 多次取最值（叠加自定义权重）
         if cfg["multi_draw_best"]:
             mc = max(2, min(len(pop), cfg.get("multi_draw_count", 3)))
+            weights = final_weights() if use_custom else None
             counter = Counter()
             for _ in range(mc):
-                drawn = sample(pop, k)
+                if weights is None:
+                    drawn = sample(pop, k)
+                else:
+                    # 后台抽取同样遵循权重，否则这一步会把自定义权重抹平
+                    drawn = self._weighted_select(pop, k, weights)
                 for item in drawn:
                     counter[item] += 1
-            # 按被抽次数降序，取前k个
-            sorted_items = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
-            result = [item for item, _ in sorted_items[:k]]
+            # 先打散再按次数排序：同次数的样本顺序随机，避免偏向名字靠前的样本
+            ranked = list(counter.items())
+            shuffle(ranked)
+            ranked.sort(key=lambda item: -item[1])
+            result = [item for item, _ in ranked[:k]]
             if len(result) < k:
                 # 补足：从未被抽到的样本中随机选取
                 remaining = [item for item in pop if item not in result]
@@ -271,25 +290,14 @@ class SmartSampler:
             return result
 
         # 6) 加权模式（自定义权重 / 智能降权）
-        # 同时认 advanced_config["custom_weights"]（高级配置窗口）
-        # 和 self.use_fixed_weights（权重对话框/智能模式）
-        _use_custom = cfg.get("custom_weights") or self.use_fixed_weights
+        #    单次抽取内不重复，避免"抽 N 个"时同一样本被抽中多次
+        if use_custom:
+            return self._weighted_select(pop, k, final_weights())
 
-        if _use_custom and self.weights:
-            return self._weighted_select(
-                pop, k, [self.weights.get(item, 1.0) for item in pop],
-                replace=True,
-            )
-
-        if cfg.get("smart_reduce_weight", True):
+        if smart_on:
             # 智能降权
-            smart_weights = [self.get_smart_effective_weight(item) for item in pop]
-            if self.weights and _use_custom:
-                smart_weights = [
-                    smart_weights[i] * self.weights.get(item, 1.0)
-                    for i, item in enumerate(pop)
-                ]
-            return self._weighted_select(pop, k, smart_weights, replace=True)
+            return self._weighted_select(
+                pop, k, [self.get_smart_effective_weight(item) for item in pop])
 
         # 默认：纯随机
         return sample(pop, k)
@@ -376,8 +384,8 @@ class SmartSampler:
             population: 候选总体
             k: 抽取数量
             weights: 与 population 等长的权重列表
-            replace: True=有放回（同一项可被重复抽中，用于放回式模式）；
-                     False=无放回（抽取结果互不相同）
+            replace: True=有放回（同一项可被重复抽中）；
+                     False=无放回（抽取结果互不相同，默认）
 
         使用 (索引, 项) 元组避免重复项的 index() 查找错误。
         """
