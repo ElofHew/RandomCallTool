@@ -18,11 +18,25 @@
     启动时自动加载第一个存在的文件。
 
 参数本身的任何错误（值非法、缺值、未知参数、列表格式错等）只记录到日志，
-不弹前端界面；异常部分忽略，程序正常启动。
+不弹前端界面；异常部分忽略，程序正常启动。漏写的参数值不会被下一个参数
+误吞，后续参数仍会正常解析。
+
+抽组模式下的组名（1..26 或 A..Z）同样可以作为 --weight-set 的名字。
 """
 import json
 import math
 from dataclasses import dataclass, field
+
+# 已识别的参数开关：用于识别“漏写了参数值”的情况
+_FLAG_TOKENS = (
+    "--weight-set", "-lib", "--lib", "-file", "--file",
+    "--custom-weight", "--point-sample",
+)
+
+
+def _is_flag(token):
+    """是否为已识别的参数开关。"""
+    return token in _FLAG_TOKENS
 
 
 @dataclass
@@ -45,7 +59,7 @@ def parse_name_list(value, errors=None):
             # 列表未闭合：不按列表强行解析，原样作为单个名字并记录
             if errors is not None:
                 errors.append("列表格式不正确（缺少右括号）：%s" % value)
-            return [value] if value else []
+            return [v] if v else []
         try:
             data = json.loads(v)
             if isinstance(data, list):
@@ -64,7 +78,7 @@ def parse_name_list(value, errors=None):
             if p:
                 out.append(p)
         return out
-    return [value] if v else []
+    return [v] if v else []
 
 
 def parse_weight(wstr):
@@ -100,6 +114,12 @@ def parse(argv):
             wstr = need(i + 2)
             if name_val is None or wstr is None:
                 break
+            if _is_flag(wstr):
+                # 权重值漏写：只消费两个 token，避免把后面的参数当成权重值吞掉
+                args.errors.append(
+                    "参数不完整：--weight-set 缺少权重值（名字：%s）" % name_val)
+                i += 2
+                continue
             w, why = parse_weight(wstr)
             if w is None:
                 args.errors.append(why)
@@ -131,9 +151,9 @@ def parse(argv):
             i += 2
 
         elif token in ("--custom-weight", "--point-sample"):
-            # 旧参数已废弃：静默忽略；--custom-weight 后若带 enable/disable 一并消费
+            # 旧参数已废弃：静默忽略；若后面跟着取值（enable/disable/1/true 等）一并消费
             j = i + 1
-            if token == "--custom-weight" and j < n and argv[j] in ("enable", "disable"):
+            if j < n and not _is_flag(argv[j]) and not argv[j].startswith("-"):
                 i = j
             i += 1
 
