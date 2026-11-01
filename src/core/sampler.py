@@ -1,6 +1,16 @@
-"""随机抽样核心逻辑：支持基本、智能和高级三种模式。"""
-from random import sample, shuffle, choices, random, uniform
-from collections import defaultdict, Counter
+"""随机抽样核心逻辑：支持基本、智能和高级三种模式。
+
+三种模式的职责：
+  - 基本模式：纯随机抽样；
+  - 智能模式：按近期抽取历史自动降权，可叠加用户自定义权重；
+  - 高级模式：放回/不放回、抽取优化、多次取最值、加权等完整策略。
+
+实现约定：
+  - 单次抽取内结果互不相同（不带重复样本），需要重复样本请用不放回式的多轮抽取；
+  - 权重只是相对倍数，0 权重样本不会被抽中，全 0 权重退化为等概率。
+"""
+from random import choices, randrange, sample, shuffle, uniform
+from collections import Counter, defaultdict
 
 
 def _normalize_weights(weights):
@@ -14,6 +24,34 @@ def _normalize_weights(weights):
     if total <= 0:
         return None
     return [w / total for w in safe]
+
+
+def _as_int(value, default):
+    """宽松取整：配置值异常时退回默认值"""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_float(value, default):
+    """宽松取浮点：配置值异常时退回默认值"""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _remaining_items(population, picked):
+    """population 中未被 picked 取走的部分（按重数扣除，允许重复项）"""
+    left = Counter(picked)
+    remaining = []
+    for item in population:
+        if left[item] > 0:
+            left[item] -= 1
+        else:
+            remaining.append(item)
+    return remaining
 
 
 class SmartSampler:
@@ -35,6 +73,10 @@ class SmartSampler:
         1: "整除式重载",
         2: "比率式调整",
     }
+
+    # 智能降权：记忆窗口内每被抽中一次扣减的权重，以及权重下限
+    SMART_DECAY = 0.35
+    SMART_MIN_WEIGHT = 0.1
 
     def __init__(self, mode=MODE_BASIC, smart_window=3):
         """
@@ -94,84 +136,124 @@ class SmartSampler:
         self._shuffle_done_once = False     # "仅启动时"打乱是否已执行
         self._pre_draw_done_once = False    # "仅启动时"预抽取是否已执行
 
-    # 模式切换
+    # ══════════════════════════════════════════════════════
+    #  模式切换
+    # ══════════════════════════════════════════════════════
 
     def set_mode(self, mode):
         if mode in (self.MODE_BASIC, self.MODE_SMART, self.MODE_ADVANCED):
             self.mode = mode
             # 切换到高级模式时，重置不放回状态
             if mode == self.MODE_ADVANCED:
-                self._remaining_pool = []
-                self._shuffle_done_once = False
-                self._pre_draw_done_once = False
+                self.reset_no_replace_pool()
 
-    # 权重设置
+    # ══════════════════════════════════════════════════════
+    #  权重设置
+    # ══════════════════════════════════════════════════════
 
     def set_weight(self, item, weight):
         """设置单个样本的权重（智能模式固定权重 / 高级模式自定义权重）"""
-        self.weights[item] = max(0.0, float(weight))
+        self.weights[item] = max(0.0, _as_float(weight, 1.0))
+
+    def set_weights_batch(self, items_with_weights):
+        """批量设置权重 items_with_weights: [(item, weight), ...]"""
+        for item, w in items_with_weights:
+            self.set_weight(item, w)
 
     def get_weight(self, item):
         """获取单个样本的权重，未设置时默认为 1.0"""
         return self.weights.get(item, 1.0)
 
-    def get_smart_effective_weight(self, item):
-        """获取智能模式下某样本的有效权重（即智能算法计算出的动态权重）"""
-        if not self._recent_history:
-            return 1.0
-        recent_counts = Counter()
-        for hist_set in self._recent_history:
-            for i in hist_set:
-                recent_counts[i] += 1
-        count = recent_counts.get(item, 0)
-        w = 1.0 - (count * 0.35)
-        return max(0.1, w)
-
-    def set_weights_batch(self, items_with_weights):
-        """批量设置权重 items_with_weights: [(item, weight), ...]"""
-        for item, w in items_with_weights:
-            self.weights[item] = max(0.0, float(w))
-
     def reset_weights(self):
         """重置所有权重"""
         self.weights.clear()
 
-    # 核心抽样入口
+    # ══════════════════════════════════════════════════════
+    #  智能权重
+    # ══════════════════════════════════════════════════════
+
+    def _recent_counts(self):
+        """统计智能记忆窗口内各样本被抽中的次数（每次抽取只统计一遍）"""
+        counts = Counter()
+        for hist_set in self._recent_history:
+            counts.update(hist_set)
+        return counts
+
+    def _smart_weight(self, counts, item):
+        """由近期次数推算智能权重：被抽中越频繁，权重越低"""
+        if not counts:
+            return 1.0
+        return max(self.SMART_MIN_WEIGHT,
+                   1.0 - counts.get(item, 0) * self.SMART_DECAY)
+
+    def get_smart_effective_weight(self, item):
+        """获取智能模式下某样本的有效权重（即智能算法计算出的动态权重）"""
+        return self._smart_weight(self._recent_counts(), item)
+
+    def _combine_weights(self, population, custom=None, smart=True):
+        """组合权重：智能降权 × 用户自定义权重
+
+        Args:
+            population: 候选总体
+            custom: {item: weight} 字典；None 表示不使用自定义权重
+            smart: 是否叠加智能降权
+
+        Returns:
+            与 population 等长的权重列表
+        """
+        counts = self._recent_counts() if smart else Counter()
+        weights = []
+        for item in population:
+            w = self._smart_weight(counts, item)
+            if custom is not None:
+                w *= custom.get(item, 1.0)
+            weights.append(w)
+        return weights
+
+    # ══════════════════════════════════════════════════════
+    #  核心抽样入口
+    # ══════════════════════════════════════════════════════
 
     def smart_sample(self, population, k):
-        """
-        执行抽样（根据当前模式自动选择算法）
+        """执行抽样（根据当前模式自动选择算法）
 
         Args:
             population: 样本总体（列表或可迭代对象）
             k: 抽取数量
 
         Returns:
-            抽取结果列表
+            抽取结果列表（数量不超过样本总数）
         """
-        if not population or k <= 0:
+        if k <= 0:
+            return []
+        pop = list(population)
+        if not pop:
             return []
 
-        pop_list = list(population)
-
-        # 抽取数量 >= 总数 → 打乱后返回
-        if k >= len(pop_list):
-            result = pop_list.copy()
+        # 抽取数量 >= 总数 → 打乱后全部返回
+        if k >= len(pop):
+            result = pop[:]
             shuffle(result)
+            if (self.mode == self.MODE_ADVANCED
+                    and not self.advanced_config.get("with_replacement", True)):
+                # 不放回池已抽空，重置以便下一轮从完整样本重新开始
+                self._remaining_pool = []
             self._update_history(result)
-            return result[:k] if k > len(pop_list) else result
+            return result
 
         if self.mode == self.MODE_BASIC:
-            result = self._basic_sample(pop_list, k)
+            result = self._basic_sample(pop, k)
         elif self.mode == self.MODE_SMART:
-            result = self._smart_sample(pop_list, k)
+            result = self._smart_sample(pop, k)
         else:  # MODE_ADVANCED
-            result = self._advanced_sample(pop_list, k)
+            result = self._advanced_sample(pop, k)
 
         self._update_history(result)
         return result
 
-    # 各模式实现
+    # ══════════════════════════════════════════════════════
+    #  基本 / 智能模式
+    # ══════════════════════════════════════════════════════
 
     def _basic_sample(self, population, k):
         """模式 0：纯随机抽样"""
@@ -179,203 +261,196 @@ class SmartSampler:
 
     def _smart_sample(self, population, k):
         """模式 1：智能抽样 — 根据近期历史调整权重，避免连续选中相同项；
-        如果启用了固定权重，则在智能权重基础上叠加用户自定义权重。
+        启用了固定权重时，在智能权重基础上叠加用户自定义权重。
         """
-        # 计算智能动态权重
-        smart_weights = []
-        for item in population:
-            smart_weights.append(self.get_smart_effective_weight(item))
-
-        if self.use_fixed_weights and self.weights:
-            # 叠加用户固定权重（乘积方式）
-            final_weights = []
-            for i, item in enumerate(population):
-                user_w = self.weights.get(item, 1.0)
-                final_weights.append(smart_weights[i] * user_w)
-            return self._weighted_select(population, k, final_weights)
-
-        # 仅智能权重（如无历史则纯随机）
-        if not self._recent_history:
+        custom = self.weights if (self.use_fixed_weights and self.weights) else None
+        if custom is None and not self._recent_history:
+            # 无历史、无自定义权重 → 纯随机
             return sample(population, k)
-        return self._weighted_select(population, k, smart_weights)
+        return self._weighted_select(
+            population, k, self._combine_weights(population, custom=custom))
+
+    # ══════════════════════════════════════════════════════
+    #  高级模式
+    # ══════════════════════════════════════════════════════
 
     def _advanced_sample(self, population, k):
-        """模式 2：高级抽样 — 支持放回/不放回、抽取优化、加权等"""
+        """模式 2：高级抽样 — 按放回/不放回分发"""
+        if not self.advanced_config.get("with_replacement", True):
+            return self._advanced_no_replace(population, k)
+        return self._advanced_replace(population, k)
+
+    def _advanced_weights(self, population):
+        """高级模式的权重列表；返回 None 表示本次按等概率抽取"""
         cfg = self.advanced_config
-        pop = population.copy()
-
-        # ── 不放回模式 ──
-        if not cfg["with_replacement"]:
-            return self._advanced_no_replace(pop, k)
-
-        # 自定义权重只由高级配置的开关控制，避免与智能模式的固定权重互相串味
         use_custom = bool(cfg.get("custom_weights", False)) and bool(self.weights)
-        smart_on = cfg.get("smart_reduce_weight", True)
+        smart_on = bool(cfg.get("smart_reduce_weight", True))
+        if not use_custom and not smart_on:
+            return None
+        return self._combine_weights(
+            population,
+            custom=self.weights if use_custom else None,
+            smart=smart_on,
+        )
 
-        def final_weights():
-            """高级模式的权重列表：仅自定义，或自定义与智能降权相乘"""
-            custom = [self.weights.get(item, 1.0) for item in pop]
-            if not smart_on:
-                return custom
-            return [
-                self.get_smart_effective_weight(item) * custom[i]
-                for i, item in enumerate(pop)
-            ]
+    def _advanced_replace(self, population, k):
+        """放回式：每次都在完整样本中抽，可叠加抽取优化与加权"""
+        cfg = self.advanced_config
+        pop = list(population)
 
-        # ── 放回模式：应用抽取优化 ──
-
-        # 1) 随机定权重
-        if cfg["random_weights"]:
-            w_min = cfg.get("random_weight_min", 0.10)
-            w_max = cfg.get("random_weight_max", 2.00)
-            temp_weights = {item: uniform(w_min, w_max) for item in pop}
+        # 1) 随机定权重（与自定义权重互斥，界面已保证）
+        if cfg.get("random_weights"):
+            w_min = _as_float(cfg.get("random_weight_min"), 0.10)
+            w_max = _as_float(cfg.get("random_weight_max"), 2.00)
+            if w_min > w_max:
+                w_min, w_max = w_max, w_min
             return self._weighted_select(
-                pop, k, [temp_weights.get(item, 1.0) for item in pop])
+                pop, k, [uniform(w_min, w_max) for _ in pop])
 
         # 2) 递进式抽取
-        if cfg["progressive_draw"]:
+        if cfg.get("progressive_draw"):
             return self._progressive_draw(pop, k)
 
-        # 3) 抽取前打乱
-        should_shuffle = False
-        if cfg["shuffle_before"]:
-            if cfg.get("shuffle_frequency", "each") == "each":
-                should_shuffle = True
-            elif cfg.get("shuffle_frequency") == "once" and not self._shuffle_done_once:
-                should_shuffle = True
-                self._shuffle_done_once = True
+        # 3) 抽取前打乱 / 4) 预抽取平衡
+        self._apply_draw_optimizations(pop, k)
 
-        if should_shuffle:
-            sc = max(1, min(10, cfg.get("shuffle_count", 1)))
-            for _ in range(sc):
-                shuffle(pop)
+        # 5) 多次取最值
+        weights = self._advanced_weights(pop)
+        if cfg.get("multi_draw_best"):
+            return self._multi_draw_best(pop, k, weights)
 
-        # 4) 预抽取平衡
-        should_pre_draw = False
-        if cfg["pre_draw_balance"]:
-            if cfg.get("pre_draw_frequency", "each") == "each":
-                should_pre_draw = True
-            elif cfg.get("pre_draw_frequency") == "once" and not self._pre_draw_done_once:
-                should_pre_draw = True
-                self._pre_draw_done_once = True
-
-        if should_pre_draw:
-            pd_count = max(1, min(10, cfg.get("pre_draw_count", 1)))
-            for _ in range(pd_count):
-                # 后台静默预抽取
-                sample(pop, min(k, len(pop)))
-
-        # 5) 多次取最值（叠加自定义权重）
-        if cfg["multi_draw_best"]:
-            mc = max(2, min(len(pop), cfg.get("multi_draw_count", 3)))
-            weights = final_weights() if use_custom else None
-            counter = Counter()
-            for _ in range(mc):
-                if weights is None:
-                    drawn = sample(pop, k)
-                else:
-                    # 后台抽取同样遵循权重，否则这一步会把自定义权重抹平
-                    drawn = self._weighted_select(pop, k, weights)
-                for item in drawn:
-                    counter[item] += 1
-            # 先打散再按次数排序：同次数的样本顺序随机，避免偏向名字靠前的样本
-            ranked = list(counter.items())
-            shuffle(ranked)
-            ranked.sort(key=lambda item: -item[1])
-            result = [item for item, _ in ranked[:k]]
-            if len(result) < k:
-                # 补足：从未被抽到的样本中随机选取
-                remaining = [item for item in pop if item not in result]
-                result.extend(sample(remaining, k - len(result)))
-            return result
-
-        # 6) 加权模式（自定义权重 / 智能降权）
-        #    单次抽取内不重复，避免"抽 N 个"时同一样本被抽中多次
-        if use_custom:
-            return self._weighted_select(pop, k, final_weights())
-
-        if smart_on:
-            # 智能降权
-            return self._weighted_select(
-                pop, k, [self.get_smart_effective_weight(item) for item in pop])
+        # 6) 加权抽取（自定义权重 / 智能降权）
+        if weights is not None:
+            return self._weighted_select(pop, k, weights)
 
         # 默认：纯随机
         return sample(pop, k)
 
     def _advanced_no_replace(self, population, k):
-        """不放回式抽取"""
+        """不放回式：整池打乱后按顺序取，取空再重载
+
+        三个调整方法只在“剩余样本不足 k 个”时才产生差别。
+        """
+        if not population:
+            return []
+
         cfg = self.advanced_config
-
-        # 初始化或检查剩余池
-        if not self._remaining_pool:
-            self._remaining_pool = population.copy()
-            shuffle(self._remaining_pool)
-
-        remaining = self._remaining_pool
-
-        # 比率式调整
-        if cfg.get("no_replace_method") == self.NO_REPLACE_METHOD_RATIO:
-            ratio = max(0.10, min(0.50, cfg.get("no_replace_ratio", 0.5)))
-            if len(remaining) <= int(len(population) * ratio):
-                remaining = population.copy()
-                shuffle(remaining)
-                self._remaining_pool = remaining
-
-        if k <= len(remaining):
-            # 足够抽取
-            result = remaining[:k]
-            self._remaining_pool = remaining[k:]
-            return result
-
-        # 不够抽取，根据调整方法处理
         method = cfg.get("no_replace_method", self.NO_REPLACE_METHOD_CONTINUOUS)
 
+        if not self._remaining_pool:
+            self._remaining_pool = self._fresh_pool(population)
+        elif method == self.NO_REPLACE_METHOD_RATIO:
+            ratio = min(0.50, max(0.10, _as_float(cfg.get("no_replace_ratio"), 0.5)))
+            if len(self._remaining_pool) <= int(len(population) * ratio):
+                # 剩余样本低于阈值 → 重载整池
+                self._remaining_pool = self._fresh_pool(population)
+
+        remaining = self._remaining_pool
+        if k <= len(remaining):
+            self._remaining_pool = remaining[k:]
+            return remaining[:k]
+
         if method == self.NO_REPLACE_METHOD_CONTINUOUS:
-            # 连续循环：先取剩余的，再重载补足
+            # 连续循环：先取剩余样本，再重载补足
             result = list(remaining)
             need = k - len(result)
             while need > 0:
-                new_pool = population.copy()
-                shuffle(new_pool)
-                take = min(need, len(new_pool))
-                result.extend(new_pool[:take])
+                fresh = self._fresh_pool(population)
+                take = min(need, len(fresh))
+                result.extend(fresh[:take])
+                self._remaining_pool = fresh[take:]
                 need -= take
-            self._remaining_pool = new_pool[take:]
-            return result[:k]
-
-        elif method == self.NO_REPLACE_METHOD_DIVISIBLE:
-            # 整除式重载：直接重载进入下一次循环
-            new_pool = population.copy()
-            shuffle(new_pool)
-            result = new_pool[:k]
-            self._remaining_pool = new_pool[k:]
             return result
 
-        else:
-            # 比率式（已在上方处理，这里作为fallback）
-            new_pool = population.copy()
-            shuffle(new_pool)
-            result = new_pool[:k]
-            self._remaining_pool = new_pool[k:]
-            return result
+        # 整除式 / 比率式：直接重载整池进入下一轮
+        fresh = self._fresh_pool(population)
+        self._remaining_pool = fresh[k:]
+        return fresh[:k]
 
     def _progressive_draw(self, population, k):
-        """递进式抽取：样本中以一半数量层层递进式抽取
+        """递进式抽取：每轮把候选池缩小一半，最后从最小的集合里抽取
         例：50→25→13→7→4→2→1
-        最终从最小的集合中随机取 k 个
         """
-        current = population.copy()
-        shuffle(current)
+        current = self._fresh_pool(population)
         while len(current) > max(k, 2):
-            half = max(1, len(current) // 2)
-            current = sample(current, half)
+            current = sample(current, max(1, len(current) // 2))
         if len(current) >= k:
             return sample(current, k)
-        # 递进后不足 k 个，从原总体中补充
-        remaining = [x for x in population if x not in current]
-        shuffle(remaining)
+        # 递进后不足 k 个：从剩余样本中补足
+        remaining = _remaining_items(population, current)
         need = k - len(current)
         return current + sample(remaining, min(need, len(remaining)))
+
+    def _multi_draw_best(self, population, k, weights=None):
+        """多次取最值：后台抽若干次，取被抽中次数最多的前 k 个
+
+        Args:
+            weights: 与 population 等长的权重列表；None 表示等概率后台抽取
+        """
+        cfg = self.advanced_config
+        times = max(2, min(len(population),
+                           _as_int(cfg.get("multi_draw_count"), 3)))
+        counter = Counter()
+        for _ in range(times):
+            drawn = (sample(population, k) if weights is None
+                     else self._weighted_select(population, k, weights))
+            counter.update(drawn)
+
+        # 先打散再按次数排序：同次数的样本顺序随机，避免偏向名字靠前的样本
+        ranked = list(counter.items())
+        shuffle(ranked)
+        ranked.sort(key=lambda pair: -pair[1])
+        result = [item for item, _ in ranked[:k]]
+
+        if len(result) < k:
+            # 补足：从未被抽中的样本中随机选取
+            remaining = _remaining_items(population, result)
+            result.extend(sample(remaining, min(k - len(result), len(remaining))))
+        return result
+
+    # ── 抽取优化 ──────────────────────────────────────────
+
+    def _apply_draw_optimizations(self, population, k):
+        """抽取前打乱 / 预抽取平衡
+
+        预抽取平衡为后台空抽（结果丢弃），只用于打散随机状态。
+        """
+        cfg = self.advanced_config
+
+        if cfg.get("shuffle_before") and self._should_run(
+                cfg.get("shuffle_frequency", "each"), "_shuffle_done_once"):
+            count = max(1, min(10, _as_int(cfg.get("shuffle_count"), 1)))
+            for _ in range(count):
+                shuffle(population)
+
+        if cfg.get("pre_draw_balance") and self._should_run(
+                cfg.get("pre_draw_frequency", "each"), "_pre_draw_done_once"):
+            count = max(1, min(10, _as_int(cfg.get("pre_draw_count"), 1)))
+            for _ in range(count):
+                sample(population, min(k, len(population)))
+
+    def _should_run(self, frequency, done_flag):
+        """按“每次 / 仅启动时”判断优化项是否执行
+
+        done_flag 为记录“已执行过”的属性名，仅 "once" 时会被置位。
+        """
+        if frequency == "once":
+            if getattr(self, done_flag):
+                return False
+            setattr(self, done_flag, True)
+            return True
+        return frequency == "each"
+
+    @staticmethod
+    def _fresh_pool(population):
+        """复制并打乱一份新的样本池"""
+        pool = list(population)
+        shuffle(pool)
+        return pool
+
+    # ══════════════════════════════════════════════════════
+    #  加权抽取
+    # ══════════════════════════════════════════════════════
 
     def _weighted_select(self, population, k, weights, replace=False):
         """带权重的抽样（通用实现）
@@ -383,53 +458,47 @@ class SmartSampler:
         Args:
             population: 候选总体
             k: 抽取数量
-            weights: 与 population 等长的权重列表
+            weights: 与 population 等长的权重列表（0 权重不会被抽中）
             replace: True=有放回（同一项可被重复抽中）；
                      False=无放回（抽取结果互不相同，默认）
 
-        使用 (索引, 项) 元组避免重复项的 index() 查找错误。
+        无放回时逐次归一化并剔除已抽中的项，等价于按权重依次抽取。
         """
         if not population or k <= 0:
             return []
 
-        # ── 有放回：直接按归一化权重独立抽取 k 次 ──
+        pool = list(population)
+        pool_w = [max(0.0, _as_float(w, 0.0)) for w in weights]
+
+        # ── 有放回：按归一化权重独立抽取 k 次 ──
         if replace:
-            norm = _normalize_weights(weights)
+            norm = _normalize_weights(pool_w)
             if norm is None:  # 权重全为 0 → 退化为等概率
-                norm = [1.0 / len(population)] * len(population)
-            return choices(list(population), weights=norm, k=k)
+                norm = [1.0] * len(pool)
+            return choices(pool, weights=norm, k=k)
 
         # ── 无放回：抽一个移除一个 ──
         result = []
-        # 用 [(idx, item), ...] 跟踪索引，避免重复项时 index() 返回错误位置
-        temp_pop = list(enumerate(population))
-        temp_w = list(weights)
-
-        for _ in range(k):
-            if not temp_pop:
-                break
-            norm = _normalize_weights(temp_w)
+        while pool and len(result) < k:
+            norm = _normalize_weights(pool_w)
             if norm is None:
-                sel_idx = sample(range(len(temp_pop)), 1)[0]
+                # 权重全为 0 → 等概率随机取一个
+                idx = randrange(len(pool))
             else:
-                sel_idx = choices(range(len(temp_pop)), weights=norm, k=1)[0]
-
-            idx, item = temp_pop[sel_idx]
-            result.append(item)
-            temp_pop.pop(sel_idx)
-            temp_w.pop(sel_idx)
-
+                idx = choices(range(len(pool)), weights=norm, k=1)[0]
+            result.append(pool.pop(idx))
+            pool_w.pop(idx)
         return result
 
-    # ── 高级模式：重置不放回状态 ──────────────────────────
+    # ══════════════════════════════════════════════════════
+    #  状态重置 / 历史统计
+    # ══════════════════════════════════════════════════════
 
     def reset_no_replace_pool(self):
         """重置不放回抽取池（切换样本或手动重置时调用）"""
         self._remaining_pool = []
         self._shuffle_done_once = False
         self._pre_draw_done_once = False
-
-    # ── 历史与统计 ────────────────────────────────────────
 
     def _update_history(self, selected_items):
         """更新抽取历史（智能模式使用 + 统计计数）"""
@@ -461,6 +530,4 @@ class SmartSampler:
         self._recent_history.clear()
         self.selection_history.clear()
         self.total_selections = 0
-        self._remaining_pool = []
-        self._shuffle_done_once = False
-        self._pre_draw_done_once = False
+        self.reset_no_replace_pool()
