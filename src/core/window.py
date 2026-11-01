@@ -1541,9 +1541,16 @@ class RandomCallTab(BaseTab):
 
     def _on_sampler_mode_change(self, event):
         """抽样模式切换"""
-        idx = self.sampler_mode_combo.current()
+        self._apply_sampler_mode(self.sampler_mode_combo.current())
+
+    def _apply_sampler_mode(self, idx):
+        """同步抽样模式：sampler、下拉框与权重按钮保持一致"""
+        idx = max(SmartSampler.MODE_BASIC,
+                  min(SmartSampler.MODE_ADVANCED, int(idx)))
         self.sampler_mode_var.set(idx)
         self.sampler.set_mode(idx)
+        if getattr(self, "sampler_mode_combo", None) is not None:
+            self.sampler_mode_combo.set(SmartSampler.MODE_NAMES[idx])
         # 更新按钮状态和文字
         if idx == SmartSampler.MODE_BASIC:
             self.weight_btn.config(state="disabled", text="权重")
@@ -1552,6 +1559,20 @@ class RandomCallTab(BaseTab):
         else:  # MODE_ADVANCED
             self.weight_btn.config(state="normal", text="高级")
         rctlog.info(f"抽样模式切换为: {SmartSampler.MODE_NAMES[idx]}")
+
+    def _weight_enabled(self):
+        """当前抽样模式下自定义权重是否启用（智能模式与高级模式各自独立）"""
+        if self.sampler.mode == SmartSampler.MODE_ADVANCED:
+            return bool(self.sampler.advanced_config.get("custom_weights", False))
+        return bool(self.sampler.use_fixed_weights)
+
+    def _set_weight_enabled(self, enabled):
+        """按当前抽样模式开启/关闭自定义权重"""
+        enabled = bool(enabled)
+        if self.sampler.mode == SmartSampler.MODE_ADVANCED:
+            self.sampler.advanced_config["custom_weights"] = enabled
+        else:
+            self.sampler.use_fixed_weights = enabled
 
     def _open_weight_config(self):
         """打开权重设置窗口 或 高级抽取配置窗口"""
@@ -1565,24 +1586,32 @@ class RandomCallTab(BaseTab):
         # 智能模式：权重设置窗口
         self._open_weight_config_dialog()
 
+    def _group_items(self):
+        """抽组模式下可作为权重/样本项的组列表（1..N 或 A..Z）"""
+        try:
+            total = int(self.total_entry.get())
+        except (ValueError, AttributeError, TypeError):
+            return []
+        if total <= 0:
+            return []
+        if self.group_order_var.get() == "ABC":
+            return list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")[:total]
+        return list(range(1, total + 1))
+
+    def _weight_target_items(self):
+        """当前抽取模式下可作为权重目标的样本项列表"""
+        if self.mode_var.get() == "person":
+            return list(self.names) if self.names else []
+        return self._group_items()
+
     def _open_weight_config_dialog(self):
         """纯权重编辑窗口（不自检模式，供高级窗口回调使用）"""
-        if self.mode_var.get() == "person":
-            items = self.names if self.names else []
-        else:
-            try:
-                total = int(self.total_entry.get())
-                items = (
-                    list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")[:total]
-                    if self.group_order_var.get() == "ABC"
-                    else list(range(1, total + 1))
-                )
-            except (ValueError, AttributeError):
-                messagebox.showwarning("参数不足", "请先设置抽组的组数等参数。")
-                return
-
+        items = self._weight_target_items()
         if not items:
-            messagebox.showwarning("无可抽样本", "当前没有可用的样本。")
+            if self.mode_var.get() == "person":
+                messagebox.showwarning("无可抽样本", "当前没有可用的样本。")
+            else:
+                messagebox.showwarning("参数不足", "请先设置抽组的组数等参数。")
             return
 
         win = tk.Toplevel(self.frame.winfo_toplevel())
@@ -1601,7 +1630,8 @@ class RandomCallTab(BaseTab):
                  font=("", 9), fg="gray").pack(anchor="w")
 
         # "使用固定权重" 勾选项（use_fixed_var 变量先创建，控件在下方函数定义后创建）
-        use_fixed_var = tk.BooleanVar(value=self.sampler.use_fixed_weights)
+        # 智能模式对应 use_fixed_weights，高级模式对应 advanced_config["custom_weights"]
+        use_fixed_var = tk.BooleanVar(value=self._weight_enabled())
 
         # 可滚动区域
         body_frame = tk.Frame(win)
@@ -1717,13 +1747,12 @@ class RandomCallTab(BaseTab):
                 first_entry.select_range(0, "end")
                 return
             # 全部合法：写入并关闭
-            self.sampler.use_fixed_weights = use_fixed_var.get()
+            self._set_weight_enabled(use_fixed_var.get())
             for item, w in parsed.items():
                 self.sampler.set_weight(item, w)
-            # 同步高级模式的自定义权重开关
-            self.sampler.advanced_config["custom_weights"] = self.sampler.use_fixed_weights
             _applied = True
-            rctlog.info(f"权重已更新 ({len(weight_vars)} 项), 固定权重={self.sampler.use_fixed_weights}")
+            rctlog.info(
+                f"权重已更新 ({len(weight_vars)} 项), 权重启用={self._weight_enabled()}")
             messagebox.showinfo("保存成功", "权重已保存。")
             canvas.unbind_all("<MouseWheel>")
             win.destroy()
@@ -1818,28 +1847,58 @@ class RandomCallTab(BaseTab):
                     return True
         return False
 
+    # 高级模式下会让自定义权重失效的选项 及 生效所需的取值
+    WEIGHT_CONFLICT_OPTIONS = (
+        ("with_replacement", True, "不放回式抽取"),
+        ("random_weights", False, "随机定权重"),
+        ("progressive_draw", False, "递进式抽取"),
+    )
+
+    def _disable_weight_conflicts(self):
+        """关闭会让自定义权重失效的高级选项，返回被调整的选项名列表。"""
+        if self.sampler.mode != SmartSampler.MODE_ADVANCED:
+            return []
+        cfg = self.sampler.advanced_config
+        changed = []
+        for key, want, label in self.WEIGHT_CONFLICT_OPTIONS:
+            if cfg.get(key) != want:
+                cfg[key] = want
+                changed.append(label)
+        return changed
+
     def _apply_start_args(self):
         """按启动参数对当前样本应用自定义权重（仅本次运行，不落盘）。"""
         sa = self._start_args
-        if sa is None or not sa.has_rules() or not self.names:
+        if sa is None or not sa.has_rules():
+            return
+        items = self._weight_target_items()
+        if not items:
             return
         if not self._start_args_matches():
             rctlog.info("[启动参数] 当前样本不是限定目标，跳过权重设置")
             return
+        # 名字 -> 实际样本项（抽人时为名字，抽组时为组编号/字母）
+        index = {str(item): item for item in items}
         applied = []
         for name, w in sa.weight_sets:
-            if name in self.names:
-                self.sampler.set_weight(name, w)
-                applied.append("%s=%s" % (name, w))
+            item = index.get(name)
+            if item is None:
+                continue
+            self.sampler.set_weight(item, w)
+            applied.append("%s=%s" % (name, w))
         if not applied:
             rctlog.info("[启动参数] 当前样本中没有指定名字，未设置权重")
             return
-        # 让权重在当前模式下真正生效
-        self.sampler.advanced_config["custom_weights"] = True
-        self.sampler.use_fixed_weights = True
+        # 基本模式不使用权重，切到高级模式（并同步界面上的模式显示）
         if self.sampler.mode == SmartSampler.MODE_BASIC:
-            self.sampler.set_mode(SmartSampler.MODE_ADVANCED)
+            self._apply_sampler_mode(SmartSampler.MODE_ADVANCED)
             rctlog.info("[启动参数] 基本模式不支持权重，已切换为高级抽样模式")
+        # 高级模式下关闭会让权重完全失效的选项（仅本次运行）
+        disabled = self._disable_weight_conflicts()
+        if disabled:
+            rctlog.warning("[启动参数] 已临时关闭与自定义权重冲突的选项："
+                           + "、".join(disabled))
+        self._set_weight_enabled(True)
         rctlog.info("[启动参数] 已应用自定义权重：" + "，".join(applied))
 
     def _load_start_file(self):
@@ -1865,6 +1924,10 @@ class RandomCallTab(BaseTab):
         self.names = names
         self.current_file = loaded
         self.sampler.reset_no_replace_pool()
+        # 外部文件是抽人用的名单，默认模式为抽组时切到抽人，否则界面看不到已加载的样本
+        if self.mode_var.get() != "person":
+            self.mode_var.set("person")
+            rctlog.info("[启动参数] 指定文件为抽人名单，已切换到抽人模式")
         self.choice_entry["values"] = list(range(1, len(names) + 1))
         self._apply_start_args()
 
@@ -2680,7 +2743,7 @@ class AdvancedConfigWindow:
         # --- 加权说明 ---
         tk.Label(
             self.sec3,
-            text="说明：放回式下加权抽取为「有放回」，同一样本可能被重复抽中；\n"
+            text="说明：放回式下按权重抽取，单次抽取内不会重复抽中同一样本；\n"
                  "不放回式下始终按随机顺序抽取，不重复，也不叠加权重。",
             fg="gray", font=("", 8), justify="left", anchor="w",
         ).pack(fill="x", pady=(4, 2))
@@ -2915,9 +2978,6 @@ class AdvancedConfigWindow:
         # 同步智能模式的记忆窗口
         if cfg.get("smart_reduce_weight", True):
             self.sampler.smart_window = cfg.get("smart_memory_count", 3)
-        # 如果自定义权重启用，确保使用固定权重
-        if cfg.get("custom_weights"):
-            self.sampler.use_fixed_weights = True
 
     def _save_to_global_config(self):
         """将高级配置保存到全局 config.json"""
@@ -3020,9 +3080,13 @@ class AdvancedConfigWindow:
     def _open_weight_from_advanced(self):
         """从高级窗口打开权重设置"""
         if self.on_open_weights:
-            # 继承"自定义权重"勾选状态到权重窗口
-            self.sampler.use_fixed_weights = self.custw_var.get()
+            # 把窗口内的勾选状态先同步给 sampler，权重窗口据此决定是否可编辑
+            self.sampler.advanced_config["custom_weights"] = bool(self.custw_var.get())
             self.on_open_weights()
+            # 权重窗口里可能改了启用状态，回读保持两边一致
+            self.custw_var.set(
+                bool(self.sampler.advanced_config.get("custom_weights", False)))
+            self._apply_conflicts()
         else:
             messagebox.showinfo(
                 "无可设置的样本",
