@@ -25,7 +25,7 @@
 
 ; ----------------------------- 版本 / 常量 ----------------------------------
 ; 升级版本时，主要改这里（版本号同时写进安装包资源、注册表、输出文件名）
-!define VER            "2.7.1.1"
+!define VER            "2.7.2-beta"
 !define PRODUCT_NAME   "随机抽取工具"
 !define PUBLISHER      "Dan_Evan"
 !define SETUP_BASENAME "RandomCallTool_Setup"
